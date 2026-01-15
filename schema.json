@@ -1,0 +1,997 @@
+{
+    "props": {
+        "pageProps": {
+            "lang": "pl",
+            "id": "4znz8",
+            "ad": {
+                "id": 67537414,
+                "price": {
+                    "type": "",
+                    "__typename": "AdvertPrice"
+                },
+                "market": "SECONDARY",
+                "services": [],
+                "publicId": "",
+                "slug": "rezerwacja-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4znz8",
+                "advertiserType": "private",
+                "advertType": "PRIVATE",
+                "source": "urn:site:local",
+                "createdAt": "2025-12-15T09:44:40+01:00",
+                "modifiedAt": "2026-01-07T10:35:05+01:00",
+                "description": "<p><b>Mieszkanie 2 pokoje, Blisko Uczelni Medycznej</b></p><p><b>Wysoki standard</b></p><p><b>Idealne miejsce pod wynajem lub Dla siebie</b></p><p></p><p>Mieszkanie mie\u015bci si\u0119 na trzecim pi\u0119trze z wind\u0105.</p><p>Mieszkanie ca\u0142kowicie po remoncie do zamieszkania.</p><p>Posiada Ksi\u0119g\u0119 Wieczyst\u0105.</p><p>Ciep\u0142a woda i ogrzewanie jest miejskie.</p><p>Parking obok bloku.</p><p>Wyposa\u017cenie takie jak: lod\u00f3wka, piekarnik, p\u0142yta indukcyjna, pralka mo\u017ce zosta\u0107 wstawione kwestia uzgodnienia.</p><p><b>Lokalizacja</b>:</p><p>- Lublin, Czech\u00f3w</p><p>- rewelacyjna lokalizacja</p><p>- osiedle zapewnia pe\u0142n\u0105 infrastruktur\u0119: sklepy, przedszkola, szko\u0142y, apteki oraz wszystkie inne niezb\u0119dne us\u0142ugi</p><p>- blisko przystanki MPK</p><p>- blisko Uczelni Medycznej</p><p></p><p>Cena do uzgodnienia.</p>",
+                "developmentId": 0,
+                "developmentTitle": "",
+                "developmentUrl": "",
+                "exclusiveOffer": false,
+                "externalId": "",
+                "features": [
+                    "internet",
+                    "telewizja kablowa",
+                    "drzwi / okna antyw\u0142amaniowe",
+                    "domofon / wideofon",
+                    "monitoring / ochrona",
+                    "meble",
+                    "pralka",
+                    "zmywarka",
+                    "lod\u00f3wka",
+                    "kuchenka",
+                    "piekarnik",
+                    "balkon",
+                    "pom. u\u017cytkowe",
+                    "gara\u017c/miejsce parkingowe",
+                    "piwnica",
+                    "winda"
+                ],
+                "creationSource": "posting_form",
+                "pushedUpAt": "2026-01-04T09:49:20Z",
+                "featuresByCategory": [
+                    {
+                        "label": "Media",
+                        "values": [
+                            "internet",
+                            "telewizja kablowa"
+                        ],
+                        "__typename": "FeatureGroup"
+                    },
+                    {
+                        "label": "Zabezpieczenia",
+                        "values": [
+                            "drzwi / okna antyw\u0142amaniowe",
+                            "domofon / wideofon",
+                            "monitoring / ochrona"
+                        ],
+                        "__typename": "FeatureGroup"
+                    },
+                    {
+                        "label": "Wyposa\u017cenie",
+                        "values": [
+                            "meble",
+                            "pralka",
+                            "zmywarka",
+                            "lod\u00f3wka",
+                            "kuchenka",
+                            "piekarnik"
+                        ],
+                        "__typename": "FeatureGroup"
+                    },
+                    {
+                        "label": "Informacje dodatkowe",
+                        "values": [
+                            "balkon",
+                            "pom. u\u017cytkowe",
+                            "gara\u017c/miejsce parkingowe",
+                            "piwnica",
+                            "winda"
+                        ],
+                        "__typename": "FeatureGroup"
+                    }
+                ],
+                "featuresWithoutCategory": [],
+                "openDay": null,
+                "referenceId": "",
+                "target": {
+                    "Area": "40",
+                    "AreaRange": [],
+                    "Build_year": "1986",
+                    "Building_floors_num": "10",
+                    "Building_material": [
+                        "concrete"
+                    ],
+                    "Building_ownership": [
+                        "limited_ownership"
+                    ],
+                    "Building_type": [
+                        "block"
+                    ],
+                    "City": "lublin",
+                    "City_id": "190",
+                    "Construction_status": [
+                        "ready_to_use"
+                    ],
+                    "Country": "Polska",
+                    "Equipment_types": [
+                        "furniture",
+                        "washing_machine",
+                        "dishwasher",
+                        "fridge",
+                        "stove",
+                        "oven"
+                    ],
+                    "Extras_types": [
+                        "balcony",
+                        "usable_room",
+                        "garage",
+                        "basement",
+                        "lift"
+                    ],
+                    "Floor_no": [
+                        "floor_3"
+                    ],
+                    "Heating": [
+                        "urban"
+                    ],
+                    "Id": "67537414",
+                    "MarketType": "secondary",
+                    "Media_types": [
+                        "internet",
+                        "cable-television"
+                    ],
+                    "ObidoAdvert": "n",
+                    "OfferType": "sprzedaz",
+                    "Photo": "aHR0cHM6Ly9pcmVsYW5kLmFwb2xsby5vbHhjZG4uY29tL3YxL2ZpbGVzL2V5Sm1iaUk2SW5kcGQyOHpjRFl6Ym14aGJESXRRVkJNSWl3aWR5STZXM3NpWm00aU9pSmxiblptY1hGbE1XRjVOR3N4TFVGUVRDSXNJbk1pT2lJeE5DSXNJbkFpT2lJeE1Dd3RNVEFpTENKaElqb2lNQ0o5WFgwLnlxWnNoMUpCZFM3STVtLWhuNjZ0SjhtR0lOaDhmYnV5YUxUSEhXWTExNjQvaW1hZ2U7cz02NTV4NDkxO3E9ODA=",
+                    "Price": 436000,
+                    "PriceRange": [
+                        "250001-500000"
+                    ],
+                    "Price_per_m": 10900,
+                    "ProperType": "mieszkanie",
+                    "Province": "lubelskie",
+                    "RegularUser": "y",
+                    "Rent": 550,
+                    "Rooms_num": [
+                        "2"
+                    ],
+                    "Security_types": [
+                        "anti_burglary_door",
+                        "entryphone",
+                        "monitoring"
+                    ],
+                    "Subregion": "powiat-lublin",
+                    "Title": "UkVaRVJXQUNKQS0gTWllc3prYW5pZSBXeXNva2kgU3RhbmRhcmQsICBCbGlza28gVWN6ZWxuaSBNZWR5Y3puZWo=",
+                    "Windows_type": [
+                        "plastic"
+                    ],
+                    "categoryId": "101",
+                    "env": "production",
+                    "hidePrice": "0",
+                    "seller_id": "7077008",
+                    "user_type": "private"
+                },
+                "title": "REZERWACJA- Mieszkanie Wysoki Standard,  Blisko Uczelni Medycznej",
+                "topInformation": [
+                    {
+                        "label": "area",
+                        "values": [
+                            "40"
+                        ],
+                        "unit": "m\u00b2",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "building_ownership",
+                        "values": [
+                            "building_ownership::limited_ownership"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "rooms_num",
+                        "values": [
+                            "2"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "construction_status",
+                        "values": [
+                            "construction_status-67::ready_to_use"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "floor",
+                        "values": [
+                            "floor_no::floor_3",
+                            "/10"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "outdoor",
+                        "values": [
+                            "extras_types::balcony"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "rent",
+                        "values": [
+                            "550 z\u0142"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "car",
+                        "values": [
+                            "extras_types-85::garage"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "remote_services",
+                        "values": [],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "heating",
+                        "values": [
+                            "heating::urban"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    }
+                ],
+                "additionalInformation": [
+                    {
+                        "label": "market",
+                        "values": [
+                            "market::secondary"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "advertiser_type",
+                        "values": [
+                            "advertiser_type::private"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "free_from",
+                        "values": [],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "build_year",
+                        "values": [
+                            "1986"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "building_type",
+                        "values": [
+                            "building_type-15::block"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "windows_type",
+                        "values": [
+                            "windows_type::plastic"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "lift",
+                        "values": [
+                            "::y"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "media_types",
+                        "values": [
+                            "media_types::internet",
+                            "media_types::cable-television"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "security_types",
+                        "values": [
+                            "security_types::anti_burglary_door",
+                            "security_types::entryphone",
+                            "security_types::monitoring"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "equipment_types",
+                        "values": [
+                            "equipment_types::furniture",
+                            "equipment_types::washing_machine",
+                            "equipment_types::dishwasher",
+                            "equipment_types::fridge",
+                            "equipment_types::stove",
+                            "equipment_types::oven"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "extras_types",
+                        "values": [
+                            "extras_types::usable_room",
+                            "extras_types::basement"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    },
+                    {
+                        "label": "building_material",
+                        "values": [
+                            "building_material::concrete"
+                        ],
+                        "unit": "",
+                        "__typename": "AdditionalInfo"
+                    }
+                ],
+                "url": "https://www.otodom.pl/pl/oferta/rezerwacja-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4znz8",
+                "status": "active",
+                "adCategory": {
+                    "id": "101",
+                    "name": "FLAT",
+                    "type": "SELL",
+                    "__typename": "AdvertCategory"
+                },
+                "category": {
+                    "id": 101,
+                    "name": [
+                        {
+                            "locale": "pl",
+                            "value": "Mieszkania",
+                            "__typename": "LocalizedString"
+                        },
+                        {
+                            "locale": "uk",
+                            "value": "\u041a\u0432\u0430\u0440\u0442\u0438\u0440\u0430",
+                            "__typename": "LocalizedString"
+                        }
+                    ],
+                    "__typename": "AdCategory"
+                },
+                "characteristics": [
+                    {
+                        "key": "price",
+                        "value": "436000",
+                        "localizedValue": "436 000 z\u0142",
+                        "currency": "PLN",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "m",
+                        "value": "40",
+                        "localizedValue": "40 m\u00b2",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "price_per_m",
+                        "value": "10900",
+                        "localizedValue": "10 900 z\u0142/m\u00b2",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "rooms_num",
+                        "value": "2",
+                        "localizedValue": "2",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "market",
+                        "value": "secondary",
+                        "localizedValue": "wt\u00f3rny",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "building_type",
+                        "value": "block",
+                        "localizedValue": "blok",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "floor_no",
+                        "value": "floor_3",
+                        "localizedValue": "3",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "building_floors_num",
+                        "value": "10",
+                        "localizedValue": "10",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "building_material",
+                        "value": "concrete",
+                        "localizedValue": "beton",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "windows_type",
+                        "value": "plastic",
+                        "localizedValue": "plastikowe",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "heating",
+                        "value": "urban",
+                        "localizedValue": "miejskie",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "build_year",
+                        "value": "1986",
+                        "localizedValue": "1986",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "construction_status",
+                        "value": "ready_to_use",
+                        "localizedValue": "do zamieszkania",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "rent",
+                        "value": "550",
+                        "localizedValue": "550 z\u0142",
+                        "currency": "PLN",
+                        "__typename": "Characteristic"
+                    },
+                    {
+                        "key": "building_ownership",
+                        "value": "limited_ownership",
+                        "localizedValue": "sp\u00f3\u0142dzielcze w\u0142. prawo do lokalu",
+                        "currency": "",
+                        "__typename": "Characteristic"
+                    }
+                ],
+                "images": [
+                    {
+                        "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Indpd28zcDYzbmxhbDItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.yqZsh1JBdS7I5m-hn66tJ8mGINh8fbuyaLTHHWY1164/image;s=184x138;q=80",
+                        "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Indpd28zcDYzbmxhbDItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.yqZsh1JBdS7I5m-hn66tJ8mGINh8fbuyaLTHHWY1164/image;s=314x236;q=80",
+                        "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Indpd28zcDYzbmxhbDItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.yqZsh1JBdS7I5m-hn66tJ8mGINh8fbuyaLTHHWY1164/image;s=655x491;q=80",
+                        "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Indpd28zcDYzbmxhbDItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.yqZsh1JBdS7I5m-hn66tJ8mGINh8fbuyaLTHHWY1164/image;s=1280x1024;q=80",
+                        "__typename": "AdImage"
+                    },
+                    {
+                        "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJ6MGw1bmEzNGVudDEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.IA9R1wmhGX-w565SlKDSYwOV7dVBo1Aqph3HiYo75i8/image;s=184x138;q=80",
+                        "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJ6MGw1bmEzNGVudDEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.IA9R1wmhGX-w565SlKDSYwOV7dVBo1Aqph3HiYo75i8/image;s=314x236;q=80",
+                        "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJ6MGw1bmEzNGVudDEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.IA9R1wmhGX-w565SlKDSYwOV7dVBo1Aqph3HiYo75i8/image;s=655x491;q=80",
+                        "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJ6MGw1bmEzNGVudDEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.IA9R1wmhGX-w565SlKDSYwOV7dVBo1Aqph3HiYo75i8/image;s=1280x1024;q=80",
+                        "__typename": "AdImage"
+                    },
+                    {
+                        "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InZ2Z2JsNjJ5dGp4OC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.hQVJ2H-zDUp6M_wjRL5c9MDoPlvwKCm2eRyPpXwA4G0/image;s=184x138;q=80",
+                        "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InZ2Z2JsNjJ5dGp4OC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.hQVJ2H-zDUp6M_wjRL5c9MDoPlvwKCm2eRyPpXwA4G0/image;s=314x236;q=80",
+                        "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InZ2Z2JsNjJ5dGp4OC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.hQVJ2H-zDUp6M_wjRL5c9MDoPlvwKCm2eRyPpXwA4G0/image;s=655x491;q=80",
+                        "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InZ2Z2JsNjJ5dGp4OC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.hQVJ2H-zDUp6M_wjRL5c9MDoPlvwKCm2eRyPpXwA4G0/image;s=1280x1024;q=80",
+                        "__typename": "AdImage"
+                    },
+                    {
+                        "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InRpa2tmOWE5djlqczMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.FAet80-YjKkseHw8eQsyrpdFBwe1R16ce095BTrm1mQ/image;s=184x138;q=80",
+                        "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InRpa2tmOWE5djlqczMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.FAet80-YjKkseHw8eQsyrpdFBwe1R16ce095BTrm1mQ/image;s=314x236;q=80",
+                        "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InRpa2tmOWE5djlqczMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.FAet80-YjKkseHw8eQsyrpdFBwe1R16ce095BTrm1mQ/image;s=655x491;q=80",
+                        "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InRpa2tmOWE5djlqczMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.FAet80-YjKkseHw8eQsyrpdFBwe1R16ce095BTrm1mQ/image;s=1280x1024;q=80",
+                        "__typename": "AdImage"
+                    },
+                    {
+                        "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InJzcTN0NDQ3anRmajItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Pz3oTHJ35tL7nP0hEVG-5cpdhfni8zsg6xHlz70SrQ4/image;s=184x138;q=80",
+                        "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InJzcTN0NDQ3anRmajItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Pz3oTHJ35tL7nP0hEVG-5cpdhfni8zsg6xHlz70SrQ4/image;s=314x236;q=80",
+                        "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InJzcTN0NDQ3anRmajItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Pz3oTHJ35tL7nP0hEVG-5cpdhfni8zsg6xHlz70SrQ4/image;s=655x491;q=80",
+                        "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InJzcTN0NDQ3anRmajItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Pz3oTHJ35tL7nP0hEVG-5cpdhfni8zsg6xHlz70SrQ4/image;s=1280x1024;q=80",
+                        "__typename": "AdImage"
+                    },
+                    {
+                        "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdpdmZpNzNzNHowODMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.k4ezYZDEnozYAHC1qjidJMjmeZIqAnmJ46kitLy8P34/image;s=184x138;q=80",
+                        "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdpdmZpNzNzNHowODMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.k4ezYZDEnozYAHC1qjidJMjmeZIqAnmJ46kitLy8P34/image;s=314x236;q=80",
+                        "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdpdmZpNzNzNHowODMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.k4ezYZDEnozYAHC1qjidJMjmeZIqAnmJ46kitLy8P34/image;s=655x491;q=80",
+                        "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdpdmZpNzNzNHowODMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.k4ezYZDEnozYAHC1qjidJMjmeZIqAnmJ46kitLy8P34/image;s=1280x1024;q=80",
+                        "__typename": "AdImage"
+                    }
+                ],
+                "links": {
+                    "localPlanUrl": "",
+                    "videoUrl": "",
+                    "view3dUrl": "",
+                    "walkaroundUrl": "",
+                    "__typename": "AdvertLinks"
+                },
+                "videos": [],
+                "location": {
+                    "id": null,
+                    "coordinates": {
+                        "latitude": 51.26556,
+                        "longitude": 22.54722,
+                        "__typename": "Coordinates"
+                    },
+                    "mapDetails": {
+                        "radius": 0,
+                        "zoom": 14,
+                        "__typename": "MapDetails"
+                    },
+                    "address": {
+                        "street": null,
+                        "subdistrict": null,
+                        "district": {
+                            "id": "287",
+                            "code": "czechow",
+                            "name": "Czech\u00f3w",
+                            "__typename": "District"
+                        },
+                        "city": {
+                            "id": "190",
+                            "code": "lublin",
+                            "name": "Lublin",
+                            "__typename": "City"
+                        },
+                        "municipality": null,
+                        "county": {
+                            "id": "396",
+                            "code": "powiat-lublin",
+                            "name": "Lublin",
+                            "__typename": "County"
+                        },
+                        "province": {
+                            "id": "3",
+                            "code": "lubelskie",
+                            "name": "lubelskie",
+                            "__typename": "Province"
+                        },
+                        "postalCode": null,
+                        "__typename": "Address"
+                    },
+                    "reverseGeocoding": {
+                        "locations": [
+                            {
+                                "id": "lubelskie",
+                                "locationLevel": "voivodeship",
+                                "name": "lubelskie",
+                                "fullName": "lubelskie",
+                                "fullNameItems": [
+                                    "lubelskie"
+                                ],
+                                "parentIds": [],
+                                "__typename": "BasicLocationObject"
+                            },
+                            {
+                                "id": "lubelskie/lublin/lublin/lublin",
+                                "locationLevel": "city_or_village",
+                                "name": "Lublin",
+                                "fullName": "Lublin, lubelskie",
+                                "fullNameItems": [
+                                    "Lublin",
+                                    "lubelskie"
+                                ],
+                                "parentIds": [
+                                    "lubelskie",
+                                    "lubelskie/lublin",
+                                    "lubelskie/lublin/lublin"
+                                ],
+                                "__typename": "BasicLocationObject"
+                            },
+                            {
+                                "id": "lubelskie/lublin/lublin/lublin/czechow-poludniowy",
+                                "locationLevel": "district",
+                                "name": "Czech\u00f3w Po\u0142udniowy",
+                                "fullName": "Czech\u00f3w Po\u0142udniowy, Lublin, lubelskie",
+                                "fullNameItems": [
+                                    "Czech\u00f3w Po\u0142udniowy",
+                                    "Lublin",
+                                    "lubelskie"
+                                ],
+                                "parentIds": [
+                                    "lubelskie",
+                                    "lubelskie/lublin",
+                                    "lubelskie/lublin/lublin",
+                                    "lubelskie/lublin/lublin/lublin"
+                                ],
+                                "__typename": "BasicLocationObject"
+                            }
+                        ],
+                        "__typename": "ReverseGeocoding"
+                    },
+                    "__typename": "LocationDetails"
+                },
+                "property": {
+                    "id": null,
+                    "type": "FLAT",
+                    "rent": {
+                        "value": 550,
+                        "currency": "PLN",
+                        "__typename": "Money"
+                    },
+                    "costs": [],
+                    "condition": "READY_TO_USE",
+                    "properties": {
+                        "equipment": [
+                            "furniture",
+                            "washing_machine",
+                            "dishwasher",
+                            "fridge",
+                            "stove",
+                            "oven"
+                        ],
+                        "areas": [
+                            "balcony",
+                            "usable_room",
+                            "garage",
+                            "basement"
+                        ],
+                        "floor": "FLOOR_3",
+                        "kitchen": null,
+                        "parking": [],
+                        "numberOfRooms": 2,
+                        "rooms": [],
+                        "type": null,
+                        "windowsOrientation": [],
+                        "__typename": "FlatProperties"
+                    },
+                    "buildingProperties": {
+                        "year": 1986,
+                        "type": "BLOCK",
+                        "material": "CONCRETE",
+                        "windows": [
+                            "PLASTIC"
+                        ],
+                        "heating": "URBAN",
+                        "numberOfFloors": 10,
+                        "conveniences": [
+                            "LIFT",
+                            "INTERNET"
+                        ],
+                        "security": [
+                            "ANTI_BURGLARY_DOOR",
+                            "ENTRYPHONE",
+                            "MONITORING"
+                        ],
+                        "__typename": "FlatBuildingProperties"
+                    },
+                    "ownership": "LIMITED_OWNERSHIP",
+                    "area": {
+                        "value": 40,
+                        "unit": "M2",
+                        "__typename": "Area"
+                    },
+                    "__typename": "Flat"
+                },
+                "owner": {
+                    "id": 7077008,
+                    "name": "Mieszkanie",
+                    "type": "private",
+                    "phones": [
+                        "+48511077416"
+                    ],
+                    "imageUrl": "",
+                    "contacts": [],
+                    "__typename": "LegacyAdvertOwner"
+                },
+                "agency": null,
+                "seo": {
+                    "title": "2 pokoje, mieszkanie na sprzeda\u017c - Lublin, Czech\u00f3w - 67537414 \u2022 www.otodom.pl",
+                    "description": "\u015awietne 2 pokojowe mieszkanie na sprzeda\u017c w miejscowo\u015bci Lublin, Czech\u00f3w, za cen\u0119 436 000 z\u0142. To mieszkanie na sprzeda\u017c  na 3 pi\u0119trze ma 40 m\u00b2 powierzchni u\u017cytkowej i 40 m\u00b2 powierzchni ca\u0142kowitej. W\u0142a\u015bciciel jako najwa\u017cniejsze zalety mieszkania wymienia: balkon, pom. u\u017cytkowe, gara\u017c/miejsce parkingowe. Otodom 67537414",
+                    "__typename": "AdvertSeo"
+                },
+                "breadcrumbs": [
+                    {
+                        "label": "Mieszkanie na sprzeda\u017c",
+                        "locative": "",
+                        "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie",
+                        "__typename": "AdvertBreadcrumb"
+                    },
+                    {
+                        "label": "lubelskie",
+                        "locative": "lubelskie",
+                        "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/lubelskie",
+                        "__typename": "AdvertBreadcrumb"
+                    },
+                    {
+                        "label": "Lublin",
+                        "locative": "Lublin",
+                        "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/lublin",
+                        "__typename": "AdvertBreadcrumb"
+                    },
+                    {
+                        "label": "Czech\u00f3w",
+                        "locative": "Czech\u00f3w",
+                        "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/lublin/czechow",
+                        "__typename": "AdvertBreadcrumb"
+                    },
+                    {
+                        "label": "REZERWACJA- Mieszkanie Wysoki Standard,  Blisko Uczelni Medycznej",
+                        "locative": "",
+                        "url": "",
+                        "__typename": "AdvertBreadcrumb"
+                    }
+                ],
+                "userAdverts": [
+                    {
+                        "adId": "67573523",
+                        "url": "https://www.otodom.pl/pl/oferta/prywatnie-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4zvXx",
+                        "image": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imh0b2JrOWowbGt6YjMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.aljNEjHkvKNmOjFLJgLOJzIdXZssfCWsAMzBIXXa_aY/image;s=314x236;q=80",
+                        "roomsNum": "2",
+                        "pricePerM": 10475,
+                        "price": {
+                            "value": "419000",
+                            "unit": "PLN",
+                            "__typename": "UserAdvertPrice"
+                        },
+                        "netArea": "40",
+                        "title": "PRYWATNIE  - Mieszkanie Wysoki Standard, Blisko Uczelni Medycznej",
+                        "__typename": "UserAdvert"
+                    }
+                ],
+                "paginatedUnits": {
+                    "items": null,
+                    "isPriceHidden": null,
+                    "pagination": null,
+                    "facets": null,
+                    "__typename": "AdvertsPages"
+                },
+                "specialOffer": null,
+                "developerURL": "",
+                "unitGroups": {
+                    "unitsGroupBy": "",
+                    "items": [],
+                    "__typename": "DevelopmentUnitGroups"
+                },
+                "enrichment": null,
+                "__typename": "Advert",
+                "contactDetails": {
+                    "name": "Mieszkanie",
+                    "type": "private",
+                    "phones": [
+                        "+48511077416"
+                    ],
+                    "imageUrl": ""
+                }
+            },
+            "relativeUrl": "/pl/oferta/rezerwacja-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4znz8",
+            "adTrackingData": {
+                "touch_point_page": "ad_page",
+                "lat": 51.26556,
+                "long": 22.54722,
+                "ad_photo": 6,
+                "price_currency": "PLN",
+                "cat_l1_id": 101,
+                "cat_l1_name": "Mieszkania",
+                "special_offer_type": null,
+                "agent_id": null,
+                "parent_id": null,
+                "ad_id": "67537414",
+                "ad_price": 436000,
+                "business": "sprzedaz",
+                "city_id": "190",
+                "city_name": "lublin",
+                "poster_type": "private",
+                "surface": null,
+                "region_id": "lubelskie",
+                "region_name": "lubelskie",
+                "subregion_id": "powiat-lublin",
+                "seller_id": "7077008",
+                "obido_advert": "n",
+                "market": "secondary"
+            },
+            "developmentData": null,
+            "isPreviewMode": false,
+            "currentUser": null,
+            "cookiesCategorisation": {
+                "eupubconsent-v2": [
+                    "C0001"
+                ],
+                "OptanonAlertBoxClosed": [
+                    "C0001"
+                ],
+                "OptanonConsent": [
+                    "C0001"
+                ],
+                "OTAdditionalConsentString": [
+                    "C0001"
+                ],
+                "access_token": [
+                    "C0001"
+                ],
+                "id_token": [
+                    "C0001"
+                ],
+                "refresh_token": [
+                    "C0001"
+                ],
+                "microservice_token": [
+                    "C0001"
+                ],
+                "lastoAuthState": [
+                    "C0001"
+                ],
+                "PHPSESSID": [
+                    "C0001"
+                ],
+                "laquesis": [
+                    "C0001"
+                ],
+                "laquesisff": [
+                    "C0001"
+                ],
+                "laquesisqa": [
+                    "C0001"
+                ],
+                "laquesissu": [
+                    "C0001"
+                ],
+                "lqonap": [
+                    "C0001"
+                ],
+                "lqstatus": [
+                    "C0001"
+                ],
+                "test": [
+                    "C0001"
+                ],
+                "onap": [
+                    "C0001"
+                ],
+                "onap_dev": [
+                    "C0001"
+                ],
+                "lang": [
+                    "C0001"
+                ],
+                "dfp_user_id": [
+                    "C0004"
+                ],
+                "hciam_in_use": [
+                    "C0001"
+                ],
+                "AuthState": [
+                    "C0001"
+                ],
+                "SID": [
+                    "C0001"
+                ],
+                "IDPState": [
+                    "C0001"
+                ],
+                "LogoutState": [
+                    "C0001"
+                ],
+                "datadome": [
+                    "C0001"
+                ],
+                "ldctx": [
+                    "C0002"
+                ],
+                "ldff": [
+                    "C0002"
+                ],
+                "aws-waf-token": [
+                    "C0001"
+                ],
+                "thememode": [
+                    "C0003"
+                ],
+                "idccsrf": [
+                    "C0001"
+                ],
+                "nsr": [
+                    "C0001"
+                ]
+            },
+            "experiments": {},
+            "featureFlags": {
+                "isAdAvmModuleEnabled": true,
+                "isGenaiAd2videoEnabled": true,
+                "shouldEnableAd2VideoPreview": false,
+                "isAdFinanceBannerEnabled": true,
+                "isAdFinanceLinkEnabled": true,
+                "isAdMortgageSimulatorEnabled": true,
+                "isListingRentPriceEnabled": true,
+                "isBikPromotionEnabled": true,
+                "isSeoAdsDescriptionEnabled": true,
+                "isPropertyEvaluationPageActive": true,
+                "isRESellerLeadsActive": false,
+                "isSellerLeadsMvpEnabled": false,
+                "isXmlReportEnabled": true,
+                "isOneProductPostingFormEnabled": false,
+                "isAgentAccountMailboxEnabled": true,
+                "isVasImpressionsEnabled": null,
+                "isDeveloperGeoPricingEnabled": true,
+                "isIntegrationPageEnabled": false,
+                "isNinFieldEnabledForInvoicing": false,
+                "isMandatoryLoginEnabled": true,
+                "isRegularNexusPricingEnabled": true,
+                "isGeoBasedPricingEnabled": true,
+                "isMyAccountPDFReportsEnabled": true,
+                "isReCaptchaEnabled": true,
+                "isAgencyInvoiceReportEnabled": false,
+                "isRECsrfEnabled": true,
+                "isNexusDeveloperRegistrationFormEnabled": true,
+                "isAgencyPortfolioValueOnAccountOverviewEnabled": false,
+                "isAgencyPortfolioValuePricingEnabled": false,
+                "isAgencyPortfolioValuePricingPageEnabled": false,
+                "isBadgesFeatureEnabled": true,
+                "isInboxCrmIdFilteringEnabled": true,
+                "isDashboardWithStatisticsEnabled": false,
+                "isConciergeMigrationPageEnabled": false,
+                "isAIAssistantChatEnabled": false,
+                "arePaymentReminderBannersEnabled": true,
+                "isPowerVasEnabled": true,
+                "isPowerVasOnboardingCampaignEnabled": true,
+                "isNexusC2CPaywallEnabled": true,
+                "isEnhancedAgentActivationEnabled": true,
+                "shouldShowExternalDeveloperLink": false,
+                "isPowerVasCardDisplayEnabled": true,
+                "isAgentPermissionsPageEnabled": true,
+                "isSecondStepOfBusinessAccountVerificationRemoved": false,
+                "isMyAccountAdsBulkActionsEnhanced": true,
+                "isBulkAgentAssignmentEnabled": true,
+                "isAdAssignmentEnhanced": true,
+                "isPowerVasGroupEnabled": true,
+                "shouldUseUnifiedAdSchema": true,
+                "isNoPhotobookingOnImovirtualPricingEnabled": true,
+                "isEInvoicingEnabled": false,
+                "__typename": "FeatureFlags"
+            },
+            "laquesisResult": null,
+            "userSessionId": "a36a13d1-7b9c-412a-96c9-aeff7044aa28",
+            "unconfirmedUserAuthToken": null,
+            "desktopHeader": null
+        },
+        "__N_SSP": true
+    },
+    "page": "/pl/oferta/[id]",
+    "query": {
+        "id": "rezerwacja-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4znz8"
+    },
+    "buildId": "lzpOmV-41EEV5eiarAM2F",
+    "assetPrefix": "https://statics.otodom.pl/fp_statics",
+    "isFallback": false,
+    "dynamicIds": [
+        84308,
+        50083,
+        26098,
+        90343,
+        1194
+    ],
+    "gssp": true,
+    "appGip": true,
+    "scriptLoader": []
+}
