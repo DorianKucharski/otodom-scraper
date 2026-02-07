@@ -1,83 +1,91 @@
 import dataclasses
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-from scraper import Scraper
+import cloudscraper
+from bs4 import BeautifulSoup
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Coordinates:
+class CoordinatesDto:
     latitude: float
     longitude: float
 
 
 @dataclass
-class District:
+class DistrictDto:
     id: str
     code: str
     name: str
 
 
 @dataclass
-class City:
+class CityDto:
     id: str
     code: str
     name: str
 
 
 @dataclass
-class County:
+class CountyDto:
     id: str
     code: str
     name: str
 
 
 @dataclass
-class Province:
+class ProvinceDto:
     id: str
     code: str
     name: str
 
 
 @dataclass
-class Address:
+class AddressDto:
     street: Optional[str]
-    district: Optional[District]
-    city: Optional[City]
-    county: Optional[County]
-    province: Optional[Province]
+    district: Optional[DistrictDto]
+    city: Optional[CityDto]
+    county: Optional[CountyDto]
+    province: Optional[ProvinceDto]
     postal_code: Optional[str]
 
 
 @dataclass
-class Location:
-    coordinates: Coordinates
-    address: Address
+class LocationDto:
+    coordinates: CoordinatesDto
+    address: AddressDto
 
 
 @dataclass
-class Price:
+class PriceDto:
     value: int
     currency: str
     per_m2: int
 
 
 @dataclass
-class Area:
+class AreaDto:
     value: float
     unit: str
 
 
 @dataclass
-class Rent:
+class RentDto:
     value: int
     currency: str
 
 
 @dataclass
-class BuildingProperties:
+class BuildingPropertiesDto:
     year: Optional[int]
     type: Optional[str]
     material: Optional[str]
@@ -89,7 +97,7 @@ class BuildingProperties:
 
 
 @dataclass
-class FlatProperties:
+class FlatPropertiesDto:
     equipment: List[str]
     areas: List[str]
     floor: Optional[str]
@@ -98,18 +106,18 @@ class FlatProperties:
 
 
 @dataclass
-class Property:
+class PropertyDto:
     type: str
     condition: Optional[str]
     ownership: Optional[str]
-    area: Area
-    rent: Optional[Rent]
-    flat_properties: FlatProperties
-    building_properties: BuildingProperties
+    area: AreaDto
+    rent: Optional[RentDto]
+    flat_properties: FlatPropertiesDto
+    building_properties: BuildingPropertiesDto
 
 
 @dataclass
-class Owner:
+class OwnerDto:
     id: int
     name: str
     type: str
@@ -117,7 +125,7 @@ class Owner:
 
 
 @dataclass
-class Image:
+class ImageDto:
     thumbnail: str
     small: str
     medium: str
@@ -125,7 +133,7 @@ class Image:
 
 
 @dataclass
-class Characteristic:
+class CharacteristicDto:
     key: str
     value: str
     localized_value: str
@@ -133,7 +141,7 @@ class Characteristic:
 
 
 @dataclass
-class Ad:
+class AdDto:
     id: int
     public_id: str
     slug: str
@@ -145,13 +153,13 @@ class Ad:
     status: str
     market: str
     advertiser_type: str
-    price: Price
-    location: Location
-    property: Property
-    owner: Owner
+    price: PriceDto
+    location: LocationDto
+    property: PropertyDto
+    owner: OwnerDto
     features: List[str]
-    images: List[Image]
-    characteristics: List[Characteristic]
+    images: List[ImageDto]
+    characteristics: List[CharacteristicDto]
 
     def __str__(self):
         dictionary = dataclasses.asdict(self)
@@ -159,14 +167,14 @@ class Ad:
         return dumps.encode('utf-8').decode('unicode_escape')
 
 
-class OtodomParser:
+class AdParser:
 
-    def parse(self, data: dict) -> Ad:
+    def parse(self, data: dict) -> AdDto:
         ad_data = data['props']['pageProps']['ad']
         return self._parse_ad(ad_data)
 
-    def _parse_ad(self, ad: dict) -> Ad:
-        return Ad(
+    def _parse_ad(self, ad: dict) -> AdDto:
+        return AdDto(
             id=ad['id'],
             public_id=ad['publicId'],
             slug=ad['slug'],
@@ -187,16 +195,16 @@ class OtodomParser:
             characteristics=self._parse_characteristics(ad.get('characteristics', []))
         )
 
-    def _parse_location(self, loc: dict) -> Location:
+    def _parse_location(self, loc: dict) -> LocationDto:
         coords = loc.get('coordinates', {})
         addr = loc.get('address', {})
 
-        return Location(
-            coordinates=Coordinates(
+        return LocationDto(
+            coordinates=CoordinatesDto(
                 latitude=coords.get('latitude', 0),
                 longitude=coords.get('longitude', 0)
             ),
-            address=Address(
+            address=AddressDto(
                 street=addr.get('street'),
                 district=self._parse_district(addr.get('district')),
                 city=self._parse_city(addr.get('city')),
@@ -207,65 +215,65 @@ class OtodomParser:
         )
 
     @staticmethod
-    def _parse_price(ad: dict) -> Price:
+    def _parse_price(ad: dict) -> PriceDto:
         target = ad.get('target', {})
-        return Price(
+        return PriceDto(
             value=target.get('Price', 0),
             currency='PLN',
             per_m2=target.get('Price_per_m', 0)
         )
 
     @staticmethod
-    def _parse_district(data: Optional[dict]) -> Optional[District]:
+    def _parse_district(data: Optional[dict]) -> Optional[DistrictDto]:
         if not data:
             return None
-        return District(id=data['id'], code=data['code'], name=data['name'])
+        return DistrictDto(id=data['id'], code=data['code'], name=data['name'])
 
     @staticmethod
-    def _parse_city(data: Optional[dict]) -> Optional[City]:
+    def _parse_city(data: Optional[dict]) -> Optional[CityDto]:
         if not data:
             return None
-        return City(id=data['id'], code=data['code'], name=data['name'])
+        return CityDto(id=data['id'], code=data['code'], name=data['name'])
 
     @staticmethod
-    def _parse_county(data: Optional[dict]) -> Optional[County]:
+    def _parse_county(data: Optional[dict]) -> Optional[CountyDto]:
         if not data:
             return None
-        return County(id=data['id'], code=data['code'], name=data['name'])
+        return CountyDto(id=data['id'], code=data['code'], name=data['name'])
 
     @staticmethod
-    def _parse_province(data: Optional[dict]) -> Optional[Province]:
+    def _parse_province(data: Optional[dict]) -> Optional[ProvinceDto]:
         if not data:
             return None
-        return Province(id=data['id'], code=data['code'], name=data['name'])
+        return ProvinceDto(id=data['id'], code=data['code'], name=data['name'])
 
     @staticmethod
-    def _parse_property(prop: dict) -> Property:
+    def _parse_property(prop: dict) -> PropertyDto:
         area_data = prop.get('area', {})
         rent_data = prop.get('rent')
         flat_props = prop.get('properties', {})
         building_props = prop.get('buildingProperties', {})
 
-        return Property(
+        return PropertyDto(
             type=prop.get('type', ''),
             condition=prop.get('condition'),
             ownership=prop.get('ownership'),
-            area=Area(
+            area=AreaDto(
                 value=area_data.get('value', 0),
                 unit=area_data.get('unit', 'M2')
             ),
-            rent=Rent(
+            rent=RentDto(
                 value=rent_data.get('value', 0),
                 currency=rent_data.get('currency', 'PLN')
             ) if rent_data else None,
-            flat_properties=FlatProperties(
+            flat_properties=FlatPropertiesDto(
                 equipment=flat_props.get('equipment', []),
                 areas=flat_props.get('areas', []),
                 floor=flat_props.get('floor'),
                 number_of_rooms=flat_props.get('numberOfRooms'),
                 parking=flat_props.get('parking', [])
             ),
-            building_properties=BuildingProperties(
+            building_properties=BuildingPropertiesDto(
                 year=building_props.get('year'),
                 type=building_props.get('type'),
                 material=building_props.get('material'),
@@ -278,8 +286,8 @@ class OtodomParser:
         )
 
     @staticmethod
-    def _parse_owner(owner: dict) -> Owner:
-        return Owner(
+    def _parse_owner(owner: dict) -> OwnerDto:
+        return OwnerDto(
             id=owner['id'],
             name=owner['name'],
             type=owner['type'],
@@ -287,9 +295,9 @@ class OtodomParser:
         )
 
     @staticmethod
-    def _parse_images(images: List[dict]) -> List[Image]:
+    def _parse_images(images: List[dict]) -> List[ImageDto]:
         return [
-            Image(
+            ImageDto(
                 thumbnail=img['thumbnail'],
                 small=img['small'],
                 medium=img['medium'],
@@ -299,9 +307,9 @@ class OtodomParser:
         ]
 
     @staticmethod
-    def _parse_characteristics(chars: List[dict]) -> List[Characteristic]:
+    def _parse_characteristics(chars: List[dict]) -> List[CharacteristicDto]:
         return [
-            Characteristic(
+            CharacteristicDto(
                 key=c['key'],
                 value=c['value'],
                 localized_value=c['localizedValue'],
@@ -311,15 +319,27 @@ class OtodomParser:
         ]
 
 
-if __name__ == '__main__':
-    test_url = "https://www.otodom.pl/pl/oferta/rezerwacja-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4znz8"
-    scraper = Scraper()
-    parser = OtodomParser()
-    scrape = scraper.scrape(test_url)
-    _ad = parser.parse(scrape)
-    # print(_ad.title)
-    # print(_ad.price.value)
-    # print(_ad.location.address.city.name)
-    # print(_ad.characteristics)
-    # print(_ad.features)
-    print(_ad)
+class AdScraper:
+    def __init__(self):
+        self.__scraper = cloudscraper.create_scraper()
+        self.__parser = AdParser()
+
+    def scrape(self, url: str) -> AdDto:
+        response = self.__scraper.get(url)
+        if response.status_code != 200:
+            raise Exception(f"Error getting page: {response.status_code} - {url}")
+        text = response.text
+        soup = BeautifulSoup(text, 'html.parser')
+        ad_json_text = soup.find(name='script', attrs={'type': 'application/json'})
+        ad_json = json.loads(ad_json_text.text)
+        logger.info("Successfully scraped page")
+        ad_dataclass = self.__parser.parse(ad_json)
+        logger.info(f"Parsed ad: {ad_dataclass.title}")
+        return ad_dataclass
+
+
+if __name__ == "__main__":
+    _scraper = AdScraper()
+    _url = "https://www.otodom.pl/pl/oferta/mieszkanie-lublin-45-4m2-2-pietro-2-pok-ID4zYrx"
+    _scrape = _scraper.scrape(_url)
+    print(_scrape)

@@ -1,7 +1,6 @@
 # Database - SQLAlchemy ORM
 sqlalchemy>=2.0.23
 geoalchemy2>=0.14.3
-alembic>=1.13.0  # Database migrations
 psycopg2-binary>=2.9.9
 # Note: psycopg2-binary is the stand-alone version (easier to install)
 # For production, consider psycopg2 (requires PostgreSQL client libraries)

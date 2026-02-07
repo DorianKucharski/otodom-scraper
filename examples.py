@@ -1,7 +1,3 @@
-"""
-Przykłady użycia bazy danych z SQLAlchemy ORM
-"""
-
 import os
 from dotenv import load_dotenv
 from sqlalchemy import select, func, and_, or_
@@ -12,21 +8,17 @@ from models import (
     AdFlatArea, AdBuildingConvenience
 )
 
-# Load environment variables
 load_dotenv()
 
-# Initialize database
 db = DatabaseManager(os.getenv('DATABASE_URL'))
 
 
 def example_basic_queries():
-    """Podstawowe zapytania ORM"""
     print("\n" + "="*80)
     print("PODSTAWOWE ZAPYTANIA ORM")
     print("="*80 + "\n")
 
     with db.get_session() as session:
-        # 1. Pobierz ogłoszenie po ID
         ad = session.get(Ad, 67537414)
         if ad:
             print(f"1. Ogłoszenie: {ad.title}")
@@ -35,7 +27,6 @@ def example_basic_queries():
             print(f"   Liczba zdjęć: {len(ad.images)}")
             print(f"   Liczba cech: {len(ad.features)}")
 
-        # 2. Filtrowanie - mieszkania 2-pokojowe w Lublinie
         print("\n2. Mieszkania 2-pokojowe w Lublinie (top 5):")
         ads = (
             session.query(Ad)
@@ -53,7 +44,6 @@ def example_basic_queries():
         for ad in ads:
             print(f"   - {ad.title[:50]}... | {ad.price_value:,} PLN | {ad.area_value}m²")
 
-        # 3. Zapytanie z agregacją
         print("\n3. Statystyki mieszkań 2-pokojowych w Lublinie:")
         stats = (
             session.query(
@@ -77,7 +67,6 @@ def example_basic_queries():
 
 
 def example_relationships():
-    """Przykłady pracy z relacjami"""
     print("\n" + "="*80)
     print("RELACJE W ORM")
     print("="*80 + "\n")
@@ -88,7 +77,6 @@ def example_relationships():
         if ad:
             print(f"Ogłoszenie: {ad.title[:60]}...")
 
-            # Relacje one-to-many
             print(f"\nCechy ({len(ad.features)}):")
             for feature in ad.features[:5]:
                 print(f"  - {feature.feature}")
@@ -97,7 +85,6 @@ def example_relationships():
             for eq in ad.flat_equipment[:5]:
                 print(f"  - {eq.equipment}")
 
-            # Relacje many-to-one
             print(f"\nLokalizacja:")
             if ad.city:
                 print(f"  Miasto: {ad.city.name}")
@@ -106,29 +93,24 @@ def example_relationships():
             if ad.province:
                 print(f"  Województwo: {ad.province.name}")
 
-            # Relacja do właściciela
             if ad.owner:
                 print(f"\nWłaściciel: {ad.owner.name} ({ad.owner.type})")
                 print(f"  Telefony: {', '.join([p.phone for p in ad.owner.phones])}")
 
 
 def example_advanced_filtering():
-    """Zaawansowane filtrowanie"""
     print("\n" + "="*80)
     print("ZAAWANSOWANE FILTROWANIE")
     print("="*80 + "\n")
 
     with db.get_session() as session:
-        # 1. Mieszkania z windą i balkonem
         print("1. Mieszkania z windą i balkonem:")
 
-        # Subquery dla windy
         has_lift = (
             select(AdBuildingConvenience.ad_id)
             .where(AdBuildingConvenience.convenience.like('%LIFT%'))
         )
 
-        # Subquery dla balkonu
         has_balcony = (
             select(AdFlatArea.ad_id)
             .where(AdFlatArea.area.like('%balcon%'))
@@ -148,7 +130,6 @@ def example_advanced_filtering():
         for ad in ads:
             print(f"   - {ad.title[:50]}... | {ad.price_value:,} PLN")
 
-        # 2. Mieszkania z minimum 5 cechami
         print("\n2. Mieszkania z minimum 5 udogodnieniami:")
 
         ads_with_features = (
@@ -168,7 +149,6 @@ def example_advanced_filtering():
         for ad, count in ads_with_features:
             print(f"   - {ad.title[:50]}... | Cechy: {count} | {ad.price_value:,} PLN")
 
-        # 3. Range queries (między wartościami)
         print("\n3. Mieszkania w przedziale cenowym 400-500k PLN:")
 
         ads = (
@@ -188,13 +168,11 @@ def example_advanced_filtering():
 
 
 def example_complex_queries():
-    """Złożone zapytania analityczne"""
     print("\n" + "="*80)
     print("ZŁOŻONE ZAPYTANIA ANALITYCZNE")
     print("="*80 + "\n")
 
     with db.get_session() as session:
-        # 1. Top dzielnice po średniej cenie
         print("1. Top 5 dzielnic po średniej cenie (Lublin):")
 
         results = (
@@ -220,7 +198,6 @@ def example_complex_queries():
         for district, count, avg_price, avg_m2 in results:
             print(f"   {district}: {count} ofert | Śr. cena: {avg_price:,.0f} PLN | Śr. cena/m²: {avg_m2:,.0f} PLN")
 
-        # 2. Rozkład cen (histogram)
         print("\n2. Rozkład liczby pokoi:")
 
         results = (
@@ -361,5 +338,5 @@ if __name__ == '__main__':
         print("\nUpewnij się że:")
         print("1. Baza danych jest uruchomiona")
         print("2. DATABASE_URL w .env jest prawidłowy")
-        print("3. Tabele zostały utworzone (alembic upgrade head)")
+        print("3. Tabele zostały utworzone (db_manager.create_all_tables())")
         print("4. Jest przynajmniej jedno ogłoszenie w bazie")

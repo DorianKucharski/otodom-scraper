@@ -48,9 +48,6 @@ env/
 *.log
 logs/
 
-# Alembic
-alembic/__pycache__/
-
 # Jupyter Notebook
 .ipynb_checkpoints
 
