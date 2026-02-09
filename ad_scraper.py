@@ -126,6 +126,7 @@ class OwnerDto:
 
 @dataclass
 class ImageDto:
+    position: int
     thumbnail: str
     small: str
     medium: str
@@ -298,12 +299,13 @@ class AdParser:
     def _parse_images(images: List[dict]) -> List[ImageDto]:
         return [
             ImageDto(
+                position=i,
                 thumbnail=img['thumbnail'],
                 small=img['small'],
                 medium=img['medium'],
                 large=img['large']
             )
-            for img in images
+            for i, img in enumerate(images)
         ]
 
     @staticmethod

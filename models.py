@@ -8,8 +8,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-
-from ad_scraper import CoordinatesDto, DistrictDto, CityDto, CountyDto, ProvinceDto, AddressDto, LocationDto, PriceDto,AreaDto, RentDto
+from ad_scraper import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto
 
 
 class Base(DeclarativeBase):
@@ -149,7 +148,7 @@ class Owner(Base):
         return f"<Owner(id={self.id}, name={self.name}, type={self.type})>"
 
     @classmethod
-    def from_dataclass(cls, owner_data, session: Session) -> 'Owner':
+    def from_dataclass(cls, owner_data: OwnerDto, session: Session) -> Optional['Owner']:
         if not owner_data:
             return None
 
@@ -307,7 +306,6 @@ class Ad(Base):
         Index('idx_ads_property_type', 'property_type'),
         Index('idx_ads_flat_number_of_rooms', 'flat_number_of_rooms'),
         Index('idx_ads_building_year', 'building_year'),
-        Index('idx_ads_location_point', 'location_point', postgresql_using='gist'),
         Index('idx_ads_title', 'title', postgresql_using='gin',
               postgresql_ops={'title': 'gin_trgm_ops'}),
         Index('idx_ads_description', 'description', postgresql_using='gin',
@@ -325,6 +323,7 @@ class Ad(Base):
     @classmethod
     def from_dataclass(cls, ad_data: AdDto, session: Session) -> 'Ad':
         addr = ad_data.location.address
+
         Province.from_dataclass(addr.province, session)
         County.from_dataclass(addr.county, session)
         City.from_dataclass(addr.city, session)
@@ -335,25 +334,20 @@ class Ad(Base):
         ad = session.get(cls, ad_data.id)
 
         if ad:
-            cls._update_from_dataclass(ad, ad_data, owner, session)
+            ad._update_from_dataclass(ad_data, owner)
         else:
-            ad = cls._create_from_dataclass(ad_data, owner, session)
+            ad = cls._create_from_dataclass(ad_data, owner)
             session.add(ad)
 
         session.flush()
         return ad
 
     @classmethod
-    def _create_from_dataclass(cls, ad_data: AdDto, owner: Owner, session: Session) -> 'Ad':
+    def _create_from_dataclass(cls, ad_data: AdDto, owner: Owner) -> 'Ad':
         addr = ad_data.location.address
         coords = ad_data.location.coordinates
 
-        location_point = None
-        if coords.latitude and coords.longitude:
-            location_point = WKTElement(
-                f'POINT({coords.longitude} {coords.latitude})',
-                srid=4326
-            )
+        location_point = cls._create_location_point(coords)
 
         ad = cls(
             id=ad_data.id,
@@ -396,143 +390,100 @@ class Ad(Base):
             owner_id=owner.id if owner else None
         )
 
-        for i, img in enumerate(ad_data.images):
-            ad.images.append(AdImage(
-                position=i,
-                thumbnail=img.thumbnail,
-                small=img.small,
-                medium=img.medium,
-                large=img.large
-            ))
-
-        for feature in ad_data.features:
-            ad.features.append(AdFeature(feature=feature))
-
-        for char in ad_data.characteristics:
-            ad.characteristics.append(AdCharacteristic(
-                key=char.key,
-                value=char.value,
-                localized_value=char.localized_value,
-                currency=char.currency
-            ))
-
-        for eq in ad_data.property.flat_properties.equipment:
-            ad.flat_equipment.append(AdFlatEquipment(equipment=eq))
-
-        for area in ad_data.property.flat_properties.areas:
-            ad.flat_areas.append(AdFlatArea(area=area))
-
-        for parking in ad_data.property.flat_properties.parking:
-            ad.flat_parking.append(AdFlatParking(parking=parking))
-
-        for window in ad_data.property.building_properties.windows:
-            ad.building_windows.append(AdBuildingWindow(window_type=window))
-
-        for conv in ad_data.property.building_properties.conveniences:
-            ad.building_conveniences.append(AdBuildingConvenience(convenience=conv))
-
-        for sec in ad_data.property.building_properties.security:
-            ad.building_security.append(AdBuildingSecurity(security=sec))
-
+        ad._populate_relations(ad_data)
         return ad
 
-    @staticmethod
-    def _update_from_dataclass(ad: 'Ad', ad_data: AdDto, owner: Owner, session: Session):
+    def _update_from_dataclass(self, ad_data: AdDto, owner: Owner):
         addr = ad_data.location.address
         coords = ad_data.location.coordinates
 
-        ad.public_id = ad_data.public_id
-        ad.slug = ad_data.slug
-        ad.url = ad_data.url
-        ad.title = ad_data.title
-        ad.description = ad_data.description
-        ad.modified_at = ad_data.modified_at
-        ad.status = ad_data.status
-        ad.market = ad_data.market
-        ad.advertiser_type = ad_data.advertiser_type
-        ad.price_value = ad_data.price.value
-        ad.price_currency = ad_data.price.currency
-        ad.price_per_m2 = ad_data.price.per_m2
-        ad.rent_value = ad_data.property.rent.value if ad_data.property.rent else None
-        ad.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
-        ad.latitude = coords.latitude
-        ad.longitude = coords.longitude
+        self.location_point = self._create_location_point(coords)
+        self.public_id = ad_data.public_id
+        self.slug = ad_data.slug
+        self.url = ad_data.url
+        self.title = ad_data.title
+        self.description = ad_data.description
+        self.modified_at = ad_data.modified_at
+        self.status = ad_data.status
+        self.market = ad_data.market
+        self.advertiser_type = ad_data.advertiser_type
+        self.price_value = ad_data.price.value
+        self.price_currency = ad_data.price.currency
+        self.price_per_m2 = ad_data.price.per_m2
+        self.rent_value = ad_data.property.rent.value if ad_data.property.rent else None
+        self.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
+        self.latitude = coords.latitude
+        self.longitude = coords.longitude
+        self.street = addr.street
+        self.postal_code = addr.postal_code
+        self.district_id = addr.district.id if addr.district else None
+        self.city_id = addr.city.id if addr.city else None
+        self.county_id = addr.county.id if addr.county else None
+        self.province_id = addr.province.id if addr.province else None
+        self.property_type = ad_data.property.type
+        self.property_condition = ad_data.property.condition
+        self.property_ownership = ad_data.property.ownership
+        self.area_value = ad_data.property.area.value
+        self.area_unit = ad_data.property.area.unit
+        self.flat_floor = ad_data.property.flat_properties.floor
+        self.flat_number_of_rooms = ad_data.property.flat_properties.number_of_rooms
+        self.building_year = ad_data.property.building_properties.year
+        self.building_type = ad_data.property.building_properties.type
+        self.building_material = ad_data.property.building_properties.material
+        self.building_heating = ad_data.property.building_properties.heating
+        self.building_number_of_floors = ad_data.property.building_properties.number_of_floors
+        self.owner_id = owner.id if owner else None
 
+        self._clear_relations()
+        self._populate_relations(ad_data)
+
+    @staticmethod
+    def _create_location_point(coords):
         if coords.latitude and coords.longitude:
-            ad.location_point = WKTElement(
+            return WKTElement(
                 f'POINT({coords.longitude} {coords.latitude})',
                 srid=4326
             )
+        return None
 
-        ad.street = addr.street
-        ad.postal_code = addr.postal_code
-        ad.district_id = addr.district.id if addr.district else None
-        ad.city_id = addr.city.id if addr.city else None
-        ad.county_id = addr.county.id if addr.county else None
-        ad.province_id = addr.province.id if addr.province else None
-        ad.property_type = ad_data.property.type
-        ad.property_condition = ad_data.property.condition
-        ad.property_ownership = ad_data.property.ownership
-        ad.area_value = ad_data.property.area.value
-        ad.area_unit = ad_data.property.area.unit
-        ad.flat_floor = ad_data.property.flat_properties.floor
-        ad.flat_number_of_rooms = ad_data.property.flat_properties.number_of_rooms
-        ad.building_year = ad_data.property.building_properties.year
-        ad.building_type = ad_data.property.building_properties.type
-        ad.building_material = ad_data.property.building_properties.material
-        ad.building_heating = ad_data.property.building_properties.heating
-        ad.building_number_of_floors = ad_data.property.building_properties.number_of_floors
-        ad.owner_id = owner.id if owner else None
+    def _clear_relations(self):
+        self.images.clear()
+        self.features.clear()
+        self.characteristics.clear()
+        self.flat_equipment.clear()
+        self.flat_areas.clear()
+        self.flat_parking.clear()
+        self.building_windows.clear()
+        self.building_conveniences.clear()
+        self.building_security.clear()
 
-        ad.images.clear()
-        ad.features.clear()
-        ad.characteristics.clear()
-        ad.flat_equipment.clear()
-        ad.flat_areas.clear()
-        ad.flat_parking.clear()
-        ad.building_windows.clear()
-        ad.building_conveniences.clear()
-        ad.building_security.clear()
-
-        for i, img in enumerate(ad_data.images):
-            ad.images.append(AdImage(
-                position=i,
-                thumbnail=img.thumbnail,
-                small=img.small,
-                medium=img.medium,
-                large=img.large
-            ))
+    def _populate_relations(self, ad_data: AdDto):
+        for img in ad_data.images:
+            self.images.append(AdImage.from_dataclass(img))
 
         for feature in ad_data.features:
-            ad.features.append(AdFeature(feature=feature))
+            self.features.append(AdFeature(feature=feature))
 
         for char in ad_data.characteristics:
-            ad.characteristics.append(AdCharacteristic(
-                key=char.key,
-                value=char.value,
-                localized_value=char.localized_value,
-                currency=char.currency
-            ))
+            self.characteristics.append(AdCharacteristic.from_dataclass(char))
 
         for eq in ad_data.property.flat_properties.equipment:
-            ad.flat_equipment.append(AdFlatEquipment(equipment=eq))
+            self.flat_equipment.append(AdFlatEquipment(equipment=eq))
 
         for area in ad_data.property.flat_properties.areas:
-            ad.flat_areas.append(AdFlatArea(area=area))
-
+            self.flat_areas.append(AdFlatArea(area=area))
+    
         for parking in ad_data.property.flat_properties.parking:
-            ad.flat_parking.append(AdFlatParking(parking=parking))
-
+            self.flat_parking.append(AdFlatParking(parking=parking))
+    
         for window in ad_data.property.building_properties.windows:
-            ad.building_windows.append(AdBuildingWindow(window_type=window))
-
+            self.building_windows.append(AdBuildingWindow(window_type=window))
+    
         for conv in ad_data.property.building_properties.conveniences:
-            ad.building_conveniences.append(AdBuildingConvenience(convenience=conv))
-
+            self.building_conveniences.append(AdBuildingConvenience(convenience=conv))
+    
         for sec in ad_data.property.building_properties.security:
-            ad.building_security.append(AdBuildingSecurity(security=sec))
-
-        session.flush()
+            self.building_security.append(AdBuildingSecurity(security=sec))
 
 
 # ============================================================================
@@ -563,6 +514,16 @@ class AdImage(Base):
 
     def __repr__(self):
         return f"<AdImage(ad_id={self.ad_id}, position={self.position})>"
+    
+    @classmethod
+    def from_dataclass(cls, data: ImageDto) -> 'AdImage':
+        return AdImage(
+            position=data.position,
+            thumbnail=data.thumbnail,
+            small=data.small,
+            medium=data.medium,
+            large=data.large
+        )
 
 
 class AdFeature(Base):
@@ -608,6 +569,15 @@ class AdCharacteristic(Base):
 
     def __repr__(self):
         return f"<AdCharacteristic(ad_id={self.ad_id}, key={self.key})>"
+    
+    @staticmethod
+    def from_dataclass(data: CharacteristicDto) -> 'AdCharacteristic':
+        return AdCharacteristic(
+            key=data.key,
+            value=data.value,
+            localized_value=data.localized_value,
+            currency=data.currency
+        )
 
 
 class AdFlatEquipment(Base):
