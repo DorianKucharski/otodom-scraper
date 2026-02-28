@@ -8,7 +8,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from ad_scraper import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto
+from .ad import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto
 
 
 class Base(DeclarativeBase):
@@ -472,16 +472,16 @@ class Ad(Base):
 
         for area in ad_data.property.flat_properties.areas:
             self.flat_areas.append(AdFlatArea(area=area))
-    
+
         for parking in ad_data.property.flat_properties.parking:
             self.flat_parking.append(AdFlatParking(parking=parking))
-    
+
         for window in ad_data.property.building_properties.windows:
             self.building_windows.append(AdBuildingWindow(window_type=window))
-    
+
         for conv in ad_data.property.building_properties.conveniences:
             self.building_conveniences.append(AdBuildingConvenience(convenience=conv))
-    
+
         for sec in ad_data.property.building_properties.security:
             self.building_security.append(AdBuildingSecurity(security=sec))
 
@@ -514,7 +514,7 @@ class AdImage(Base):
 
     def __repr__(self):
         return f"<AdImage(ad_id={self.ad_id}, position={self.position})>"
-    
+
     @classmethod
     def from_dataclass(cls, data: ImageDto) -> 'AdImage':
         return AdImage(
@@ -569,7 +569,7 @@ class AdCharacteristic(Base):
 
     def __repr__(self):
         return f"<AdCharacteristic(ad_id={self.ad_id}, key={self.key})>"
-    
+
     @staticmethod
     def from_dataclass(data: CharacteristicDto) -> 'AdCharacteristic':
         return AdCharacteristic(

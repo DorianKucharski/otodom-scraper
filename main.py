@@ -1,11 +1,9 @@
 import logging
-import os
 import sys
-from dotenv import load_dotenv
 
 from ad_scraper import AdScraper
 from database import DatabaseManager
-from models import Ad
+from data.models import Ad
 
 logging.basicConfig(
     level=logging.INFO,
