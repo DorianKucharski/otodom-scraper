@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode
 
 BASE_URL = "https://www.otodom.pl/pl/wyniki"
 
@@ -58,12 +58,33 @@ class PageLimit(Enum):
     LIMIT_48 = 48
     LIMIT_72 = 72
 
+
 @dataclass
 class Location:
     voivodeship: str
     city: Optional[str] = None
     district: Optional[str] = None
     distance_radius: Optional[int] = None
+
+    def __init__(
+            self,
+            voivodeship: str,
+            city: Optional[str] = None,
+            district: Optional[str] = None,
+            distance_radius: Optional[int] = None,
+    ):
+        if not voivodeship:
+            raise Exception("Voivodeship is required")
+        if city and not voivodeship:
+            raise Exception("Voivodeship is required when city is provided")
+        if district and not city:
+            raise Exception("City is required when district is provided")
+
+        self.voivodeship = voivodeship
+        self.city = city
+        self.district = district
+        self.distance_radius = distance_radius
+
 
 @dataclass
 class SearchUrl:
@@ -75,10 +96,7 @@ class SearchUrl:
     page_limit: PageLimit
     page_number: int
 
-    voivodeship: Optional[str] = None
-    city: Optional[str] = None
-    district: Optional[str] = None
-    distance_radius: Optional[int] = None
+    location: Optional[Location] = None
 
     price_from: Optional[int] = None
     price_to: Optional[int] = None
@@ -93,10 +111,7 @@ class SearchUrl:
             page_limit: Optional[PageLimit] = PageLimit.LIMIT_36,
             page_number: Optional[int] = 1,
 
-            voivodeship: Optional[str] = None,
-            city: Optional[str] = None,
-            district: Optional[str] = None,
-            distance_radius: Optional[int] = None,
+            location: Optional[Location] = None,
 
             price_from: Optional[int] = None,
             price_to: Optional[int] = None,
@@ -108,10 +123,6 @@ class SearchUrl:
             raise Exception("Investment offer type is not supported for rent objects")
         if object_type == ObjectType.ROOM and offer_type == OfferType.SALE:
             raise Exception("Room offer type is not supported for sale objects")
-        if city and not voivodeship:
-            raise Exception("Voivodeship is required when city is provided")
-        if district and not city:
-            raise Exception("City is required when district is provided")
 
         self.offer_type = offer_type
         self.object_type = object_type
@@ -121,33 +132,41 @@ class SearchUrl:
         self.page_limit = page_limit
         self.page_number = page_number
 
-        self.voivodeship = voivodeship
-        self.city = city
-        self.district = district
-        self.distance_radius = distance_radius
+        self.location = location
 
         self.price_from = price_from
         self.price_to = price_to
 
-
     def build(self) -> str:
         path = f"{BASE_URL}/{self.offer_type.value}/{self.object_type.value}"
-        if self.voivodeship:
-            path += f"/{self.voivodeship}"
-        if self.city:
-            path += f"/{self.city}/{self.city}/{self.city}"
-        if self.district:
-            path += f"/{self.district}"
+
+        if self.location:
+            if self.location.voivodeship:
+                path += f"/{self.location.voivodeship}"
+            if self.location.city:
+                path += f"/{self.location.city}/{self.location.city}/{self.location.city}"
+            if self.location.district:
+                path += f"/{self.location.district}"
+        else:
+            path += "/cala-polska"
 
         params = {
+            'page': self.page_number,
             'limit': self.page_limit.value,
             'by': self.sort_by.value,
             'direction': self.sort_direction.value,
         }
+        if self.price_from:
+            params['priceMin'] = self.price_from
+        if self.price_to:
+            params['priceMax'] = self.price_to
+        if self.location.distance_radius:
+            params['distanceRadius'] = self.location.distance_radius
 
         return path + "?" + urlencode(params)
 
-
+    def next_page(self):
+        self.page_number += 1
 
 
 @dataclass
@@ -156,7 +175,6 @@ class ApartmentSearchUrl(SearchUrl):
     area_to: Optional[int] = None
     rooms_from: Optional[int] = None
     rooms_to: Optional[int] = None
-
 
 
 @dataclass
@@ -187,17 +205,18 @@ class RoomSearchUrl(SearchUrl):
     amount_of_people_in_room: Optional[int] = None
 
 
-
 if __name__ == "__main__":
     url = SearchUrl(
-        offer_type=OfferType.RENT,
-        object_type=ObjectType.ROOM,
-        voivodeship="mazowieckie",
-        city="warszawa",
-        district="bemowo",
-        distance_radius=10
+        offer_type=OfferType.SALE,
+        object_type=ObjectType.HOUSE,
+        location=Location(
+            voivodeship="mazowieckie",
+            city="warszawa",
+        ),
+        price_to=1000000,
+
     )
 
     print(url.build())
-
-
+    url.next_page()
+    print(url.build())

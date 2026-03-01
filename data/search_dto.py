@@ -238,11 +238,6 @@ class SearchAdDto:
             investment_units_number=ad.get("investmentUnitsNumber") if estate == "INVESTMENT" else None,
         )
 
-    @classmethod
-    def from_json_list(cls, data: dict) -> List['SearchAdDto']:
-        items = data['props']['pageProps']['data']['searchAds']['items']
-        return [cls.from_json(item) for item in items]
-
     @staticmethod
     def _build_absolute_url(href: str) -> str:
         if not href:
@@ -285,3 +280,24 @@ class SearchAdDto:
             return int(value)
         except (TypeError, ValueError):
             return None
+
+@dataclass
+class SearchResultDto:
+    current_page: int
+    items_per_page: int
+    total_items: int
+    total_pages: int
+    items: List[SearchAdDto]
+
+    @staticmethod
+    def from_json(data: dict) -> 'SearchResultDto':
+        search_ads = data['props']['pageProps']['data']['searchAds']
+        pagination = search_ads['pagination']
+        items = search_ads['items']
+        return SearchResultDto(
+            current_page=int(pagination['currentPage']),
+            items_per_page=int(pagination['itemsPerPage']),
+            total_items=int(pagination['totalItems']),
+            total_pages=int(pagination['totalPages']),
+            items=[SearchAdDto.from_json(item) for item in items]
+        )

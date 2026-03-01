@@ -22,7 +22,7 @@ class CoordinatesDto:
 
 @dataclass
 class DistrictDto:
-    id: str
+    id: int
     code: str
     name: str
 
@@ -30,12 +30,12 @@ class DistrictDto:
     def from_json(cls, data: Optional[dict]) -> Optional['DistrictDto']:
         if not data:
             return None
-        return cls(id=data['id'], code=data['code'], name=data['name'])
+        return cls(id=int(data['id']), code=data['code'], name=data['name'])
 
 
 @dataclass
 class CityDto:
-    id: str
+    id: int
     code: str
     name: str
 
@@ -43,12 +43,12 @@ class CityDto:
     def from_json(cls, data: Optional[dict]) -> Optional['CityDto']:
         if not data:
             return None
-        return cls(id=data['id'], code=data['code'], name=data['name'])
+        return cls(id=int(data['id']), code=data['code'], name=data['name'])
 
 
 @dataclass
 class CountyDto:
-    id: str
+    id: int
     code: str
     name: str
 
@@ -56,12 +56,12 @@ class CountyDto:
     def from_json(cls, data: Optional[dict]) -> Optional['CountyDto']:
         if not data:
             return None
-        return cls(id=data['id'], code=data['code'], name=data['name'])
+        return cls(id=(data['id']), code=data['code'], name=data['name'])
 
 
 @dataclass
 class ProvinceDto:
-    id: str
+    id: int
     code: str
     name: str
 
@@ -69,12 +69,30 @@ class ProvinceDto:
     def from_json(cls, data: Optional[dict]) -> Optional['ProvinceDto']:
         if not data:
             return None
-        return cls(id=data['id'], code=data['code'], name=data['name'])
+        return cls(id=(data['id']), code=data['code'], name=data['name'])
+
+@dataclass
+class StreetDto:
+    id: Optional[int]     # Not sure if its set
+    code: Optional[str]   # Not sure if its set
+    name: str
+    number: str
+
+    @classmethod
+    def from_json(cls, data: Optional[dict]) -> Optional['StreetDto']:
+        if not data:
+            return None
+        return cls(
+            id=int(data['id']) if data['id'] else None,
+            code=data['code'],
+            name=data['name'],
+            number=data['number']
+        )
 
 
 @dataclass
 class AddressDto:
-    street: Optional[str]
+    street: Optional[StreetDto]
     district: Optional[DistrictDto]
     city: Optional[CityDto]
     county: Optional[CountyDto]
@@ -85,8 +103,9 @@ class AddressDto:
     def from_json(cls, data: Optional[dict]) -> Optional['AddressDto']:
         if not data:
             return None
+
         return cls(
-            street=data.get('street'),
+            street=StreetDto.from_json(data.get('street')),
             district=DistrictDto.from_json(data.get('district')),
             city=CityDto.from_json(data.get('city')),
             county=CountyDto.from_json(data.get('county')),
@@ -239,7 +258,7 @@ class OwnerDto:
     @classmethod
     def from_json(cls, data: dict) -> 'OwnerDto':
         return cls(
-            id=data['id'],
+            id=int(data['id']),
             name=data['name'],
             type=data['type'],
             phones=data.get('phones', [])

@@ -6,9 +6,9 @@ from geoalchemy2.elements import WKTElement
 from sqlalchemy import (
     BigInteger, Integer, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, func
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from .ad import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto
+from .ad_dto import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto
 
 
 class Base(DeclarativeBase):
@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
 class Province(Base):
     __tablename__ = 'provinces'
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -28,21 +28,17 @@ class Province(Base):
         return f"<Province(id={self.id}, name={self.name})>"
 
     @classmethod
-    def from_dataclass(cls, data: ProvinceDto, session: Session) -> Optional['Province']:
+    def from_dataclass(cls, data: ProvinceDto) -> Optional['Province']:
         if not data:
             return None
 
-        province = session.get(cls, data.id)
-        if not province:
-            province = cls(id=data.id, code=data.code, name=data.name)
-            session.add(province)
-        return province
+        return cls(id=data.id, code=data.code, name=data.name)
 
 
 class County(Base):
     __tablename__ = 'counties'
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -52,21 +48,16 @@ class County(Base):
         return f"<County(id={self.id}, name={self.name})>"
 
     @classmethod
-    def from_dataclass(cls, data: CountyDto, session: Session) -> Optional['County']:
+    def from_dataclass(cls, data: CountyDto) -> Optional['County']:
         if not data:
             return None
-
-        county = session.get(cls, data.id)
-        if not county:
-            county = cls(id=data.id, code=data.code, name=data.name)
-            session.add(county)
-        return county
+        return cls(id=data.id, code=data.code, name=data.name)
 
 
 class City(Base):
     __tablename__ = 'cities'
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -81,21 +72,16 @@ class City(Base):
         return f"<City(id={self.id}, name={self.name})>"
 
     @classmethod
-    def from_dataclass(cls, data: CityDto, session: Session) -> Optional['City']:
+    def from_dataclass(cls, data: CityDto) -> Optional['City']:
         if not data:
             return None
-
-        city = session.get(cls, data.id)
-        if not city:
-            city = cls(id=data.id, code=data.code, name=data.name)
-            session.add(city)
-        return city
+        return cls(id=data.id, code=data.code, name=data.name)
 
 
 class District(Base):
     __tablename__ = 'districts'
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -110,15 +96,10 @@ class District(Base):
         return f"<District(id={self.id}, name={self.name})>"
 
     @classmethod
-    def from_dataclass(cls, data: DistrictDto, session: Session) -> Optional['District']:
+    def from_dataclass(cls, data: DistrictDto) -> Optional['District']:
         if not data:
             return None
-
-        district = session.get(cls, data.id)
-        if not district:
-            district = cls(id=data.id, code=data.code, name=data.name)
-            session.add(district)
-        return district
+        return cls(id=data.id, code=data.code, name=data.name)
 
 
 class Owner(Base):
@@ -148,31 +129,16 @@ class Owner(Base):
         return f"<Owner(id={self.id}, name={self.name}, type={self.type})>"
 
     @classmethod
-    def from_dataclass(cls, owner_data: OwnerDto, session: Session) -> Optional['Owner']:
+    def from_dataclass(cls, owner_data: OwnerDto) -> Optional['Owner']:
         if not owner_data:
             return None
 
-        owner = session.get(cls, owner_data.id)
-
-        if owner:
-            owner.name = owner_data.name
-            owner.type = owner_data.type
-
-            owner.phones.clear()
-            for phone_number in owner_data.phones:
-                owner.phones.append(OwnerPhone(phone=phone_number))
-        else:
-            owner = cls(
-                id=owner_data.id,
-                name=owner_data.name,
-                type=owner_data.type
-            )
-            for phone_number in owner_data.phones:
-                owner.phones.append(OwnerPhone(phone=phone_number))
-            session.add(owner)
-
-        session.flush()
-        return owner
+        return cls(
+            id=owner_data.id,
+            name=owner_data.name,
+            type=owner_data.type,
+            phones=[OwnerPhone(phone=phone_number) for phone_number in owner_data.phones]
+        )
 
 
 class OwnerPhone(Base):
@@ -227,17 +193,17 @@ class Ad(Base):
 
     street: Mapped[Optional[str]] = mapped_column(String(500))
     postal_code: Mapped[Optional[str]] = mapped_column(String(20))
-    district_id: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey('districts.id')
+    district_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey('districts.id')
     )
-    city_id: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey('cities.id')
+    city_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey('cities.id')
     )
-    county_id: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey('counties.id')
+    county_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey('counties.id')
     )
-    province_id: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey('provinces.id')
+    province_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey('provinces.id')
     )
 
     property_type: Mapped[Optional[str]] = mapped_column(String(50))
@@ -317,83 +283,7 @@ class Ad(Base):
         Index('idx_ads_city_type_price', 'city_id', 'property_type', 'price_value'),
     )
 
-    def __repr__(self):
-        return f"<Ad(id={self.id}, title={self.title[:30]}...)>"
-
-    @classmethod
-    def from_dataclass(cls, ad_data: AdDto, session: Session) -> 'Ad':
-        addr = ad_data.location.address
-
-        Province.from_dataclass(addr.province, session)
-        County.from_dataclass(addr.county, session)
-        City.from_dataclass(addr.city, session)
-        District.from_dataclass(addr.district, session)
-
-        owner = Owner.from_dataclass(ad_data.owner, session)
-
-        ad = session.get(cls, ad_data.id)
-
-        if ad:
-            ad._update_from_dataclass(ad_data, owner)
-        else:
-            ad = cls._create_from_dataclass(ad_data, owner)
-            session.add(ad)
-
-        session.flush()
-        return ad
-
-    @classmethod
-    def _create_from_dataclass(cls, ad_data: AdDto, owner: Owner) -> 'Ad':
-        addr = ad_data.location.address
-        coords = ad_data.location.coordinates
-
-        location_point = cls._create_location_point(coords)
-
-        ad = cls(
-            id=ad_data.id,
-            public_id=ad_data.public_id,
-            slug=ad_data.slug,
-            url=ad_data.url,
-            title=ad_data.title,
-            description=ad_data.description,
-            created_at=ad_data.created_at,
-            modified_at=ad_data.modified_at,
-            status=ad_data.status,
-            market=ad_data.market,
-            advertiser_type=ad_data.advertiser_type,
-            price_value=ad_data.price.value,
-            price_currency=ad_data.price.currency,
-            price_per_m2=ad_data.price.per_m2,
-            rent_value=ad_data.property.rent.value if ad_data.property.rent else None,
-            rent_currency=ad_data.property.rent.currency if ad_data.property.rent else None,
-            latitude=coords.latitude,
-            longitude=coords.longitude,
-            location_point=location_point,
-            street=addr.street,
-            postal_code=addr.postal_code,
-            district_id=addr.district.id if addr.district else None,
-            city_id=addr.city.id if addr.city else None,
-            county_id=addr.county.id if addr.county else None,
-            province_id=addr.province.id if addr.province else None,
-            property_type=ad_data.property.type,
-            property_condition=ad_data.property.condition,
-            property_ownership=ad_data.property.ownership,
-            area_value=ad_data.property.area.value,
-            area_unit=ad_data.property.area.unit,
-            flat_floor=ad_data.property.flat_properties.floor,
-            flat_number_of_rooms=ad_data.property.flat_properties.number_of_rooms,
-            building_year=ad_data.property.building_properties.year,
-            building_type=ad_data.property.building_properties.type,
-            building_material=ad_data.property.building_properties.material,
-            building_heating=ad_data.property.building_properties.heating,
-            building_number_of_floors=ad_data.property.building_properties.number_of_floors,
-            owner_id=owner.id if owner else None
-        )
-
-        ad._populate_relations(ad_data)
-        return ad
-
-    def _update_from_dataclass(self, ad_data: AdDto, owner: Owner):
+    def update(self, ad_data: AdDto, owner: Owner):
         addr = ad_data.location.address
         coords = ad_data.location.coordinates
 
@@ -414,7 +304,7 @@ class Ad(Base):
         self.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
         self.latitude = coords.latitude
         self.longitude = coords.longitude
-        self.street = addr.street
+        self.street = addr.street.name
         self.postal_code = addr.postal_code
         self.district_id = addr.district.id if addr.district else None
         self.city_id = addr.city.id if addr.city else None
@@ -437,15 +327,6 @@ class Ad(Base):
         self._clear_relations()
         self._populate_relations(ad_data)
 
-    @staticmethod
-    def _create_location_point(coords):
-        if coords.latitude and coords.longitude:
-            return WKTElement(
-                f'POINT({coords.longitude} {coords.latitude})',
-                srid=4326
-            )
-        return None
-
     def _clear_relations(self):
         self.images.clear()
         self.features.clear()
@@ -467,23 +348,86 @@ class Ad(Base):
         for char in ad_data.characteristics:
             self.characteristics.append(AdCharacteristic.from_dataclass(char))
 
-        for eq in ad_data.property.flat_properties.equipment:
-            self.flat_equipment.append(AdFlatEquipment(equipment=eq))
+        if ad_data.property:
+            for eq in ad_data.property.flat_properties.equipment:
+                self.flat_equipment.append(AdFlatEquipment(equipment=eq))
 
-        for area in ad_data.property.flat_properties.areas:
-            self.flat_areas.append(AdFlatArea(area=area))
+            for area in ad_data.property.flat_properties.areas:
+                self.flat_areas.append(AdFlatArea(area=area))
 
-        for parking in ad_data.property.flat_properties.parking:
-            self.flat_parking.append(AdFlatParking(parking=parking))
+            for parking in ad_data.property.flat_properties.parking:
+                self.flat_parking.append(AdFlatParking(parking=parking))
 
-        for window in ad_data.property.building_properties.windows:
-            self.building_windows.append(AdBuildingWindow(window_type=window))
+            for window in ad_data.property.building_properties.windows:
+                self.building_windows.append(AdBuildingWindow(window_type=window))
 
-        for conv in ad_data.property.building_properties.conveniences:
-            self.building_conveniences.append(AdBuildingConvenience(convenience=conv))
+            for conv in ad_data.property.building_properties.conveniences:
+                self.building_conveniences.append(AdBuildingConvenience(convenience=conv))
 
-        for sec in ad_data.property.building_properties.security:
-            self.building_security.append(AdBuildingSecurity(security=sec))
+            for sec in ad_data.property.building_properties.security:
+                self.building_security.append(AdBuildingSecurity(security=sec))
+
+    def __repr__(self):
+        return f"<Ad(id={self.id}, title={self.title[:30]}...)>"
+
+    @classmethod
+    def from_dataclass(cls, ad_data: AdDto) -> 'Ad':
+
+        ad = cls(
+            owner_id=ad_data.owner.id if ad_data.owner else None,
+            province_id=ad_data.location.address.province.id if ad_data.location.address.province else None,
+            county_id=ad_data.location.address.county.id if ad_data.location.address.county else None,
+            city_id=ad_data.location.address.city.id if ad_data.location.address.city else None,
+            district_id=ad_data.location.address.district.id if ad_data.location.address.district else None,
+
+            id=ad_data.id,
+            public_id=ad_data.public_id if ad_data.public_id else None,
+            slug=ad_data.slug,
+            url=ad_data.url,
+            title=ad_data.title,
+            description=ad_data.description,
+            created_at=ad_data.created_at,
+            modified_at=ad_data.modified_at,
+            status=ad_data.status,
+            market=ad_data.market,
+            advertiser_type=ad_data.advertiser_type,
+            price_value=ad_data.price.value,
+            price_currency=ad_data.price.currency,
+            price_per_m2=ad_data.price.per_m2,
+            latitude=ad_data.location.coordinates.latitude,
+            longitude=ad_data.location.coordinates.longitude,
+            location_point=cls._create_location_point(ad_data.location.coordinates),
+            street=ad_data.location.address.street.name if ad_data.location.address.street else None,
+            postal_code=ad_data.location.address.postal_code,
+        )
+
+        if ad_data.property:
+            ad.rent_value = ad_data.property.rent.value if ad_data.property.rent else None
+            ad.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
+            ad.property_type = ad_data.property.type
+            ad.property_condition = ad_data.property.condition
+            ad.property_ownership = ad_data.property.ownership
+            ad.area_value = ad_data.property.area.value
+            ad.area_unit = ad_data.property.area.unit
+            ad.flat_floor = ad_data.property.flat_properties.floor
+            ad.flat_number_of_rooms = ad_data.property.flat_properties.number_of_rooms
+            ad.building_year = ad_data.property.building_properties.year
+            ad.building_type = ad_data.property.building_properties.type
+            ad.building_material = ad_data.property.building_properties.material
+            ad.building_heating = ad_data.property.building_properties.heating
+            ad.building_number_of_floors = ad_data.property.building_properties.number_of_floors
+
+        ad._populate_relations(ad_data)
+        return ad
+
+    @staticmethod
+    def _create_location_point(coords):
+        if coords.latitude and coords.longitude:
+            return WKTElement(
+                f'POINT({coords.longitude} {coords.latitude})',
+                srid=4326
+            )
+        return None
 
 
 # ============================================================================
