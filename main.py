@@ -87,6 +87,15 @@ def main():
     urls = [
         SearchUrl(
             offer_type=OfferType.SALE,
+            object_type=ObjectType.APARTMENT,
+            location=Location(
+                voivodeship="lubelskie",
+                city="lublin",
+            ),
+            price_to=1000000,
+        ),
+        SearchUrl(
+            offer_type=OfferType.SALE,
             object_type=ObjectType.HOUSE,
             location=Location(
                 voivodeship="lubelskie",
@@ -94,15 +103,35 @@ def main():
             ),
             price_to=1000000,
         ),
-        # SearchUrl(
-        #     offer_type=OfferType.SALE,
-        #     object_type=ObjectType.APARTMENT,
-        #     location=Location(
-        #         voivodeship="lubelskie",
-        #         city="lublin",
-        #     ),
-        #     price_to=1000000,
-        # ),
+        SearchUrl(
+            offer_type=OfferType.SALE,
+            object_type=ObjectType.APARTMENT,
+            location=Location(
+                voivodeship="mazowieckie",
+                city="warszawa",
+            ),
+            price_to=1000000,
+        ),
+        SearchUrl(
+            offer_type=OfferType.SALE,
+            object_type=ObjectType.HOUSE,
+            location=Location(
+                voivodeship="mazowieckie",
+                city="warszawa",
+            ),
+            price_to=1000000,
+        ),
+        SearchUrl(
+            offer_type=OfferType.SALE,
+            object_type=ObjectType.APARTMENT,
+            price_to=1000000,
+        ),
+        SearchUrl(
+            offer_type=OfferType.SALE,
+            object_type=ObjectType.HOUSE,
+            price_to=1000000,
+        ),
+
     ]
 
     for url in urls:
@@ -111,8 +140,9 @@ def main():
             url.page_number = page_number
             search_result = scraper.scrape_search(url.build())
             for ad_item in search_result.items:
-                scraped_ad = scraper.scrape_ad(ad_item.url)
-                scrapping_context.process_ad(scraped_ad)
+                if ad_item.url and ad_item.url != "":
+                    scraped_ad = scraper.scrape_ad(ad_item.url)
+                    scrapping_context.process_ad(scraped_ad)
 
             if page_number >= search_result.total_pages:
                 break
@@ -131,3 +161,6 @@ def create_tables():
 
 if __name__ == '__main__':
     main()
+
+
+# https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/lubelskie/lublin/lublin/lublin?page=4&limit=36&by=DEFAULT&direction=DESC&priceMax=1000000 - page 4 - Żagiel dom - inwestycja w kategori mieszkania, url to pusty string

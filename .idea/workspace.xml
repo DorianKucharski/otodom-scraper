@@ -4,17 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="eec72ee0-aab9-4c7b-bc3b-667f96defba7" name="Changes" comment="search url">
-      <change afterPath="$PROJECT_DIR$/otodom_scraper.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+    <list default="true" id="eec72ee0-aab9-4c7b-bc3b-667f96defba7" name="Changes" comment="first run">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ad_scraper.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ad_searcher.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/ad.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/ad_dto.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/search.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/search_dto.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/search_url.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/search_url.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/otodom_scraper.py" beforeDir="false" afterPath="$PROJECT_DIR$/otodom_scraper.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/schemas/search_schema_apartment_rent.json" beforeDir="false" afterPath="$PROJECT_DIR$/schemas/search_schema_apartment_rent.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +78,7 @@
     "Python.ad_scraper.executor": "Run",
     "Python.ad_searcher.executor": "Run",
     "Python.main.executor": "Run",
-    "Python.otodom_scraper (1).executor": "Debug",
+    "Python.otodom_scraper (1).executor": "Run",
     "Python.parser.executor": "Run",
     "Python.scraper.executor": "Run",
     "Python.search_url.executor": "Run",
@@ -267,7 +261,7 @@
       <workItem from="1770446268497" duration="2739000" />
       <workItem from="1770718917994" duration="6836000" />
       <workItem from="1771250016058" duration="876000" />
-      <workItem from="1772254355410" duration="15394000" />
+      <workItem from="1772254355410" duration="18191000" />
     </task>
     <task id="LOCAL-00001" summary="initial ai mess">
       <option name="closed" value="true" />
@@ -285,7 +279,15 @@
       <option name="project" value="LOCAL" />
       <updated>1772256632345</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="first run">
+      <option name="closed" value="true" />
+      <created>1772360355761</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1772360355761</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -305,15 +307,16 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="initial ai mess" />
     <MESSAGE value="search url" />
-    <option name="LAST_COMMIT_MESSAGE" value="search url" />
+    <MESSAGE value="first run" />
+    <option name="LAST_COMMIT_MESSAGE" value="first run" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/data/ad_dto.py</url>
-          <line>106</line>
-          <option name="timeStamp" value="12" />
+          <url>file://$PROJECT_DIR$/otodom_scraper.py</url>
+          <line>40</line>
+          <option name="timeStamp" value="13" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -328,7 +331,7 @@
     <SUITE FILE_PATH="coverage/otodom_scrapper$scraper.coverage" NAME="ad_scraper Coverage Results" MODIFIED="1770447301766" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/otodom_scraper$ad_scraper.coverage" NAME="ad_scraper Coverage Results" MODIFIED="1770454439280" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/otodom_scrapper$test.coverage" NAME="test Coverage Results" MODIFIED="1768312248482" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/otodom_scrapper$main.coverage" NAME="main Coverage Results" MODIFIED="1772360196125" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/otodom_scrapper$main.coverage" NAME="main Coverage Results" MODIFIED="1772361940893" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/otodom_scraper$ad_scraper__1_.coverage" NAME="ad_scraper (1) Coverage Results" MODIFIED="1770454449936" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/otodom_scrapper$search_url.coverage" NAME="search_url Coverage Results" MODIFIED="1772258062309" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data" />
     <SUITE FILE_PATH="coverage/otodom_scraper$ad_searcher.coverage" NAME="ad_searcher Coverage Results" MODIFIED="1770461825894" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -336,6 +339,6 @@
     <SUITE FILE_PATH="coverage/otodom_scrapper$parser.coverage" NAME="parser Coverage Results" MODIFIED="1768022580535" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/otodom_scrapper$ad_scraper__1_.coverage" NAME="ad_scraper (1) Coverage Results" MODIFIED="1772259017721" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/otodom_scraper$main.coverage" NAME="main Coverage Results" MODIFIED="1770457239590" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/otodom_scrapper$otodom_scraper__1_.coverage" NAME="otodom_scraper (1) Coverage Results" MODIFIED="1772359192676" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/otodom_scrapper$otodom_scraper__1_.coverage" NAME="otodom_scraper (1) Coverage Results" MODIFIED="1772361415719" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
