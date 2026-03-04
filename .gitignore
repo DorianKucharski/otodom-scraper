@@ -51,9 +51,3 @@ logs/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Project specific
-scraped_data/
-exports/
-backups/
-*.csv
-*.xlsx

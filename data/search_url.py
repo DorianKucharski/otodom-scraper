@@ -160,7 +160,7 @@ class SearchUrl:
             params['priceMin'] = self.price_from
         if self.price_to:
             params['priceMax'] = self.price_to
-        if self.location.distance_radius:
+        if self.location and self.location.distance_radius:
             params['distanceRadius'] = self.location.distance_radius
 
         return path + "?" + urlencode(params)

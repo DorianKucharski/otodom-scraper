@@ -1,0 +1,5 @@
+services:
+  otodom-scrapper:
+    build: .
+    env_file:
+      - .env

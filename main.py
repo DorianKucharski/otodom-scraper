@@ -1,12 +1,12 @@
 import logging
-import sys
+from dataclasses import dataclass
+from time import sleep
 
 from data.ad_dto import AdDto
-from otodom_scraper import OtodomScraper
-from data.search_url import SearchUrl, OfferType, ObjectType, Location
-from database import DatabaseManager
 from data.models import Ad, County, Province, City, District, Owner
-from dataclasses import dataclass
+from data.search_url import SearchUrl, OfferType, ObjectType
+from database import DatabaseManager
+from otodom_scraper import OtodomScraper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,19 +17,24 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ScrappingContext:
-    database_manager: DatabaseManager
-
     existing_ad_ids: set[int]
+    existing_ad_urls: list[str]
     existing_owner_ids: set[int]
     existing_province_ids: set[str]
     existing_county_ids: set[str]
     existing_city_ids: set[int]
     existing_district_ids: set[int]
 
-    def __init__(self, database_manager: DatabaseManager):
-        self.database_manager = database_manager
+    def __init__(self, database_manager: DatabaseManager, scraper: OtodomScraper):
+        self.__database_manager = database_manager
+        self.__scraper = scraper
         with database_manager.get_session() as session:
             self.existing_ad_ids = {a.id for a in session.query(Ad.id).all()}
+            self.existing_ad_urls = [
+                a.url for a in session.query(Ad.url)
+                .order_by(Ad.modified_at.asc())
+                .all()
+            ]
             self.existing_owner_ids = {o.id for o in session.query(Owner.id).all()}
             self.existing_province_ids = {p.id for p in session.query(Province.id).all()}
             self.existing_county_ids = {c.id for c in session.query(County.id).all()}
@@ -45,28 +50,74 @@ class ScrappingContext:
             session.flush()
             cache.add(entity_id)
 
-    def process_ad(self, ad: AdDto):
+    @staticmethod
+    def with_retry(func: callable, *args, max_tries: int = 3, **kwargs):
+        exception = None
+        for try_number in range(max_tries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                exception = e
+                logger.error(f"Error calling {func.__name__} - {try_number} of {max_tries} tries - {e}")
+                sleep(10)
+        raise exception
+
+    def scrape_ad(self, url: str):
+        return self.with_retry(self.__scrape_ad, url)
+
+    def update_ad(self, ad: AdDto):
+        return self.with_retry(self.__update_ad, ad)
+
+    def __scrape_ad(self, url: str):
+        if url is None or url == "":
+            return
+
+        if url in self.existing_ad_urls:
+            logger.info(f"URL {url} already exists, skipping...")
+            return
+
+        ad: AdDto = self.__scraper.scrape_ad(url)
         if ad.id in self.existing_ad_ids:
             logger.info(f"Ad with ID {ad.id} already exists, skipping...")
             return
 
         try:
-            with self.database_manager.get_session() as session:
+            with self.__database_manager.get_session() as session:
                 self._ensure_entity(
-                    session, self.existing_owner_ids, ad.owner.id, lambda: Owner.from_dataclass(ad.owner))
+                    session,
+                    self.existing_owner_ids,
+                    ad.owner.id,
+                    lambda: Owner.from_dataclass(ad.owner)
+                )
 
-                self._ensure_entity(session, self.existing_province_ids, ad.location.address.province.id,
-                                    lambda: Province.from_dataclass(ad.location.address.province))
+                self._ensure_entity(
+                    session,
+                    self.existing_province_ids,
+                    ad.location.address.province.id,
+                    lambda: Province.from_dataclass(ad.location.address.province)
+                )
 
-                self._ensure_entity(session, self.existing_county_ids, ad.location.address.county.id,
-                                    lambda: County.from_dataclass(ad.location.address.county))
+                self._ensure_entity(
+                    session,
+                    self.existing_county_ids,
+                    ad.location.address.county.id,
+                    lambda: County.from_dataclass(ad.location.address.county)
+                )
 
-                self._ensure_entity(session, self.existing_city_ids, ad.location.address.city.id,
-                                    lambda: City.from_dataclass(ad.location.address.city))
+                self._ensure_entity(
+                    session,
+                    self.existing_city_ids,
+                    ad.location.address.city.id,
+                    lambda: City.from_dataclass(ad.location.address.city)
+                )
 
-                district_id = ad.location.address.district.id if ad.location.address.district else None
-                self._ensure_entity(session, self.existing_district_ids, district_id,
-                                    lambda: District.from_dataclass(ad.location.address.district))
+                if ad.location.address.district:
+                    self._ensure_entity(
+                        session,
+                        self.existing_district_ids,
+                        ad.location.address.district.id,
+                        lambda: District.from_dataclass(ad.location.address.district)
+                    )
 
                 ad_model = Ad.from_dataclass(ad)
                 session.merge(ad_model)
@@ -75,63 +126,33 @@ class ScrappingContext:
                 logger.info(f"Saved ad with ID: {ad.id}")
 
         except Exception as e:
-            logger.error(f"Error processing ad: {e}")
+            logger.error(f"Error processing ad: {ad.url} - {e}")
             raise
+
+    def __update_ad(self, ad_dto: AdDto):
+        with self.__database_manager.get_session() as session:
+            ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
+            if ad is None:
+                raise ValueError(f"Ad with id {ad_dto.id} not found")
+            ad.update_status(ad_dto.status)
+
 
 
 def main():
     scraper = OtodomScraper()
     db_manager = DatabaseManager()
-    scrapping_context = ScrappingContext(db_manager)
+    scrapping_context = ScrappingContext(db_manager, scraper)
+    db_manager.create_all_tables()
 
     urls = [
         SearchUrl(
             offer_type=OfferType.SALE,
-            object_type=ObjectType.APARTMENT,
-            location=Location(
-                voivodeship="lubelskie",
-                city="lublin",
-            ),
-            price_to=1000000,
+            object_type=ObjectType.APARTMENT
         ),
         SearchUrl(
             offer_type=OfferType.SALE,
-            object_type=ObjectType.HOUSE,
-            location=Location(
-                voivodeship="lubelskie",
-                city="lublin",
-            ),
-            price_to=1000000,
-        ),
-        SearchUrl(
-            offer_type=OfferType.SALE,
-            object_type=ObjectType.APARTMENT,
-            location=Location(
-                voivodeship="mazowieckie",
-                city="warszawa",
-            ),
-            price_to=1000000,
-        ),
-        SearchUrl(
-            offer_type=OfferType.SALE,
-            object_type=ObjectType.HOUSE,
-            location=Location(
-                voivodeship="mazowieckie",
-                city="warszawa",
-            ),
-            price_to=1000000,
-        ),
-        SearchUrl(
-            offer_type=OfferType.SALE,
-            object_type=ObjectType.APARTMENT,
-            price_to=1000000,
-        ),
-        SearchUrl(
-            offer_type=OfferType.SALE,
-            object_type=ObjectType.HOUSE,
-            price_to=1000000,
-        ),
-
+            object_type=ObjectType.HOUSE
+        )
     ]
 
     for url in urls:
@@ -140,13 +161,15 @@ def main():
             url.page_number = page_number
             search_result = scraper.scrape_search(url.build())
             for ad_item in search_result.items:
-                if ad_item.url and ad_item.url != "":
-                    scraped_ad = scraper.scrape_ad(ad_item.url)
-                    scrapping_context.process_ad(scraped_ad)
+                scrapping_context.scrape_ad(ad_item.url)
 
             if page_number >= search_result.total_pages:
                 break
             page_number += 1
+
+    for url in scrapping_context.existing_ad_urls:
+        ad = scraper.scrape_ad(url)
+        scrapping_context.update_ad(ad)
 
 
 def drop_tables():
@@ -154,13 +177,7 @@ def drop_tables():
     db_manager.drop_all_tables()
 
 
-def create_tables():
-    db_manager = DatabaseManager()
-    db_manager.create_all_tables()
 
 
 if __name__ == '__main__':
     main()
-
-
-# https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/lubelskie/lublin/lublin/lublin?page=4&limit=36&by=DEFAULT&direction=DESC&priceMax=1000000 - page 4 - Żagiel dom - inwestycja w kategori mieszkania, url to pusty string

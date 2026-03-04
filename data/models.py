@@ -39,7 +39,7 @@ class County(Base):
     __tablename__ = 'counties'
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     ads: Mapped[List["Ad"]] = relationship(back_populates="county")
@@ -58,7 +58,7 @@ class City(Base):
     __tablename__ = 'cities'
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     ads: Mapped[List["Ad"]] = relationship(back_populates="city")
@@ -82,7 +82,7 @@ class District(Base):
     __tablename__ = 'districts'
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     ads: Mapped[List["Ad"]] = relationship(back_populates="district")
@@ -326,6 +326,10 @@ class Ad(Base):
 
         self._clear_relations()
         self._populate_relations(ad_data)
+
+    def update_status(self, status: str):
+        self.status = status
+        self.modified_at = datetime.now()
 
     def _clear_relations(self):
         self.images.clear()

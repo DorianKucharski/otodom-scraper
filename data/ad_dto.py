@@ -71,10 +71,11 @@ class ProvinceDto:
             return None
         return cls(id=(data['id']), code=data['code'], name=data['name'])
 
+
 @dataclass
 class StreetDto:
-    id: Optional[int]     # Not sure if its set
-    code: Optional[str]   # Not sure if its set
+    id: Optional[int]  # Not sure if its set
+    code: Optional[str]  # Not sure if its set
     name: str
     number: str
 
@@ -340,7 +341,10 @@ class AdDto:
         return dumps.encode('utf-8').decode('unicode_escape')
 
     @classmethod
-    def from_json(cls, ad: dict) -> 'AdDto':
+    def from_json(cls, data: dict) -> Optional['AdDto']:
+        ad = data.get('props', {}).get('pageProps', {}).get('ad')
+        if ad is None:
+            return None
         return cls(
             id=ad['id'],
             public_id=ad['publicId'],
@@ -361,8 +365,3 @@ class AdDto:
             images=ImageDto.from_json_list(ad.get('images')),
             characteristics=CharacteristicDto.from_json_list(ad.get('characteristics'))
         )
-
-    @classmethod
-    def from_page_json(cls, data: dict) -> 'AdDto':
-        ad_data = data['props']['pageProps']['ad']
-        return cls.from_json(ad_data)
