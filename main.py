@@ -1,10 +1,12 @@
 import logging
 from dataclasses import dataclass
 from time import sleep
+from typing import Optional
 
+import typer
 from data.ad_dto import AdDto
 from data.models import Ad, County, Province, City, District, Owner
-from data.search_url import SearchUrl, OfferType, ObjectType
+from data.search_url import SearchUrl, OfferType, ObjectType, Location
 from database import DatabaseManager
 from otodom_scraper import OtodomScraper
 
@@ -138,22 +140,11 @@ class ScrappingContext:
 
 
 
-def main():
+def scrape(urls: list[SearchUrl]):
     scraper = OtodomScraper()
     db_manager = DatabaseManager()
     scrapping_context = ScrappingContext(db_manager, scraper)
     db_manager.create_all_tables()
-
-    urls = [
-        SearchUrl(
-            offer_type=OfferType.SALE,
-            object_type=ObjectType.APARTMENT
-        ),
-        SearchUrl(
-            offer_type=OfferType.SALE,
-            object_type=ObjectType.HOUSE
-        )
-    ]
 
     for url in urls:
         page_number = 1
@@ -176,8 +167,73 @@ def drop_tables():
     db_manager = DatabaseManager()
     db_manager.drop_all_tables()
 
+def build_urls(
+        houses: bool,
+        apartments: bool,
+        sale: bool,
+        rent: bool,
+        location: Optional[Location] = None,
+        price_from: Optional[int] = None,
+        price_to: Optional[int] = None,
+) -> list[SearchUrl]:
+    object_types = []
+    if houses:
+        object_types.append(ObjectType.HOUSE)
+    if apartments:
+        object_types.append(ObjectType.APARTMENT)
 
+    offer_types = []
+    if sale:
+        offer_types.append(OfferType.SALE)
+    if rent:
+        offer_types.append(OfferType.RENT)
 
+    return [
+        SearchUrl(
+            offer_type=offer_type,
+            object_type=object_type,
+            location=location,
+            price_from=price_from,
+            price_to=price_to,
+        )
+        for offer_type in offer_types
+        for object_type in object_types
+        if not (object_type == ObjectType.INVESTMENT and offer_type == OfferType.RENT)
+        if not (object_type == ObjectType.ROOM and offer_type == OfferType.SALE)
+    ]
+
+def main(
+        houses: bool = typer.Option(True, '--houses/--no-houses'),
+        apartments: bool = typer.Option(True, '--apartments/--no-apartments'),
+        sale: bool = typer.Option(True, '--sale/--no-sale'),
+        rent: bool = typer.Option(True, '--rent/--no-rent'),
+        voivodeship: str = typer.Option(None, '--voivodeship'),
+        city: str = typer.Option(None, '--city'),
+        district: str = typer.Option(None, '--district'),
+        min_price: int = typer.Option(0, '--min-price'),
+        max_price: int = typer.Option(1000000, '--max-price'),
+):
+    if district and not city:
+        raise typer.BadParameter("--district requires --city")
+    if city and not voivodeship:
+        raise typer.BadParameter("--city requires --voivodeship")
+    location = Location(
+        voivodeship=voivodeship,
+        city=city,
+        district=district
+    ) if voivodeship else None
+
+    urls = build_urls(
+        houses=houses,
+        apartments=apartments,
+        sale=sale,
+        rent=rent,
+        location=location,
+        price_from=min_price if min_price else None,
+        price_to=max_price if max_price else None,
+    )
+
+    scrape(urls)
 
 if __name__ == '__main__':
-    main()
+    typer.run(main)
