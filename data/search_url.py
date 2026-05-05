@@ -3,6 +3,8 @@ from enum import Enum
 from typing import Optional
 from urllib.parse import urlencode
 
+import unicodedata
+
 BASE_URL = "https://www.otodom.pl/pl/wyniki"
 
 
@@ -58,6 +60,28 @@ class PageLimit(Enum):
     LIMIT_48 = 48
     LIMIT_72 = 72
 
+POLISH_MAP = str.maketrans({
+    "ą": "a",
+    "ć": "c",
+    "ę": "e",
+    "ł": "l",
+    "ń": "n",
+    "ó": "o",
+    "ś": "s",
+    "ź": "z",
+    "ż": "z"
+})
+
+def normalize_name(text: Optional[str]) -> Optional[str]:
+    if text is None:
+        return text
+
+    text = text.lower()
+    text = text.translate(POLISH_MAP)
+    text = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in text if not unicodedata.combining(c))
+
+
 
 @dataclass
 class Location:
@@ -80,9 +104,9 @@ class Location:
         if district and not city:
             raise Exception("City is required when district is provided")
 
-        self.voivodeship = voivodeship
-        self.city = city
-        self.district = district
+        self.voivodeship = normalize_name(voivodeship)
+        self.city = normalize_name(city)
+        self.district = normalize_name(district)
         self.distance_radius = distance_radius
 
 
@@ -203,20 +227,3 @@ class InvestmentSearchUrl(SearchUrl):
 class RoomSearchUrl(SearchUrl):
     availability: Optional[str] = None
     amount_of_people_in_room: Optional[int] = None
-
-
-if __name__ == "__main__":
-    url = SearchUrl(
-        offer_type=OfferType.SALE,
-        object_type=ObjectType.HOUSE,
-        location=Location(
-            voivodeship="mazowieckie",
-            city="warszawa",
-        ),
-        price_to=1000000,
-
-    )
-
-    print(url.build())
-    url.next_page()
-    print(url.build())

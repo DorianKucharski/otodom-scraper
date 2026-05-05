@@ -1,9 +1,9 @@
 import logging
-from dataclasses import dataclass
 from time import sleep
 from typing import Optional
 
 import typer
+
 from data.ad_dto import AdDto
 from data.models import Ad, County, Province, City, District, Owner
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
@@ -17,26 +17,32 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ScrappingContext:
+class ScrapingContext:
     existing_ad_ids: set[int]
-    existing_ad_urls: list[str]
+    existing_ad_urls: set[str]
     existing_owner_ids: set[int]
     existing_province_ids: set[str]
     existing_county_ids: set[str]
     existing_city_ids: set[int]
     existing_district_ids: set[int]
 
-    def __init__(self, database_manager: DatabaseManager, scraper: OtodomScraper):
+    def __init__(
+            self,
+            database_manager: DatabaseManager,
+            scraper: OtodomScraper,
+            update_if_older_than_days: Optional[int] = 30
+    ):
         self.__database_manager = database_manager
         self.__scraper = scraper
+        self.__update_if_older_than_days = update_if_older_than_days
+
         with database_manager.get_session() as session:
             self.existing_ad_ids = {a.id for a in session.query(Ad.id).all()}
-            self.existing_ad_urls = [
+            self.existing_ad_urls = {
                 a.url for a in session.query(Ad.url)
                 .order_by(Ad.modified_at.asc())
                 .all()
-            ]
+            }
             self.existing_owner_ids = {o.id for o in session.query(Owner.id).all()}
             self.existing_province_ids = {p.id for p in session.query(Province.id).all()}
             self.existing_county_ids = {c.id for c in session.query(County.id).all()}
@@ -67,22 +73,52 @@ class ScrappingContext:
     def scrape_ad(self, url: str):
         return self.with_retry(self.__scrape_ad, url)
 
-    def update_ad(self, ad: AdDto):
-        return self.with_retry(self.__update_ad, ad)
-
     def __scrape_ad(self, url: str):
+        is_update_enabled: bool = self.__update_if_older_than_days is not None
+
         if url is None or url == "":
             return
 
         if url in self.existing_ad_urls:
-            logger.info(f"URL {url} already exists, skipping...")
+            if is_update_enabled:
+                with self.__database_manager.get_session() as session:
+                    saved_ad = session.query(Ad).filter(Ad.url == url).first()
+                    if saved_ad is None:
+                        logger.warning(f"URL {url} found in cache but not in DB")
+                        return
+                    if saved_ad.should_update(self.__update_if_older_than_days):
+                        logger.info(f"Updating ad with url: {url} - last update was at - {saved_ad.modified_at}")
+                        ad_dto: AdDto = self.__scraper.scrape_ad(url)
+                        saved_ad.update(ad_dto)
+                    else:
+                        logger.info(f"Skipping update of url: {url} - last update was at - {saved_ad.modified_at}")
+            else:
+                logger.info(f"URL {url} already exists, skipping...")
             return
 
-        ad: AdDto = self.__scraper.scrape_ad(url)
-        if ad.id in self.existing_ad_ids:
-            logger.info(f"Ad with ID {ad.id} already exists, skipping...")
-            return
+        ad_dto: AdDto = self.__scraper.scrape_ad(url)
+        if ad_dto.id in self.existing_ad_ids:
+            with self.__database_manager.get_session() as session:
+                saved_ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
 
+                if saved_ad is not None:
+                    saved_ad.update(ad_dto)
+                    self.existing_ad_urls.add(ad_dto.url)
+                    logger.info(f"Updating ad - id: {ad_dto.id} - url: {ad_dto.url}")
+                    return
+
+            logger.warning(f"Ad id {ad_dto.id} found in cache but not in DB")
+            self.__save_new_ad(ad_dto)
+            self.existing_ad_ids.add(ad_dto.id)
+            self.existing_ad_urls.add(ad_dto.url)
+            logger.info(f"Saved ad with ID: {ad_dto.id} - url: {ad_dto.url}")
+        else:
+            self.__save_new_ad(ad_dto)
+            self.existing_ad_ids.add(ad_dto.id)
+            self.existing_ad_urls.add(ad_dto.url)
+            logger.info(f"Saved ad with ID: {ad_dto.id} - url: {ad_dto.url}")
+
+    def __save_new_ad(self, ad: AdDto):
         try:
             with self.__database_manager.get_session() as session:
                 self._ensure_entity(
@@ -123,28 +159,16 @@ class ScrappingContext:
 
                 ad_model = Ad.from_dataclass(ad)
                 session.merge(ad_model)
-
-                self.existing_ad_ids.add(ad.id)
-                logger.info(f"Saved ad with ID: {ad.id}")
-
         except Exception as e:
             logger.error(f"Error processing ad: {ad.url} - {e}")
             raise
-
-    def __update_ad(self, ad_dto: AdDto):
-        with self.__database_manager.get_session() as session:
-            ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
-            if ad is None:
-                raise ValueError(f"Ad with id {ad_dto.id} not found")
-            ad.update_status(ad_dto.status)
-
 
 
 def scrape(urls: list[SearchUrl]):
     scraper = OtodomScraper()
     db_manager = DatabaseManager()
-    scrapping_context = ScrappingContext(db_manager, scraper)
     db_manager.create_all_tables()
+    scraping_context = ScrapingContext(db_manager, scraper)
 
     for url in urls:
         page_number = 1
@@ -152,20 +176,17 @@ def scrape(urls: list[SearchUrl]):
             url.page_number = page_number
             search_result = scraper.scrape_search(url.build())
             for ad_item in search_result.items:
-                scrapping_context.scrape_ad(ad_item.url)
+                scraping_context.scrape_ad(ad_item.url)
 
             if page_number >= search_result.total_pages:
                 break
             page_number += 1
 
-    for url in scrapping_context.existing_ad_urls:
-        ad = scraper.scrape_ad(url)
-        scrapping_context.update_ad(ad)
-
 
 def drop_tables():
     db_manager = DatabaseManager()
     db_manager.drop_all_tables()
+
 
 def build_urls(
         houses: bool,
@@ -202,6 +223,7 @@ def build_urls(
         if not (object_type == ObjectType.ROOM and offer_type == OfferType.SALE)
     ]
 
+
 def main(
         houses: bool = typer.Option(True, '--houses/--no-houses'),
         apartments: bool = typer.Option(True, '--apartments/--no-apartments'),
@@ -234,6 +256,7 @@ def main(
     )
 
     scrape(urls)
+
 
 if __name__ == '__main__':
     typer.run(main)

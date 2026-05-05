@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 from geoalchemy2 import Geometry
@@ -283,64 +283,27 @@ class Ad(Base):
         Index('idx_ads_city_type_price', 'city_id', 'property_type', 'price_value'),
     )
 
-    def update(self, ad_data: AdDto, owner: Owner):
-        addr = ad_data.location.address
-        coords = ad_data.location.coordinates
-
-        self.location_point = self._create_location_point(coords)
-        self.public_id = ad_data.public_id
-        self.slug = ad_data.slug
-        self.url = ad_data.url
+    def update(self, ad_data: AdDto):
         self.title = ad_data.title
         self.description = ad_data.description
-        self.modified_at = ad_data.modified_at
         self.status = ad_data.status
-        self.market = ad_data.market
-        self.advertiser_type = ad_data.advertiser_type
         self.price_value = ad_data.price.value
         self.price_currency = ad_data.price.currency
         self.price_per_m2 = ad_data.price.per_m2
-        self.rent_value = ad_data.property.rent.value if ad_data.property.rent else None
-        self.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
-        self.latitude = coords.latitude
-        self.longitude = coords.longitude
-        self.street = addr.street.name
-        self.postal_code = addr.postal_code
-        self.district_id = addr.district.id if addr.district else None
-        self.city_id = addr.city.id if addr.city else None
-        self.county_id = addr.county.id if addr.county else None
-        self.province_id = addr.province.id if addr.province else None
-        self.property_type = ad_data.property.type
-        self.property_condition = ad_data.property.condition
-        self.property_ownership = ad_data.property.ownership
-        self.area_value = ad_data.property.area.value
-        self.area_unit = ad_data.property.area.unit
-        self.flat_floor = ad_data.property.flat_properties.floor
-        self.flat_number_of_rooms = ad_data.property.flat_properties.number_of_rooms
-        self.building_year = ad_data.property.building_properties.year
-        self.building_type = ad_data.property.building_properties.type
-        self.building_material = ad_data.property.building_properties.material
-        self.building_heating = ad_data.property.building_properties.heating
-        self.building_number_of_floors = ad_data.property.building_properties.number_of_floors
-        self.owner_id = owner.id if owner else None
-
-        self._clear_relations()
-        self._populate_relations(ad_data)
-
-    def update_status(self, status: str):
-        self.status = status
+        if ad_data.property:
+            self.rent_value = ad_data.property.rent.value if ad_data.property.rent else None
+            self.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
         self.modified_at = datetime.now()
 
-    def _clear_relations(self):
-        self.images.clear()
-        self.features.clear()
-        self.characteristics.clear()
-        self.flat_equipment.clear()
-        self.flat_areas.clear()
-        self.flat_parking.clear()
-        self.building_windows.clear()
-        self.building_conveniences.clear()
-        self.building_security.clear()
+    def should_update(self, update_if_older_than_days: int) -> bool:
+        now = datetime.now(timezone.utc)
+
+        modified_at = self.modified_at
+        if modified_at.tzinfo is None:
+            modified_at = modified_at.replace(tzinfo=timezone.utc)
+
+        threshold = now - timedelta(days=update_if_older_than_days)
+        return modified_at < threshold
 
     def _populate_relations(self, ad_data: AdDto):
         for img in ad_data.images:
