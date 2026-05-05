@@ -3,3 +3,6 @@ services:
     build: .
     env_file:
       - .env
+    restart: on-failure
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
