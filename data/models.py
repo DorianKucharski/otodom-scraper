@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
@@ -8,7 +8,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from .ad_dto import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto
+from .ad_dto import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto, \
+    CharacteristicKey
 
 
 class Base(DeclarativeBase):
@@ -290,9 +291,6 @@ class Ad(Base):
         self.price_value = ad_data.price.value
         self.price_currency = ad_data.price.currency
         self.price_per_m2 = ad_data.price.per_m2
-        if ad_data.property:
-            self.rent_value = ad_data.property.rent.value if ad_data.property.rent else None
-            self.rent_currency = ad_data.property.rent.currency if ad_data.property.rent else None
         self.modified_at = datetime.now()
 
     def should_update(self, update_if_older_than_days: int) -> bool:
@@ -383,6 +381,45 @@ class Ad(Base):
             ad.building_material = ad_data.property.building_properties.material
             ad.building_heating = ad_data.property.building_properties.heating
             ad.building_number_of_floors = ad_data.property.building_properties.number_of_floors
+        else:
+            m_characteristic = ad_data.get_characteristic(CharacteristicKey.M)
+            rent_characteristic = ad_data.get_characteristic(CharacteristicKey.RENT)
+            flat_floor_characteristic = ad_data.get_characteristic(CharacteristicKey.FLOOR_NO)
+            building_number_of_floors_characteristic = ad_data.get_characteristic(CharacteristicKey.BUILDING_FLOORS_NUM)
+            flat_number_of_rooms_characteristic = ad_data.get_characteristic(CharacteristicKey.ROOMS_NUM)
+            building_year_characteristic = ad_data.get_characteristic(CharacteristicKey.BUILD_YEAR)
+            building_type_characteristic = ad_data.get_characteristic(CharacteristicKey.BUILDING_TYPE)
+            building_material_characteristic = ad_data.get_characteristic(CharacteristicKey.BUILDING_MATERIAL)
+            building_heating_characteristic = ad_data.get_characteristic(CharacteristicKey.HEATING)
+
+            if m_characteristic:
+                ad.area_value = m_characteristic.get_value(float)
+                ad.area_unit = m_characteristic.currency or "M2"
+
+            if rent_characteristic:
+                ad.rent_value = rent_characteristic.get_value(int)
+                ad.rent_currency = rent_characteristic.currency or "PLN"
+
+            if flat_floor_characteristic:
+                ad.flat_floor = flat_floor_characteristic.get_value(str).upper()
+
+            if building_number_of_floors_characteristic:
+                ad.building_number_of_floors = building_number_of_floors_characteristic.get_value(int)
+
+            if flat_number_of_rooms_characteristic:
+                ad.flat_number_of_rooms = flat_number_of_rooms_characteristic.get_value(int)
+
+            if building_year_characteristic:
+                ad.building_year = building_year_characteristic.get_value(int)
+
+            if building_type_characteristic:
+                ad.building_type = building_type_characteristic.get_value(str).upper()
+
+            if building_material_characteristic:
+                ad.building_material = building_material_characteristic.get_value(str).upper()
+
+            if building_heating_characteristic:
+                ad.building_heating = building_heating_characteristic.get_value(str).upper()
 
         ad._populate_relations(ad_data)
         return ad

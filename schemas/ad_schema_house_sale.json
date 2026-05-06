@@ -1,0 +1,1081 @@
+{
+  "props": {
+    "pageProps": {
+      "lang": "pl",
+      "id": "4A5e0",
+      "ad": {
+        "id": 67705240,
+        "price": {
+          "type": "",
+          "__typename": "AdvertPrice"
+        },
+        "market": "PRIMARY",
+        "services": [],
+        "publicId": "",
+        "slug": "segment-105-m121-m-calk-ogrod-las-200-m-skm-1-2-km-szkola-690m-ID4A5e0",
+        "advertiserType": "private",
+        "advertType": "PRIVATE",
+        "source": "urn:site:local",
+        "createdAt": "2026-02-12T13:04:43+01:00",
+        "modifiedAt": "2026-05-05T13:53:58+02:00",
+        "description": "<p>Zostały już tylko <b>2 WOLNE segmenty środkowe</b>:</p><p> BUD 2 i BUD 3 w cenie 899 000 zł  </p><p></p><p><b>Rezerwując teraz, zyskujesz gwarancję niezmienności ceny</b>.</p><p><b>BEZPOŚREDNIO OD DEWELOPERA, bez podatku PCC.</b></p><p></p><p>Dom <b>105 m²</b> powierzchni użytkowej (<b>121 m² całkowitej</b>) w zabudowie szeregowej. Oferuje funkcjonalny układ pomieszczeń a <b>ogród od strony południowej gwarantuje dużo słońca</b> i przestrzeni do relaksu i zabawy.</p><p><u>W cenie segmentu:</u> <b>2 miejsca postojowe, ogród </b>oraz<b> dodatkowe miejsce na terenie osiedla do przechowywanie rowerów dla segmentów środkowych. </b>Osiedle ogrodzone i zamknięte.</p><p><b>Idealny segment dla rodziny</b> w spokojnej i bezpiecznej okolicy. Dzieci mogą same dojechać rowerem do pobliskiej<b> szkoły 690m a do lasu tylko 200m</b> od domu. W najbliższym sąsiedztwie znajdują się dwie szkoły podstawowe, co czyni lokalizację wyjątkowo wygodną dla rodzin z dziećmi.</p><p><b>Lokalizacja – idealna dla rodzin</b></p><ul><li>Las – 200 m</li><li>Delikatesy centrum – 350m</li><li>Szkoła podstawowa nr 4 – 690m</li><li>Szkoła podstawowa nr 3 – 770m</li><li>Kościół – 900m</li><li>Centrum Sulejówka – 1100m</li><li>SKM Sulejówek Miłosna – 1200m</li><li>Park Glinianki – 1300m</li></ul><p>Każdy dom w inwestycji <b>Południowa Aleja</b> jest trzypoziomowy ( parter, piętro i poddasze użytkowe -mieszkalne). Łącznie można wydzielić aż <b>5 pokoi.</b></p><p><b>Parter</b> stanowi przestronny salon połączony z jasnym aneksem kuchennym. Z tego pomieszczenia prowadzą duże, przesuwne drzwi balkonowe, które zapewniają doskonałe doświetlenie wnętrza oraz bezpośrednie wyjście na słoneczny ogród. Na parterze znajduje się również toaleta oraz praktyczny, wyodrębniony przedsionek.</p><p><b>Piętro</b> obejmuje dwa przestronne, doskonale doświetlone pokoje, zapewniające komfort i przyjemną atmosferę przez cały dzień, a także funkcjonalną łazienkę.</p><p><b>Poddasze użytkowe </b>jest przestronne, wysokie i ustawne, ze ścianką kolankową o wysokości 1,40 m. <b>Pięć okien dachowych</b> zapewnia doskonałe doświetlenie całej przestrzeni. Istnieje możliwość wydzielenia dwóch dużych pokoi, łazienki oraz pralni z suszarnią lub garderoby, co daje ogromne możliwości aranżacyjne.</p><p><b>Budynki z pełnym podłączeniem: kanalizacja, woda miejska, prąd</b>.</p><p><b>Ogrzewanie pompą ciepła </b>– <b>ogrzewanie podłogowe</b> w każdym pomieszczeniu na wszystkich trzech poziomach zapewnia komfortowe i równomierne rozprowadzenie ciepła. W łazience <b>dodatkowo grzejnik elektryczny</b>. Brak tradycyjnych grzejników ułatwia aranżację wnętrz.</p><p></p><p><u>Rezerwacja oraz zakup nieruchomości realizowane są zgodnie z obowiązującą ustawą deweloperską.</u></p><p><b>Strona dewelopera z pełną ofertą dostępna w galerii zdjęć oraz w karcie lokalu.</b></p><p>Dla osób, które chcą zobaczyć, jak będzie wyglądać gotowy dom, oferujemy możliwość obejrzenia naszej wcześniejszej, podobnej inwestycji, którą obecnie kończymy. Pozwala to realnie ocenić jakość wykonania i wyobrazić sobie finalny efekt.</p><p>Zapraszam do kontaktu</p><p></p><p><i>Niniejsze ogłoszenie nie stanowi oferty w rozumieniu art. 66 §1 Kodeksu cywilnego i ma charakter wyłącznie informacyjny.</i></p>",
+        "developmentId": 0,
+        "developmentTitle": "",
+        "developmentUrl": "",
+        "exclusiveOffer": false,
+        "externalId": "",
+        "features": [
+          "teren zamknięty",
+          "domofon / wideofon",
+          "metalowe",
+          "pompa ciepła",
+          "elektryczne",
+          "woda",
+          "prąd",
+          "kanalizacja",
+          "internet",
+          "telewizja kablowa",
+          "asfaltowy",
+          "las",
+          "garaż"
+        ],
+        "creationSource": "posting_form",
+        "pushedUpAt": "2026-05-05T13:53:59Z",
+        "featuresByCategory": [
+          {
+            "label": "Zabezpieczenia",
+            "values": [
+              "teren zamknięty",
+              "domofon / wideofon"
+            ],
+            "__typename": "FeatureGroup"
+          },
+          {
+            "label": "Ogrodzenie",
+            "values": [
+              "metalowe"
+            ],
+            "__typename": "FeatureGroup"
+          },
+          {
+            "label": "Ogrzewanie",
+            "values": [
+              "pompa ciepła",
+              "elektryczne"
+            ],
+            "__typename": "FeatureGroup"
+          },
+          {
+            "label": "Media",
+            "values": [
+              "woda",
+              "prąd",
+              "kanalizacja",
+              "internet",
+              "telewizja kablowa"
+            ],
+            "__typename": "FeatureGroup"
+          },
+          {
+            "label": "Dojazd",
+            "values": [
+              "asfaltowy"
+            ],
+            "__typename": "FeatureGroup"
+          },
+          {
+            "label": "Okolica",
+            "values": [
+              "las"
+            ],
+            "__typename": "FeatureGroup"
+          },
+          {
+            "label": "Informacje dodatkowe",
+            "values": [
+              "garaż"
+            ],
+            "__typename": "FeatureGroup"
+          }
+        ],
+        "featuresWithoutCategory": [],
+        "openDay": "",
+        "referenceId": "",
+        "target": {
+          "Access_types": [
+            "asphalt"
+          ],
+          "Area": "105",
+          "AreaRange": [],
+          "Build_year": "2026",
+          "Building_material": [
+            "brick"
+          ],
+          "Building_type": [
+            "ribbon"
+          ],
+          "City": "sulejowek",
+          "City_id": "149",
+          "Construction_status": [
+            "to_completion"
+          ],
+          "Country": "Polska",
+          "Energy_certificate": [
+            "exempt"
+          ],
+          "Extras_types": [
+            "garage"
+          ],
+          "Fence_types": [
+            "metal"
+          ],
+          "Floors_num": [
+            "more"
+          ],
+          "Garret_type": [
+            "usable"
+          ],
+          "Heating_types": [
+            "heat_pump",
+            "electric"
+          ],
+          "Id": "67705240",
+          "Location": [
+            "city"
+          ],
+          "MarketType": "primary",
+          "Media_types": [
+            "water",
+            "electricity",
+            "sewage",
+            "internet",
+            "cable_television"
+          ],
+          "ObidoAdvert": "n",
+          "OfferType": "sprzedaz",
+          "Photo": "aHR0cHM6Ly9pcmVsYW5kLmFwb2xsby5vbHhjZG4uY29tL3YxL2ZpbGVzL2V5Sm1iaUk2SW1kb2VUTjROVzF2ZFdacU5qRXRRVkJNSWl3aWR5STZXM3NpWm00aU9pSmxiblptY1hGbE1XRjVOR3N4TFVGUVRDSXNJbk1pT2lJeE5DSXNJbkFpT2lJeE1Dd3RNVEFpTENKaElqb2lNQ0o5WFgwLlJtb2kwdDBqaDh1Mk40UkxSMXdPZFVLNlFHZUxUekRpRDhVbkE4czNldFUvaW1hZ2U7cz02NTV4NDkxO3E9ODA=",
+          "Price": 899000,
+          "PriceRange": [
+            "750001-1000000"
+          ],
+          "Price_per_m": 8562,
+          "ProperType": "dom",
+          "Province": "mazowieckie",
+          "RegularUser": "y",
+          "Roof_type": [
+            "diagonal"
+          ],
+          "Roofing": [
+            "sheet"
+          ],
+          "Rooms_num": [
+            "4"
+          ],
+          "Security_types": [
+            "closed_area",
+            "entryphone"
+          ],
+          "Subregion": "powiat-minski",
+          "Terrain_area": "100",
+          "Title": "U2VnbWVudCAxMDUgbcKyKDEyMSBtwrIgY2HFgmsuKXxPZ3LDs2R8IExhcyAyMDAgbXwgU0tNIDEsMiBrbSB8U3prb8WCYSA2OTBt",
+          "Vicinity_types": [
+            "forest"
+          ],
+          "Windows_type": [
+            "plastic"
+          ],
+          "categoryId": "201",
+          "env": "production",
+          "hidePrice": "0",
+          "seller_id": "9942184",
+          "user_type": "private"
+        },
+        "title": "Segment 105 m²(121 m² całk.)|Ogród| Las 200 m| SKM 1,2 km |Szkoła 690m",
+        "topInformation": [
+          {
+            "label": "area",
+            "values": [
+              "105"
+            ],
+            "unit": "m²",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "heating_types",
+            "values": [
+              "heating_types::heat_pump",
+              "heating_types::electric"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "terrain_area",
+            "values": [
+              "100"
+            ],
+            "unit": "m²",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "construction_status",
+            "values": [
+              "construction_status::to_completion"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "building_type",
+            "values": [
+              "building_type::ribbon"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "build_year",
+            "values": [
+              "2026"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "rooms_num",
+            "values": [
+              "4"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "car",
+            "values": [
+              "extras_types-179::garage"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "remote_services",
+            "values": [],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "rent",
+            "values": [],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          }
+        ],
+        "additionalInformation": [
+          {
+            "label": "market",
+            "values": [
+              "market::primary"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "advertiser_type",
+            "values": [
+              "advertiser_type::private"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "free_from",
+            "values": [
+              "2027-06-30"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "building_material",
+            "values": [
+              "building_material-117::brick"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "windows_type",
+            "values": [
+              "windows_type::plastic"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "floors_num",
+            "values": [
+              "floors_num::more"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "recreational",
+            "values": [],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "roof_type",
+            "values": [
+              "roof_type::diagonal"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "roofing",
+            "values": [
+              "roofing::sheet"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "garret_type",
+            "values": [
+              "garret_type::usable"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "media_types",
+            "values": [
+              "media_types::water",
+              "media_types::electricity",
+              "media_types::sewage",
+              "media_types::internet",
+              "media_types::cable_television"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "security_types",
+            "values": [
+              "security_types::closed_area",
+              "security_types::entryphone"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "fence_types",
+            "values": [
+              "fence_types::metal"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "access_types",
+            "values": [
+              "access_types::asphalt"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "location",
+            "values": [
+              "location::city"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "vicinity_types",
+            "values": [
+              "vicinity_types::forest"
+            ],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          },
+          {
+            "label": "extras_types",
+            "values": [],
+            "unit": "",
+            "__typename": "AdditionalInfo"
+          }
+        ],
+        "url": "https://www.otodom.pl/pl/oferta/segment-105-m121-m-calk-ogrod-las-200-m-skm-1-2-km-szkola-690m-ID4A5e0",
+        "status": "active",
+        "adCategory": {
+          "id": "201",
+          "name": "HOUSE",
+          "type": "SELL",
+          "__typename": "AdvertCategory"
+        },
+        "category": {
+          "id": 201,
+          "__typename": "AdCategory"
+        },
+        "characteristics": [
+          {
+            "key": "price",
+            "value": "899000",
+            "localizedValue": "899 000 zł",
+            "currency": "PLN",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "m",
+            "value": "105",
+            "localizedValue": "105 m²",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "terrain_area",
+            "value": "100",
+            "localizedValue": "100 m²",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "price_per_m",
+            "value": "8562",
+            "localizedValue": "8 562 zł/m²",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "market",
+            "value": "primary",
+            "localizedValue": "pierwotny",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "rooms_num",
+            "value": "4",
+            "localizedValue": "4",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "energy_certificate",
+            "value": "exempt",
+            "localizedValue": "W trakcie realizacji / Zwolnione",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "building_type",
+            "value": "ribbon",
+            "localizedValue": "szeregowiec",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "floors_num",
+            "value": "more",
+            "localizedValue": "3 piętra i więcej",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "building_material",
+            "value": "brick",
+            "localizedValue": "cegła",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "build_year",
+            "value": "2026",
+            "localizedValue": "2026",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "garret_type",
+            "value": "usable",
+            "localizedValue": "użytkowe",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "roof_type",
+            "value": "diagonal",
+            "localizedValue": "skośny",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "roofing",
+            "value": "sheet",
+            "localizedValue": "blacha",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "construction_status",
+            "value": "to_completion",
+            "localizedValue": "do wykończenia",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "windows_type",
+            "value": "plastic",
+            "localizedValue": "plastikowe",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "location",
+            "value": "city",
+            "localizedValue": "miasto",
+            "currency": "",
+            "__typename": "Characteristic"
+          },
+          {
+            "key": "free_from",
+            "value": "2027-06-30",
+            "localizedValue": "2027-06-30",
+            "currency": "",
+            "__typename": "Characteristic"
+          }
+        ],
+        "images": [
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdoeTN4NW1vdWZqNjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Rmoi0t0jh8u2N4RLR1wOdUK6QGeLTzDiD8UnA8s3etU/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdoeTN4NW1vdWZqNjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Rmoi0t0jh8u2N4RLR1wOdUK6QGeLTzDiD8UnA8s3etU/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdoeTN4NW1vdWZqNjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Rmoi0t0jh8u2N4RLR1wOdUK6QGeLTzDiD8UnA8s3etU/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImdoeTN4NW1vdWZqNjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Rmoi0t0jh8u2N4RLR1wOdUK6QGeLTzDiD8UnA8s3etU/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjY1ZWNrNjA4c2cxejEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.MOQE9uP40lxponyoVsfTt4AbHRqAYPtZdEwFtkgRhI8/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjY1ZWNrNjA4c2cxejEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.MOQE9uP40lxponyoVsfTt4AbHRqAYPtZdEwFtkgRhI8/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjY1ZWNrNjA4c2cxejEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.MOQE9uP40lxponyoVsfTt4AbHRqAYPtZdEwFtkgRhI8/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjY1ZWNrNjA4c2cxejEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.MOQE9uP40lxponyoVsfTt4AbHRqAYPtZdEwFtkgRhI8/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IndyaWlxeWx0NXA2ZjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.dfDALSwNQd1L6T5-pUxs80w4rgMYI-mhoXLAB0i_MC8/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IndyaWlxeWx0NXA2ZjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.dfDALSwNQd1L6T5-pUxs80w4rgMYI-mhoXLAB0i_MC8/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IndyaWlxeWx0NXA2ZjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.dfDALSwNQd1L6T5-pUxs80w4rgMYI-mhoXLAB0i_MC8/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IndyaWlxeWx0NXA2ZjEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.dfDALSwNQd1L6T5-pUxs80w4rgMYI-mhoXLAB0i_MC8/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imc3ZGs3eWtndzh3azMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.iAeSruJqFIOk0S8n-OlYum1VGUnigxagHnkAWzViwVo/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imc3ZGs3eWtndzh3azMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.iAeSruJqFIOk0S8n-OlYum1VGUnigxagHnkAWzViwVo/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imc3ZGs3eWtndzh3azMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.iAeSruJqFIOk0S8n-OlYum1VGUnigxagHnkAWzViwVo/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imc3ZGs3eWtndzh3azMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.iAeSruJqFIOk0S8n-OlYum1VGUnigxagHnkAWzViwVo/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImE0ZGZkcHFyemluZS1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.7XgtwDWE7kXiId0eOizX6dxTS6NuW4_7hftyk_e4P6U/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImE0ZGZkcHFyemluZS1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.7XgtwDWE7kXiId0eOizX6dxTS6NuW4_7hftyk_e4P6U/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImE0ZGZkcHFyemluZS1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.7XgtwDWE7kXiId0eOizX6dxTS6NuW4_7hftyk_e4P6U/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImE0ZGZkcHFyemluZS1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.7XgtwDWE7kXiId0eOizX6dxTS6NuW4_7hftyk_e4P6U/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InFqZ3B5cTNqdHVrcjMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.1VhI_sWjPN-wwmtnsWrSo8cNavcHcj73p2Ckex7I-No/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InFqZ3B5cTNqdHVrcjMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.1VhI_sWjPN-wwmtnsWrSo8cNavcHcj73p2Ckex7I-No/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InFqZ3B5cTNqdHVrcjMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.1VhI_sWjPN-wwmtnsWrSo8cNavcHcj73p2Ckex7I-No/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InFqZ3B5cTNqdHVrcjMtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.1VhI_sWjPN-wwmtnsWrSo8cNavcHcj73p2Ckex7I-No/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJyN3Zkd2ZjdHg1NTEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.0igZ2KqQUiVN6xU5P2BdmkTNoUg07KOTtCbCi3tHKDs/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJyN3Zkd2ZjdHg1NTEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.0igZ2KqQUiVN6xU5P2BdmkTNoUg07KOTtCbCi3tHKDs/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJyN3Zkd2ZjdHg1NTEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.0igZ2KqQUiVN6xU5P2BdmkTNoUg07KOTtCbCi3tHKDs/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjJyN3Zkd2ZjdHg1NTEtQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.0igZ2KqQUiVN6xU5P2BdmkTNoUg07KOTtCbCi3tHKDs/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          },
+          {
+            "thumbnail": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjFiancwNm1rcGh5bC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.rI2s7gIAvLMRtJvZ83O0A3Ezt3p7QSImlpyQyo5UeBA/image;s=184x138;q=80",
+            "small": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjFiancwNm1rcGh5bC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.rI2s7gIAvLMRtJvZ83O0A3Ezt3p7QSImlpyQyo5UeBA/image;s=314x236;q=80",
+            "medium": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjFiancwNm1rcGh5bC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.rI2s7gIAvLMRtJvZ83O0A3Ezt3p7QSImlpyQyo5UeBA/image;s=655x491;q=80",
+            "large": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjFiancwNm1rcGh5bC1BUEwiLCJ3IjpbeyJmbiI6ImVudmZxcWUxYXk0azEtQVBMIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.rI2s7gIAvLMRtJvZ83O0A3Ezt3p7QSImlpyQyo5UeBA/image;s=1280x1024;q=80",
+            "__typename": "AdImage"
+          }
+        ],
+        "links": {
+          "localPlanUrl": "",
+          "videoUrl": "",
+          "view3dUrl": "",
+          "walkaroundUrl": "",
+          "__typename": "AdvertLinks"
+        },
+        "videos": [],
+        "location": {
+          "id": "",
+          "coordinates": {
+            "latitude": 52.247522019809,
+            "longitude": 21.311547821823,
+            "__typename": "Coordinates"
+          },
+          "mapDetails": {
+            "radius": 0,
+            "zoom": 14,
+            "__typename": "MapDetails"
+          },
+          "address": {
+            "street": {
+              "id": "62403",
+              "code": "",
+              "name": "ul. Południowa",
+              "number": "",
+              "__typename": "Street"
+            },
+            "subdistrict": "",
+            "district": "",
+            "city": {
+              "id": "149",
+              "code": "sulejowek",
+              "name": "Sulejówek",
+              "__typename": "City"
+            },
+            "municipality": "",
+            "county": {
+              "id": "178",
+              "code": "powiat-minski",
+              "name": "miński",
+              "__typename": "County"
+            },
+            "province": {
+              "id": "7",
+              "code": "mazowieckie",
+              "name": "mazowieckie",
+              "__typename": "Province"
+            },
+            "postalCode": "",
+            "__typename": "Address"
+          },
+          "reverseGeocoding": {
+            "locations": [
+              {
+                "id": "mazowieckie",
+                "locationLevel": "voivodeship",
+                "name": "mazowieckie",
+                "fullName": "mazowieckie",
+                "fullNameItems": [
+                  "mazowieckie"
+                ],
+                "parentIds": [],
+                "__typename": "BasicLocationObject"
+              },
+              {
+                "id": "mazowieckie/minski",
+                "locationLevel": "county",
+                "name": "miński",
+                "fullName": "miński, mazowieckie",
+                "fullNameItems": [
+                  "miński",
+                  "mazowieckie"
+                ],
+                "parentIds": [
+                  "mazowieckie"
+                ],
+                "__typename": "BasicLocationObject"
+              },
+              {
+                "id": "mazowieckie/minski/sulejowek/sulejowek",
+                "locationLevel": "city_or_village",
+                "name": "Sulejówek",
+                "fullName": "Sulejówek, miński, mazowieckie",
+                "fullNameItems": [
+                  "Sulejówek",
+                  "miński",
+                  "mazowieckie"
+                ],
+                "parentIds": [
+                  "mazowieckie",
+                  "mazowieckie/minski",
+                  "mazowieckie/minski/sulejowek"
+                ],
+                "__typename": "BasicLocationObject"
+              }
+            ],
+            "__typename": "ReverseGeocoding"
+          },
+          "__typename": "LocationDetails"
+        },
+        "property": "",
+        "owner": {
+          "id": 9942184,
+          "name": "Dominika Paciorek",
+          "type": "private",
+          "phones": [
+            "+48720875720"
+          ],
+          "imageUrl": "",
+          "contacts": [],
+          "__typename": "LegacyAdvertOwner"
+        },
+        "agency": "",
+        "seo": {
+          "title": "4 pokoje, dom na sprzedaż - ul. Południowa, Sulejówek - 67705240 • www.otodom.pl",
+          "description": "Fantastyczny 4 pokojowy dom na sprzedaż w miejscowości ul. Południowa, Sulejówek, za cenę 899 000 zł. Ten dom na sprzedaż, położony na działce o powierzchni 100 m² ma 105 m² powierzchni użytkowej i 105 m² powierzchni całkowitej. Właściciel jako najważniejsze zalety mieszkania wymienia: garaż, woda, prąd. Otodom 67705240",
+          "__typename": "AdvertSeo"
+        },
+        "breadcrumbs": [
+          {
+            "label": "Dom na sprzedaż",
+            "locative": "",
+            "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/dom",
+            "__typename": "AdvertBreadcrumb"
+          },
+          {
+            "label": "mazowieckie",
+            "locative": "mazowieckie",
+            "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/mazowieckie",
+            "__typename": "AdvertBreadcrumb"
+          },
+          {
+            "label": "miński",
+            "locative": "miński",
+            "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/powiat-minski",
+            "__typename": "AdvertBreadcrumb"
+          },
+          {
+            "label": "Sulejówek",
+            "locative": "Sulejówek",
+            "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/sulejowek",
+            "__typename": "AdvertBreadcrumb"
+          },
+          {
+            "label": "ul. Południowa",
+            "locative": "ul. Południowa",
+            "url": "https://www.otodom.pl/pl/wyniki/sprzedaz/dom/sulejowek?locations%5B0%5D%5BstreetId%5D=62403&locations%5B0%5D%5BcityId%5D=149&locations=%5Bstreets-62403%5D",
+            "__typename": "AdvertBreadcrumb"
+          },
+          {
+            "label": "Segment 105 m²(121 m² całk.)|Ogród| Las 200 m| SKM 1,2 km |Szkoła 690m",
+            "locative": "",
+            "url": "",
+            "__typename": "AdvertBreadcrumb"
+          }
+        ],
+        "userAdverts": [
+          {
+            "adId": "67910428",
+            "url": "https://www.otodom.pl/pl/oferta/ostatni-wolny-dom-105m2-5-pokoi-super-lokalizacja-blisko-skm-ID4AVBu",
+            "image": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjV2N21vbm4ycHk2ejItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.adfpKIbelzPzlz3BUEBDwD-xKd1UxrD-gLgvvMBHeGs/image;s=314x236;q=80",
+            "roomsNum": "5",
+            "pricePerM": 9990,
+            "price": {
+              "value": "1049000",
+              "unit": "PLN",
+              "__typename": "UserAdvertPrice"
+            },
+            "netArea": "105",
+            "title": "OSTATNI Wolny DOM 105m2| 5 pokoi| Super lokalizacja| blisko SKM",
+            "__typename": "UserAdvert"
+          },
+          {
+            "adId": "67680647",
+            "url": "https://www.otodom.pl/pl/oferta/dom-105-m-blisko-lasu-dobra-komunikacja-skm-ID4zYPl",
+            "image": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjV5cmp3cnRhbG5yNjItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.n9croRPAFNTbmOS9c7AZXyA7toBzHkdreVlXAPma34c/image;s=314x236;q=80",
+            "roomsNum": "4",
+            "pricePerM": 9381,
+            "price": {
+              "value": "985000",
+              "unit": "PLN",
+              "__typename": "UserAdvertPrice"
+            },
+            "netArea": "105",
+            "title": "Dom 105 m² | blisko Lasu | dobra komunikacja SKM",
+            "__typename": "UserAdvert"
+          },
+          {
+            "adId": "67634086",
+            "url": "https://www.otodom.pl/pl/oferta/dom-105-m-z-ogrodem-ok-130m-salon-4-pokoje-2mp-ID4zMIm",
+            "image": "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InRuZnNzYmFxODU3azItQVBMIiwidyI6W3siZm4iOiJlbnZmcXFlMWF5NGsxLUFQTCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.fFbJ19BiHTeR5BvrHf-9hA2CoSfsUQ1cNe7fA89B6_s/image;s=314x236;q=80",
+            "roomsNum": "4",
+            "pricePerM": 9366,
+            "price": {
+              "value": "985000",
+              "unit": "PLN",
+              "__typename": "UserAdvertPrice"
+            },
+            "netArea": "105.17",
+            "title": "Dom 105 m² z ogrodem ok. 130m², salon + 4 pokoje, 2MP",
+            "__typename": "UserAdvert"
+          }
+        ],
+        "paginatedUnits": {
+          "items": "",
+          "isPriceHidden": "",
+          "pagination": "",
+          "facets": "",
+          "__typename": "AdvertsPages"
+        },
+        "specialOffer": "",
+        "developerURL": "aHR0cHM6Ly93d3cuZG9teXdzdWxlam93a3UucGw=",
+        "unitGroups": {
+          "unitsGroupBy": "",
+          "items": [],
+          "__typename": "DevelopmentUnitGroups"
+        },
+        "enrichment": "",
+        "__typename": "Advert",
+        "contactDetails": {
+          "name": "Dominika Paciorek",
+          "type": "private",
+          "phones": [
+            "+48720875720"
+          ],
+          "imageUrl": ""
+        }
+      },
+      "relativeUrl": "/pl/oferta/segment-105-m121-m-calk-ogrod-las-200-m-skm-1-2-km-szkola-690m-ID4A5e0",
+      "adTrackingData": {
+        "touch_point_page": "ad_page",
+        "lat": 52.247522019809,
+        "long": 21.311547821823,
+        "ad_photo": 8,
+        "price_currency": "PLN",
+        "special_offer_type": "",
+        "agent_id": "",
+        "parent_id": "",
+        "ad_id": "67705240",
+        "ad_price": 899000,
+        "business": "sprzedaz",
+        "city_id": "149",
+        "city_name": "sulejowek",
+        "poster_type": "private",
+        "surface": "100",
+        "region_id": "mazowieckie",
+        "region_name": "mazowieckie",
+        "subregion_id": "powiat-minski",
+        "seller_id": "9942184",
+        "obido_advert": "n",
+        "market": "primary"
+      },
+      "developmentData": "",
+      "isPreviewMode": false,
+      "isUnifiedAdSchemaEnabled": false,
+      "baxterAdHtml": {
+        "ssrSlots": {}
+      },
+      "currentUser": "",
+      "cookiesCategorisation": {
+        "eupubconsent-v2": [
+          "C0001"
+        ],
+        "OptanonAlertBoxClosed": [
+          "C0001"
+        ],
+        "OptanonConsent": [
+          "C0001"
+        ],
+        "OTAdditionalConsentString": [
+          "C0001"
+        ],
+        "access_token": [
+          "C0001"
+        ],
+        "id_token": [
+          "C0001"
+        ],
+        "refresh_token": [
+          "C0001"
+        ],
+        "microservice_token": [
+          "C0001"
+        ],
+        "lastoAuthState": [
+          "C0001"
+        ],
+        "PHPSESSID": [
+          "C0001"
+        ],
+        "laquesis": [
+          "C0001"
+        ],
+        "laquesisff": [
+          "C0001"
+        ],
+        "laquesisqa": [
+          "C0001"
+        ],
+        "laquesissu": [
+          "C0001"
+        ],
+        "lqonap": [
+          "C0001"
+        ],
+        "lqstatus": [
+          "C0001"
+        ],
+        "test": [
+          "C0001"
+        ],
+        "onap": [
+          "C0001"
+        ],
+        "onap_dev": [
+          "C0001"
+        ],
+        "lang": [
+          "C0001"
+        ],
+        "dfp_user_id": [
+          "C0004"
+        ],
+        "hciam_in_use": [
+          "C0001"
+        ],
+        "AuthState": [
+          "C0001"
+        ],
+        "SID": [
+          "C0001"
+        ],
+        "IDPState": [
+          "C0001"
+        ],
+        "LogoutState": [
+          "C0001"
+        ],
+        "datadome": [
+          "C0001"
+        ],
+        "ldctx": [
+          "C0002"
+        ],
+        "ldff": [
+          "C0002"
+        ],
+        "aws-waf-token": [
+          "C0001"
+        ],
+        "thememode": [
+          "C0003"
+        ],
+        "idccsrf": [
+          "C0001"
+        ],
+        "nsr": [
+          "C0001"
+        ],
+        "O_N": [
+          "C0003"
+        ],
+        "O_Y": [
+          "C0002"
+        ],
+        "O_X": [
+          "C0002"
+        ],
+        "O_LOGGED": [
+          "C0003"
+        ],
+        "hotjarSurvey": [
+          "C0004"
+        ]
+      },
+      "experiments": {},
+      "featureFlags": {
+        "isAdAvmModuleEnabled": true,
+        "isGenaiAd2videoEnabled": true,
+        "shouldEnableAd2VideoPreview": true,
+        "isAdFinanceBannerEnabled": true,
+        "isAdFinanceLinkEnabled": true,
+        "isAdMortgageSimulatorEnabled": true,
+        "isAdNeighborhoodPoisEnabled": false,
+        "isListingRentPriceEnabled": true,
+        "isBikPromotionEnabled": true,
+        "isSeoAdsDescriptionEnabled": true,
+        "isPropertyEvaluationPageActive": true,
+        "isRESellerLeadsActive": false,
+        "isSellerLeadsMvpEnabled": false,
+        "isXmlReportEnabled": true,
+        "isOneProductPostingFormEnabled": true,
+        "isAgentAccountMailboxEnabled": true,
+        "isDeveloperGeoPricingEnabled": true,
+        "isIntegrationPageEnabled": true,
+        "isNinFieldEnabledForInvoicing": false,
+        "isMandatoryLoginEnabled": true,
+        "isGeoBasedPricingEnabled": true,
+        "isMyAccountPDFReportsEnabled": true,
+        "isReCaptchaEnabled": true,
+        "isAgencyInvoiceReportEnabled": false,
+        "isRECsrfEnabled": true,
+        "isNexusDeveloperRegistrationFormEnabled": true,
+        "isAgencyPortfolioValuePricingEnabled": true,
+        "isBadgesFeatureEnabled": true,
+        "isInboxCrmIdFilteringEnabled": true,
+        "isDashboardWithStatisticsEnabled": false,
+        "isConciergeMigrationPageEnabled": false,
+        "isAIAssistantChatEnabled": true,
+        "arePaymentReminderBannersEnabled": true,
+        "isSapBlackoutBannerEnabled": false,
+        "isPowerVasOnboardingCampaignEnabled": false,
+        "isEnhancedAgentActivationEnabled": true,
+        "shouldShowExternalDeveloperLink": false,
+        "isPowerVasCardDisplayEnabled": true,
+        "isAgentPermissionsPageEnabled": true,
+        "isSecondStepOfBusinessAccountVerificationRemoved": false,
+        "isPowerVasGroupEnabled": true,
+        "shouldUseUnifiedAdSchema": true,
+        "isNoPhotobookingOnImovirtualPricingEnabled": true,
+        "isEInvoicingEnabled": true,
+        "isNinjaBetaVersionEnabled": true,
+        "hasBusinessRegistrationFlowBeenEnhanced": true,
+        "isSelfRefCanonicalLinkLublinOpoleEnabled": false,
+        "areCityLevelLinksKoninSkierniewiceEnabled": false,
+        "isNexusPromotePageEnabled": false,
+        "isVasAutoRenewalEnabled": false,
+        "isPostingFormAgentAccountEnabled": true,
+        "isPostingFormFreeTextStreetEnabled": false,
+        "isAdsAIEnrichmentEnabled": true,
+        "hasAgentProfileBeenRevamped": true,
+        "isEnhancedAgentDeletionEnabled": true,
+        "areAccountLevelStatisticsForAgentsEnabled": false,
+        "areAdLevelStatisticsEnabled": false,
+        "isOurTeamPendingTabEnhanced": false,
+        "isPlDynamicMetaTemplatesEnabled": false,
+        "isCompaniesListingPageEnabled": true,
+        "isDynamicFaqEnabled": true,
+        "isLoginDataPageEnabled": false,
+        "isNexusBillingPageEnabled": false,
+        "__typename": "FeatureFlags"
+      },
+      "laquesisResult": "",
+      "userSessionId": "c1ad511d-bcaf-47b6-8900-9f31c7b8b706",
+      "unconfirmedUserAuthToken": "",
+      "desktopHeader": {
+        "Is-Desktop": "true"
+      }
+    },
+    "__N_SSP": true
+  },
+  "page": "/pl/oferta/[id]",
+  "query": {
+    "id": "segment-105-m121-m-calk-ogrod-las-200-m-skm-1-2-km-szkola-690m-ID4A5e0"
+  },
+  "buildId": "3okuG7-0qsUGZW-Qnz859",
+  "assetPrefix": "https://statics.otodom.pl/fp_statics",
+  "isFallback": false,
+  "isExperimentalCompile": false,
+  "dynamicIds": [
+    45538,
+    27996,
+    42357,
+    56472,
+    28410,
+    12952
+  ],
+  "gssp": true,
+  "appGip": true,
+  "scriptLoader": []
+}

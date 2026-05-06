@@ -7,15 +7,11 @@
 -- 1. PODSTAWOWE ZAPYTANIA
 -- ============================================================================
 
--- Wszystkie aktywne ogłoszenia z pełnymi informacjami
-SELECT * FROM vw_ads_detailed
-WHERE status = 'active'
-LIMIT 10;
-
 -- Ogłoszenia w danym mieście
-SELECT id, title, price_value, price_per_m2, area_value, flat_number_of_rooms
+SELECT ads.id, title, price_value, price_per_m2, area_value, flat_number_of_rooms
 FROM ads
-WHERE city_id = '190'  -- Lublin
+JOIN cities on ads.city_id = cities.id
+WHERE cities.name = 'Lublin'
     AND status = 'active'
 ORDER BY created_at DESC
 LIMIT 20;
@@ -31,6 +27,51 @@ LIMIT 10;
 -- ============================================================================
 -- 2. SORTOWANIE PO LICZBIE CECH
 -- ============================================================================
+SELECT a.id,
+       a.url,
+       a.title,
+       a.price_value,
+       a.price_per_m2,
+       a.area_value,
+       COUNT(DISTINCT af.feature)     as features_count,
+       COUNT(DISTINCT ae.equipment)   as equipment_count,
+       COUNT(DISTINCT aa.area)        as extra_areas_count,
+       COUNT(DISTINCT ac.convenience) as conveniences_count
+FROM ads a
+         LEFT JOIN cities c on a.city_id = c.id
+         LEFT JOIN ad_features af ON a.id = af.ad_id
+         LEFT JOIN ad_flat_equipment ae ON a.id = ae.ad_id
+         LEFT JOIN ad_flat_areas aa ON a.id = aa.ad_id
+         LEFT JOIN ad_building_conveniences ac ON a.id = ac.ad_id
+WHERE 1 = 1
+  AND a.status = 'active'
+  AND c.name = 'Kraków'
+  AND a.modified_at >= '2026-04-01'
+  AND a.price_value <= 1500000
+  AND a.price_value >= 800000
+  AND (
+    1 = 1
+        or a.market = 'SECONDARY'
+        or a.market = 'PRIMARY'
+        or a.market = ''
+    )
+  AND (
+    1 = 1
+        or a.advertiser_type = 'private'
+        or a.advertiser_type= 'business'
+    )
+  AND (
+    1 = 1
+        or a.property_condition = 'READY_TO_USE'
+        or a.property_condition = 'TO_COMPLETION'
+        or a.property_condition = 'TO_RENOVATION'
+        or a.property_condition is null
+    )
+GROUP BY a.id
+ORDER BY features_count DESC,
+         equipment_count DESC,
+         conveniences_count DESC,
+         extra_areas_count DESC,
 
 -- Mieszkania z największą liczbą cech i udogodnień
 SELECT

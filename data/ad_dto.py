@@ -2,7 +2,65 @@ import dataclasses
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from enum import Enum
+from typing import List, Dict
+from functools import cached_property
+import re
+from typing import Optional, Type, TypeVar
+
+T = TypeVar("T")
+
+
+def parse_float(value: str) -> Optional[float]:
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    if not value:
+        return None
+
+    value = value.replace(" ", "")
+    value = value.replace(",", ".")
+
+    match = re.search(r"-?\d+(?:\.\d+)?", value)
+    if not match:
+        return None
+
+    try:
+        return float(match.group())
+    except ValueError:
+        return None
+
+
+class CharacteristicKey(str, Enum):
+    BUILD_YEAR = "build_year"
+    BUILDING_FLOORS_NUM = "building_floors_num"
+    BUILDING_MATERIAL = "building_material"
+    BUILDING_OWNERSHIP = "building_ownership"
+    BUILDING_TYPE = "building_type"
+    CONSTRUCTION_STATUS = "construction_status"
+    DEPOSIT = "deposit"
+    ENERGY_CERTIFICATE = "energy_certificate"
+    FLAT_NUMBER = "flat_number"
+    FLAT_PROJECTION = "flat_projection"
+    FLOOR_NO = "floor_no"
+    FLOORS_NUM = "floors_num"
+    FREE_FROM = "free_from"
+    GARRET_TYPE = "garret_type"
+    HEATING = "heating"
+    LOCATION = "location"
+    M = "m"
+    MARKET = "market"
+    PRICE = "price"
+    PRICE_PER_M = "price_per_m"
+    REMOTE_SERVICES = "remote_services"
+    RENT = "rent"
+    ROOF_TYPE = "roof_type"
+    ROOFING = "roofing"
+    ROOMS_NUM = "rooms_num"
+    TERRAIN_AREA = "terrain_area"
+    WINDOWS_TYPE = "windows_type"
 
 
 @dataclass
@@ -298,6 +356,22 @@ class CharacteristicDto:
     localized_value: str
     currency: str
 
+    def get_value(self, cast_type: Type[T] = str) -> Optional[T]:
+        return self.__cast_value(self.value, cast_type)
+
+    def get_localized_value(self, cast_type: Type[T] = str) -> Optional[T]:
+        return self.__cast_value(self.localized_value, cast_type)
+
+    @staticmethod
+    def __cast_value(str_value: str, cast_type: Type[T] = str) -> Optional[T]:
+        if cast_type is float:
+            return parse_float(str_value)
+
+        try:
+            return cast_type(str_value)
+        except (ValueError, TypeError):
+            return None
+
     @classmethod
     def from_json(cls, data: dict) -> 'CharacteristicDto':
         return cls(
@@ -334,6 +408,13 @@ class AdDto:
     features: List[str]
     images: List[ImageDto]
     characteristics: List[CharacteristicDto]
+
+    @cached_property
+    def characteristic_by_key(self) -> Dict[str, CharacteristicDto]:
+        return {c.key: c for c in self.characteristics}
+
+    def get_characteristic(self, key: CharacteristicKey) -> Optional[CharacteristicDto]:
+        return self.characteristic_by_key.get(key.value)
 
     def __str__(self):
         dictionary = dataclasses.asdict(self)

@@ -45,11 +45,5 @@ class OtodomScraper:
 
 if __name__ == "__main__":
     _scraper = OtodomScraper()
-    _ad_old_url = "https://www.otodom.pl/pl/oferta/rezerwacja-mieszkanie-wysoki-standard-blisko-uczelni-medycznej-ID4znz8"
-    _ad_url = "https://www.otodom.pl/pl/oferta/nowe-2-pokoje-parter-0-prowizji-bez-pcc-ID4zjGQ"
-    _ad_house_sale_url = "https://www.otodom.pl/pl/oferta/ustronna-naleczowska-kameralna-inwestycja-lublin-ID4zw63"
-    _search_url = "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/lubelskie/lublin/lublin/lublin?page=4&limit=36&by=DEFAULT&direction=DESC&priceMax=1000000"
-    _ad_scrape = _scraper.scrape_ad(_ad_old_url)
-    print(_ad_scrape)
-    # _ad_search = _scraper.scrape_search(_search_url)
-    # print(_ad_search)
+    _ad_url = "https://www.otodom.pl/pl/oferta/segment-105-m121-m-calk-ogrod-las-200-m-skm-1-2-km-szkola-690m-ID4A5e0"
+    _ad_scrape = _scraper.scrape_ad(_ad_url)
