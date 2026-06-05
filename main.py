@@ -255,7 +255,10 @@ def main(
         price_to=max_price if max_price else None,
     )
 
-    scrape(urls)
+    while True:
+        scrape(urls)
+        logger.info("All listings have been scraped. Restarting scraping cycle in 60 seconds...")
+        sleep(60)
 
 
 if __name__ == '__main__':
