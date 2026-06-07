@@ -11,6 +11,11 @@ from typing import Optional, Type, TypeVar
 T = TypeVar("T")
 
 
+def parse_datetime(value: str) -> datetime:
+    # Python 3.10's datetime.fromisoformat does not accept a trailing "Z".
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
 def parse_float(value: str) -> Optional[float]:
     if value is None:
         return None
@@ -433,8 +438,8 @@ class AdDto:
             url=ad['url'],
             title=ad['title'],
             description=ad['description'],
-            created_at=datetime.fromisoformat(ad['createdAt']),
-            modified_at=datetime.fromisoformat(ad['modifiedAt']),
+            created_at=parse_datetime(ad['createdAt']),
+            modified_at=parse_datetime(ad['modifiedAt']),
             status=ad['status'],
             market=ad['market'],
             advertiser_type=ad['advertiserType'],
