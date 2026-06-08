@@ -33,7 +33,7 @@ class OtodomScraper:
         try:
             response = self.__scraper.get(url)
             if response.status_code not in [200, 410]:
-                raise Exception(f"Error getting page: {response.status_code} - {url}")
+                raise Exception(f"Error getting page: {response.status_code} - {response.text} - {url}")
             text = response.text
             soup = BeautifulSoup(text, 'html.parser')
             ad_json_text = soup.find(name='script', attrs={'type': 'application/json'})

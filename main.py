@@ -201,6 +201,8 @@ class ScrapingContext:
             #     query = query.filter(Ad.object_type.in_(object_types))
             # if offer_types:
             #     query = query.filter(Ad.offer_type.in_(offer_types))
+            # Start from the stalest ads first
+            query = query.order_by(Ad.modified_at.asc())
             ad_ids = [row.id for row in query.all()]
 
         logger.info(f"Found {len(ad_ids)} ads in DB to verify")
