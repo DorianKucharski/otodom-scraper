@@ -181,6 +181,10 @@ class Ad(Base):
     market: Mapped[Optional[str]] = mapped_column(String(50))
     advertiser_type: Mapped[Optional[str]] = mapped_column(String(50))
 
+    # Not present in the scraped ad JSON - derived from the SearchUrl the ad was found under
+    offer_type: Mapped[Optional[str]] = mapped_column(String(50))
+    object_type: Mapped[Optional[str]] = mapped_column(String(50))
+
     price_value: Mapped[int] = mapped_column(Integer, nullable=False)
     price_currency: Mapped[str] = mapped_column(String(10), default='PLN')
     price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
@@ -268,6 +272,8 @@ class Ad(Base):
         Index('idx_ads_area_value', 'area_value'),
         Index('idx_ads_market', 'market'),
         Index('idx_ads_status', 'status'),
+        Index('idx_ads_offer_type', 'offer_type'),
+        Index('idx_ads_object_type', 'object_type'),
         Index('idx_ads_city_id', 'city_id'),
         Index('idx_ads_district_id', 'district_id'),
         Index('idx_ads_property_type', 'property_type'),
@@ -284,11 +290,13 @@ class Ad(Base):
         Index('idx_ads_city_type_price', 'city_id', 'property_type', 'price_value'),
     )
 
-    def update(self, ad_data: AdDto):
+    def update(self, ad_data: AdDto, offer_type: Optional[str] = None, object_type: Optional[str] = None):
         self.title = ad_data.title
         self.url = ad_data.url
         self.description = ad_data.description
         self.status = ad_data.status
+        self.offer_type = offer_type
+        self.object_type = object_type
         self.price_value = ad_data.price.value
         self.price_currency = ad_data.price.currency
         self.price_per_m2 = ad_data.price.per_m2
@@ -396,14 +404,23 @@ class Ad(Base):
         return f"<Ad(id={self.id}, title={self.title[:30]}...)>"
 
     @classmethod
-    def from_dataclass(cls, ad_data: AdDto) -> 'Ad':
+    def from_dataclass(
+            cls,
+            ad_data: AdDto,
+            offer_type: Optional[str] = None,
+            object_type: Optional[str] = None
+    ) -> 'Ad':
+
+        location = ad_data.location
+        address = location.address if location else None
+        coordinates = location.coordinates if location else None
 
         ad = cls(
             owner_id=ad_data.owner.id if ad_data.owner else None,
-            province_id=ad_data.location.address.province.id if ad_data.location.address.province else None,
-            county_id=ad_data.location.address.county.id if ad_data.location.address.county else None,
-            city_id=ad_data.location.address.city.id if ad_data.location.address.city else None,
-            district_id=ad_data.location.address.district.id if ad_data.location.address.district else None,
+            province_id=address.province.id if address and address.province else None,
+            county_id=address.county.id if address and address.county else None,
+            city_id=address.city.id if address and address.city else None,
+            district_id=address.district.id if address and address.district else None,
 
             id=ad_data.id,
             public_id=ad_data.public_id if ad_data.public_id else None,
@@ -416,14 +433,16 @@ class Ad(Base):
             status=ad_data.status,
             market=ad_data.market,
             advertiser_type=ad_data.advertiser_type,
+            offer_type=offer_type,
+            object_type=object_type,
             price_value=ad_data.price.value,
             price_currency=ad_data.price.currency,
             price_per_m2=ad_data.price.per_m2,
-            latitude=ad_data.location.coordinates.latitude,
-            longitude=ad_data.location.coordinates.longitude,
-            location_point=cls._create_location_point(ad_data.location.coordinates),
-            street=ad_data.location.address.street.name if ad_data.location.address.street else None,
-            postal_code=ad_data.location.address.postal_code,
+            latitude=coordinates.latitude if coordinates else None,
+            longitude=coordinates.longitude if coordinates else None,
+            location_point=cls._create_location_point(coordinates) if coordinates else None,
+            street=address.street.name if address and address.street else None,
+            postal_code=address.postal_code if address else None,
         )
 
         ad._set_properties(ad_data)

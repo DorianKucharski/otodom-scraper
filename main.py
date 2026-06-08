@@ -70,10 +70,10 @@ class ScrapingContext:
                 sleep(10)
         raise exception
 
-    def scrape_ad(self, url: str):
-        return self.with_retry(self.__scrape_ad, url)
+    def scrape_ad(self, url: str, offer_type: OfferType, object_type: ObjectType):
+        return self.with_retry(self.__scrape_ad, url, offer_type.name, object_type.name)
 
-    def __scrape_ad(self, url: str):
+    def __scrape_ad(self, url: str, offer_type: str, object_type: str):
         is_update_enabled: bool = self.__update_if_older_than_days is not None
 
         if url is None or url == "":
@@ -89,7 +89,10 @@ class ScrapingContext:
                     if saved_ad.should_update(self.__update_if_older_than_days):
                         logger.info(f"Updating ad with url: {url} - last update was at - {saved_ad.modified_at}")
                         ad_dto: AdDto = self.__scraper.scrape_ad(url)
-                        saved_ad.update(ad_dto)
+                        if ad_dto:
+                            saved_ad.update(ad_dto, offer_type, object_type)
+                        else:
+                            logger.warning(f"URL {url} could not be scraped")
                     else:
                         logger.info(f"Skipping update of url: {url} - last update was at - {saved_ad.modified_at}")
             else:
@@ -97,67 +100,76 @@ class ScrapingContext:
             return
 
         ad_dto: AdDto = self.__scraper.scrape_ad(url)
-        if ad_dto.id in self.existing_ad_ids:
-            with self.__database_manager.get_session() as session:
-                saved_ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
+        if ad_dto:
+            if ad_dto.id in self.existing_ad_ids:
+                with self.__database_manager.get_session() as session:
+                    saved_ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
 
-                if saved_ad is not None:
-                    saved_ad.update(ad_dto)
-                    self.existing_ad_urls.add(ad_dto.url)
-                    logger.info(f"Updating ad - id: {ad_dto.id} - url: {ad_dto.url}")
-                    return
+                    if saved_ad is not None:
+                        saved_ad.update(ad_dto, offer_type, object_type)
+                        self.existing_ad_urls.add(ad_dto.url)
+                        logger.info(f"Updating ad - id: {ad_dto.id} - url: {ad_dto.url}")
+                        return
 
-            logger.warning(f"Ad id {ad_dto.id} found in cache but not in DB")
-            self.__save_new_ad(ad_dto)
-            self.existing_ad_ids.add(ad_dto.id)
-            self.existing_ad_urls.add(ad_dto.url)
-            logger.info(f"Saved ad with ID: {ad_dto.id} - url: {ad_dto.url}")
+                logger.warning(f"Ad id {ad_dto.id} found in cache but not in DB")
+                self.__save_new_ad(ad_dto, offer_type, object_type)
+                self.existing_ad_ids.add(ad_dto.id)
+                self.existing_ad_urls.add(ad_dto.url)
+                logger.info(f"Saved ad with ID: {ad_dto.id} - url: {ad_dto.url}")
+            else:
+                self.__save_new_ad(ad_dto, offer_type, object_type)
+                self.existing_ad_ids.add(ad_dto.id)
+                self.existing_ad_urls.add(ad_dto.url)
+                logger.info(f"Saved ad with ID: {ad_dto.id} - url: {ad_dto.url}")
         else:
-            self.__save_new_ad(ad_dto)
-            self.existing_ad_ids.add(ad_dto.id)
-            self.existing_ad_urls.add(ad_dto.url)
-            logger.info(f"Saved ad with ID: {ad_dto.id} - url: {ad_dto.url}")
+            logger.warning(f"URL {url} could not be scraped")
 
-    def __save_new_ad(self, ad: AdDto):
+    def __save_new_ad(self, ad: AdDto, offer_type: str, object_type: str):
         try:
             with self.__database_manager.get_session() as session:
-                self._ensure_entity(
-                    session,
-                    self.existing_owner_ids,
-                    ad.owner.id,
-                    lambda: Owner.from_dataclass(ad.owner)
-                )
+                if ad.owner:
+                    self._ensure_entity(
+                        session,
+                        self.existing_owner_ids,
+                        ad.owner.id,
+                        lambda: Owner.from_dataclass(ad.owner)
+                    )
 
-                self._ensure_entity(
-                    session,
-                    self.existing_province_ids,
-                    ad.location.address.province.id,
-                    lambda: Province.from_dataclass(ad.location.address.province)
-                )
+                address = ad.location.address if ad.location else None
 
-                self._ensure_entity(
-                    session,
-                    self.existing_county_ids,
-                    ad.location.address.county.id,
-                    lambda: County.from_dataclass(ad.location.address.county)
-                )
+                if address and address.province:
+                    self._ensure_entity(
+                        session,
+                        self.existing_province_ids,
+                        address.province.id,
+                        lambda: Province.from_dataclass(address.province)
+                    )
 
-                self._ensure_entity(
-                    session,
-                    self.existing_city_ids,
-                    ad.location.address.city.id,
-                    lambda: City.from_dataclass(ad.location.address.city)
-                )
+                if address and address.county:
+                    self._ensure_entity(
+                        session,
+                        self.existing_county_ids,
+                        address.county.id,
+                        lambda: County.from_dataclass(address.county)
+                    )
 
-                if ad.location.address.district:
+                if address and address.city:
+                    self._ensure_entity(
+                        session,
+                        self.existing_city_ids,
+                        address.city.id,
+                        lambda: City.from_dataclass(address.city)
+                    )
+
+                if address and address.district:
                     self._ensure_entity(
                         session,
                         self.existing_district_ids,
-                        ad.location.address.district.id,
-                        lambda: District.from_dataclass(ad.location.address.district)
+                        address.district.id,
+                        lambda: District.from_dataclass(address.district)
                     )
 
-                ad_model = Ad.from_dataclass(ad)
+                ad_model = Ad.from_dataclass(ad, offer_type, object_type)
                 session.merge(ad_model)
         except Exception as e:
             logger.error(f"Error processing ad: {ad.url} - {e}")
@@ -176,7 +188,7 @@ def scrape(urls: list[SearchUrl]):
             url.page_number = page_number
             search_result = scraper.scrape_search(url.build())
             for ad_item in search_result.items:
-                scraping_context.scrape_ad(ad_item.url)
+                scraping_context.scrape_ad(ad_item.url, url.offer_type, url.object_type)
 
             if page_number >= search_result.total_pages:
                 break

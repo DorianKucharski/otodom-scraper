@@ -147,10 +147,10 @@ class StreetDto:
         if not data:
             return None
         return cls(
-            id=int(data['id']) if data['id'] else None,
-            code=data['code'],
-            name=data['name'],
-            number=data['number']
+            id=int(data['id']) if data.get('id') else None,
+            code=data.get('code'),
+            name=data.get('name'),
+            number=data.get('number')
         )
 
 
