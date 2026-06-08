@@ -175,6 +175,57 @@ class ScrapingContext:
             logger.error(f"Error processing ad: {ad.url} - {e}")
             raise
 
+    def update_existing_ads(
+            self,
+            city: Optional[str] = None,
+            min_price: Optional[int] = None,
+            max_price: Optional[int] = None,
+            object_types: Optional[list[str]] = None,
+            offer_types: Optional[list[str]] = None,
+    ):
+        """Re-scrape ads already stored in the DB and refresh them (status, price, ...).
+
+        Used to detect listings that are no longer active - the scraper still returns
+        the ad's status, so Ad.update() picks up the change.
+        """
+        with self.__database_manager.get_session() as session:
+            query = session.query(Ad.id)
+            if city:
+                query = query.join(Ad.city).filter(City.name.ilike(city))
+            if min_price is not None:
+                query = query.filter(Ad.price_value >= min_price)
+            if max_price is not None:
+                query = query.filter(Ad.price_value <= max_price)
+            # TODO: enable once offer_type/object_type are populated in the DB
+            # if object_types:
+            #     query = query.filter(Ad.object_type.in_(object_types))
+            # if offer_types:
+            #     query = query.filter(Ad.offer_type.in_(offer_types))
+            ad_ids = [row.id for row in query.all()]
+
+        logger.info(f"Found {len(ad_ids)} ads in DB to verify")
+        for ad_id in ad_ids:
+            self.update_existing_ad(ad_id)
+
+    def update_existing_ad(self, ad_id: int):
+        return self.with_retry(self.__update_existing_ad, ad_id)
+
+    def __update_existing_ad(self, ad_id: int):
+        with self.__database_manager.get_session() as session:
+            saved_ad = session.query(Ad).filter(Ad.id == ad_id).first()
+            if saved_ad is None:
+                return
+
+            url = saved_ad.url
+            ad_dto: AdDto = self.__scraper.scrape_ad(url)
+            if ad_dto is None:
+                logger.warning(f"Ad {ad_id} could not be scraped - url: {url}")
+                return
+
+            # Preserve offer_type/object_type - they are not part of the scraped JSON
+            saved_ad.update(ad_dto, saved_ad.offer_type, saved_ad.object_type)
+            logger.info(f"Updated ad {ad_id} - status: {ad_dto.status} - url: {url}")
+
 
 def scrape(urls: list[SearchUrl]):
     scraper = OtodomScraper()
@@ -195,9 +246,48 @@ def scrape(urls: list[SearchUrl]):
             page_number += 1
 
 
+def update_ads(
+        city: Optional[str] = None,
+        min_price: Optional[int] = None,
+        max_price: Optional[int] = None,
+        object_types: Optional[list[ObjectType]] = None,
+        offer_types: Optional[list[OfferType]] = None,
+):
+    scraper = OtodomScraper()
+    db_manager = DatabaseManager()
+    db_manager.create_all_tables()
+    scraping_context = ScrapingContext(db_manager, scraper)
+
+    scraping_context.update_existing_ads(
+        city=city,
+        min_price=min_price,
+        max_price=max_price,
+        object_types=[o.name for o in object_types] if object_types else None,
+        offer_types=[o.name for o in offer_types] if offer_types else None,
+    )
+
+
 def drop_tables():
     db_manager = DatabaseManager()
     db_manager.drop_all_tables()
+
+
+def build_object_types(houses: bool, apartments: bool) -> list[ObjectType]:
+    object_types = []
+    if houses:
+        object_types.append(ObjectType.HOUSE)
+    if apartments:
+        object_types.append(ObjectType.APARTMENT)
+    return object_types
+
+
+def build_offer_types(sale: bool, rent: bool) -> list[OfferType]:
+    offer_types = []
+    if sale:
+        offer_types.append(OfferType.SALE)
+    if rent:
+        offer_types.append(OfferType.RENT)
+    return offer_types
 
 
 def build_urls(
@@ -209,17 +299,8 @@ def build_urls(
         price_from: Optional[int] = None,
         price_to: Optional[int] = None,
 ) -> list[SearchUrl]:
-    object_types = []
-    if houses:
-        object_types.append(ObjectType.HOUSE)
-    if apartments:
-        object_types.append(ObjectType.APARTMENT)
-
-    offer_types = []
-    if sale:
-        offer_types.append(OfferType.SALE)
-    if rent:
-        offer_types.append(OfferType.RENT)
+    object_types = build_object_types(houses, apartments)
+    offer_types = build_offer_types(sale, rent)
 
     return [
         SearchUrl(
@@ -246,11 +327,22 @@ def main(
         district: str = typer.Option(None, '--district'),
         min_price: int = typer.Option(0, '--min-price'),
         max_price: int = typer.Option(1000000, '--max-price'),
+        scrape_enabled: bool = typer.Option(
+            True, '--scrape/--no-scrape',
+            help="Scrape search results to discover and save new ads."
+        ),
+        update_enabled: bool = typer.Option(
+            True, '--update/--no-update',
+            help="Re-scrape ads already in the DB to refresh their status."
+        ),
 ):
     if district and not city:
         raise typer.BadParameter("--district requires --city")
     if city and not voivodeship:
         raise typer.BadParameter("--city requires --voivodeship")
+    if not scrape_enabled and not update_enabled:
+        raise typer.BadParameter("At least one of --scrape / --update must be enabled")
+
     location = Location(
         voivodeship=voivodeship,
         city=city,
@@ -268,8 +360,21 @@ def main(
     )
 
     while True:
-        scrape(urls)
-        logger.info("All listings have been scraped. Restarting scraping cycle in 60 seconds...")
+        if scrape_enabled:
+            scrape(urls)
+            logger.info("All listings have been scraped.")
+
+        if update_enabled:
+            update_ads(
+                city=city,
+                min_price=min_price if min_price else None,
+                max_price=max_price if max_price else None,
+                object_types=build_object_types(houses, apartments),
+                offer_types=build_offer_types(sale, rent),
+            )
+            logger.info("All existing ads have been verified.")
+
+        logger.info("Cycle complete. Restarting in 60 seconds...")
         sleep(60)
 
 
