@@ -1,0 +1,20 @@
+[project]
+name = "otodom-scraper"
+version = "0.1.0"
+description = "Scraper for otodom.pl real-estate listings into PostgreSQL/PostGIS"
+readme = "CLAUDE.md"
+requires-python = ">=3.10"
+dependencies = [
+    "sqlalchemy>=2.0.23",
+    "geoalchemy2>=0.14.3",
+    "psycopg2-binary>=2.9.9",
+    "cloudscraper>=1.2.71",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.0",
+    "python-dotenv>=1.0.0",
+    "typer~=0.24.1",
+]
+
+[tool.uv]
+package = false
