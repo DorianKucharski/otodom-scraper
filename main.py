@@ -5,7 +5,7 @@ from typing import Optional
 import typer
 
 from data.ad_dto import AdDto
-from data.models import Ad, County, Province, City, District, Owner
+from data.models import Ad, AdStatus, County, Province, City, District, Owner
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
 from database import DatabaseManager
 from otodom_scraper import OtodomScraper
@@ -81,25 +81,28 @@ class ScrapingContext:
 
         if url in self.existing_ad_urls:
             if is_update_enabled:
+                if self.__update_if_older_than_days is None:
+                    raise Exception("Some shit to make IDE happy")
                 with self.__database_manager.get_session() as session:
-                    saved_ad = session.query(Ad).filter(Ad.url == url).first()
+                    saved_ad: Ad | None = session.query(Ad).filter(Ad.url == url).first()
                     if saved_ad is None:
                         logger.warning(f"URL {url} found in cache but not in DB")
                         return
                     if saved_ad.should_update(self.__update_if_older_than_days):
                         logger.info(f"Updating ad with url: {url} - last update was at - {saved_ad.modified_at}")
-                        ad_dto: AdDto = self.__scraper.scrape_ad(url)
+                        ad_dto: AdDto | None = self.__scraper.scrape_ad(url)
                         if ad_dto:
                             saved_ad.update(ad_dto, offer_type, object_type)
                         else:
-                            logger.warning(f"URL {url} could not be scraped")
+                            saved_ad.outdate()
+                            logger.warning(f"Marking as outdated - {saved_ad.id} - {url}")
                     else:
                         logger.info(f"Skipping update of url: {url} - last update was at - {saved_ad.modified_at}")
             else:
                 logger.info(f"URL {url} already exists, skipping...")
             return
 
-        ad_dto: AdDto = self.__scraper.scrape_ad(url)
+        ad_dto: AdDto | None= self.__scraper.scrape_ad(url)
         if ad_dto:
             if ad_dto.id in self.existing_ad_ids:
                 with self.__database_manager.get_session() as session:
@@ -189,7 +192,7 @@ class ScrapingContext:
         the ad's status, so Ad.update() picks up the change.
         """
         with self.__database_manager.get_session() as session:
-            query = session.query(Ad.id)
+            query = session.query(Ad.id).filter(Ad.status == AdStatus.ACTIVE)
             if city:
                 query = query.join(Ad.city).filter(City.name.ilike(city))
             if min_price is not None:
@@ -214,14 +217,15 @@ class ScrapingContext:
 
     def __update_existing_ad(self, ad_id: int):
         with self.__database_manager.get_session() as session:
-            saved_ad = session.query(Ad).filter(Ad.id == ad_id).first()
+            saved_ad: Ad | None = session.query(Ad).filter(Ad.id == ad_id).first()
             if saved_ad is None:
                 return
 
             url = saved_ad.url
-            ad_dto: AdDto = self.__scraper.scrape_ad(url)
+            ad_dto: AdDto | None = self.__scraper.scrape_ad(url)
             if ad_dto is None:
-                logger.warning(f"Ad {ad_id} could not be scraped - url: {url}")
+                saved_ad.outdate()
+                logger.warning(f"Marking as outdated - {ad_id} - {url}")
                 return
 
             # Preserve offer_type/object_type - they are not part of the scraped JSON

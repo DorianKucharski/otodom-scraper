@@ -1,15 +1,24 @@
+import enum
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import (
-    BigInteger, Integer, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, func
+    BigInteger, Integer, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum, func
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from .ad_dto import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto, \
     CharacteristicKey
+
+
+class AdStatus(str, enum.Enum):
+    ACTIVE = "active"
+    OUTDATED = "outdated"
+    REMOVED = "removed"
+    REMOVED_BY_PARENT_AD = "removed_by_parent_ad"
+    REMOVED_BY_USER = "removed_by_user"
 
 
 class Base(DeclarativeBase):
@@ -177,7 +186,15 @@ class Ad(Base):
         DateTime, server_default=func.current_timestamp()
     )
 
-    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum(
+            AdStatus,
+            native_enum=False,
+            length=50,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
     market: Mapped[Optional[str]] = mapped_column(String(50))
     advertiser_type: Mapped[Optional[str]] = mapped_column(String(50))
 
@@ -303,6 +320,10 @@ class Ad(Base):
         self.modified_at = datetime.now()
         self._set_properties(ad_data)
 
+    def outdate(self):
+        self.status = AdStatus.OUTDATED
+        self.modified_at = datetime.now()
+
     def should_update(self, update_if_older_than_days: int) -> bool:
         if update_if_older_than_days == 0:
             return True
@@ -343,7 +364,7 @@ class Ad(Base):
 
             for sec in ad_data.property.building_properties.security:
                 self.building_security.append(AdBuildingSecurity(security=sec))
-                
+
     def _set_properties(self, ad_data: AdDto):
         if ad_data.property:
             self.rent_value = ad_data.property.rent.value if ad_data.property.rent else None

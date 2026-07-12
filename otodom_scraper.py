@@ -45,5 +45,6 @@ class OtodomScraper:
 
 if __name__ == "__main__":
     _scraper = OtodomScraper()
-    _ad_url = "https://www.otodom.pl/pl/oferta/segment-105-m121-m-calk-ogrod-las-200-m-skm-1-2-km-szkola-690m-ID4A5e0"
+    _ad_url = "https://www.otodom.pl/pl/oferta/2-pokoje-prestizowe-wykonczone-ID4zXNg"
     _ad_scrape = _scraper.scrape_ad(_ad_url)
+    print(_ad_scrape)
