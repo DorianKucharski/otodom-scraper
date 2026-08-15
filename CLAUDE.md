@@ -127,6 +127,14 @@ Two stages, both writing one row per ad into tables the scraper never touches (`
 - **Adding a score** means: `SCORE_DEFINITIONS` in `enricher/schema.py`, a column + index on `AdEvaluation`, a `min_<name>` field on `AdSearchQuery`, and a label in `web/src/api/types.ts`. `SCORE_FIELD_NAMES` drives the runner, the API filter loop and the sort enum, so those need no edit.
 - `district_price_stats` (materialized view, refreshed by the enricher each cycle) feeds the district median into the evaluation prompt. Without it "opłacalność" would be guesswork.
 
+## Service monitoring (`monitoring/`)
+
+Both long-running processes report into the database so the UI can show status and logs without a Docker socket (the API container is exposed on a port with no authentication; mounting the socket there would be root on the host).
+
+- `ServiceHeartbeatWriter.start()` spawns a daemon thread that rewrites the last reported state every 30 s, so a multi-hour scrape does not look like a hang. `report()` changes the state and writes immediately. `STALE_AFTER_SECONDS` in `monitoring/services.py` decides when the API calls a service stale.
+- `DatabaseLogHandler` is attached to the root logger and buffers records, flushing on size or age. `service_logs` is a ring buffer trimmed to the newest 2000 rows per service. A database failure prints to stderr and pauses writing for a minute rather than raising inside logging.
+- Adding a service means a constant in `monitoring/services.py`, plus `start()` and `attach_database_logging()` in its entrypoint. `/api/services` picks it up from `_KNOWN_SERVICES`.
+
 ## The search API (`api/`)
 
 - `api/query.py` is the only place that turns filters into SQL; `api/schemas.py` is the HTTP contract (pydantic lives at the boundary only, dataclasses everywhere else).

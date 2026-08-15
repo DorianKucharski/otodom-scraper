@@ -10,7 +10,9 @@ import type { DetailVariant } from './components/AdDetailPanel'
 import { FilterPanel } from './components/FilterPanel'
 import { MapView } from './components/MapView'
 import { SavedSearches } from './components/SavedSearches'
+import { StatusView } from './components/StatusView'
 
+type AppTab = 'search' | 'status'
 type ResultsView = 'grid' | 'map'
 type GridDensity = 'large' | 'medium' | 'small'
 
@@ -57,6 +59,7 @@ export function App() {
   const [detailVariant, setDetailVariant] = useState<DetailVariant>(
     () => (initialParams.get('detail') === 'full' ? 'full' : 'panel'),
   )
+  const [tab, setTab] = useState<AppTab>(() => (initialParams.get('tab') === 'status' ? 'status' : 'search'))
 
   useEffect(() => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, density)
@@ -68,8 +71,11 @@ export function App() {
       params.set('ad', String(selectedAdId))
       params.set('detail', detailVariant)
     }
+    if (tab !== 'search') {
+      params.set('tab', tab)
+    }
     window.history.replaceState(null, '', `${window.location.pathname}?${params}`)
-  }, [query, selectedAdId, detailVariant])
+  }, [query, selectedAdId, detailVariant, tab])
 
   const { data: facets } = useQuery({ queryKey: ['facets'], queryFn: fetchFacets, staleTime: 5 * 60 * 1000 })
   const { data, isFetching, error } = useQuery({
@@ -88,7 +94,32 @@ export function App() {
     [data, query.limit],
   )
 
-  const showFullDetail = detailVariant === 'full' && selectedAdId !== null
+  const showFullDetail = tab === 'search' && detailVariant === 'full' && selectedAdId !== null
+
+  const tabs = (
+    <nav className="app-tabs">
+      <button type="button" className={tab === 'search' ? 'active' : ''} onClick={() => setTab('search')}>
+        Wyszukiwarka
+      </button>
+      <button type="button" className={tab === 'status' ? 'active' : ''} onClick={() => setTab('status')}>
+        Status
+      </button>
+    </nav>
+  )
+
+  if (tab === 'status') {
+    return (
+      <div className="app app-single">
+        <main className="results">
+          <header className="results-toolbar">
+            {tabs}
+            <div className="results-count results-count-trailing">Podgląd scrapera i enrichera</div>
+          </header>
+          <StatusView />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className={`app${showFullDetail ? ' app-full-detail' : ''}`}>
@@ -104,6 +135,7 @@ export function App() {
       {!showFullDetail && (
       <main className="results">
         <header className="results-toolbar">
+          {tabs}
           <div className="results-count">
             {isFetching ? 'Szukam...' : `${data?.total ?? 0} ogłoszeń`}
           </div>

@@ -242,6 +242,33 @@ class SavedSearchResponse(BaseModel):
     updated_at: datetime
 
 
+class ServiceStatusResponse(BaseModel):
+    service: str
+    label: str
+    status: str
+    reported_status: Optional[str] = None
+    phase: Optional[str] = None
+    detail: Optional[dict] = None
+    command: Optional[str] = None
+    started_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    seconds_since_update: Optional[int] = None
+    is_alive: bool
+
+
+class ServiceLogEntry(BaseModel):
+    id: int
+    level: str
+    logger_name: str
+    message: str
+    logged_at: datetime
+
+
+class ServiceLogsResponse(BaseModel):
+    service: str
+    entries: list[ServiceLogEntry]
+
+
 class DistrictStatsResponse(BaseModel):
     city: Optional[str]
     district: Optional[str]

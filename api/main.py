@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routers import ads, facets, saved_searches, stats
+from .routers import ads, facets, saved_searches, services, stats
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(ads.router)
     app.include_router(facets.router)
     app.include_router(saved_searches.router)
+    app.include_router(services.router)
     app.include_router(stats.router)
 
     @app.get("/api/health")

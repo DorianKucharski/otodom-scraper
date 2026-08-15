@@ -1,13 +1,17 @@
 import logging
+import sys
 from time import sleep
 from typing import Optional
 
 import typer
 
 from data.ad_dto import AdDto
-from data.models import Ad, AdStatus, County, Province, City, District, Owner
+from data.models import Ad, AdStatus, County, Province, City, District, Owner, ServiceStatus
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
 from database import DatabaseManager
+from monitoring.heartbeat import ServiceHeartbeatWriter
+from monitoring.log_handler import attach_database_logging
+from monitoring.services import SCRAPER_SERVICE
 from otodom_scraper import OtodomScraper
 
 logging.basicConfig(
@@ -365,12 +369,20 @@ def main(
         price_to=max_price if max_price else None,
     )
 
+    database_manager = DatabaseManager()
+    database_manager.create_all_tables()
+    heartbeat = ServiceHeartbeatWriter(database_manager, SCRAPER_SERVICE, " ".join(sys.argv)).start()
+    attach_database_logging(database_manager, SCRAPER_SERVICE)
+
     while True:
         if scrape_enabled:
+            heartbeat.report(ServiceStatus.RUNNING, phase="zbieranie nowych ogłoszeń",
+                             detail={"adresy_wyszukiwania": len(urls)})
             scrape(urls)
             logger.info("All listings have been scraped.")
 
         if update_enabled:
+            heartbeat.report(ServiceStatus.RUNNING, phase="odświeżanie zapisanych ogłoszeń")
             update_ads(
                 city=city,
                 min_price=min_price if min_price else None,
@@ -381,6 +393,7 @@ def main(
             logger.info("All existing ads have been verified.")
 
         logger.info("Cycle complete. Restarting in 60 seconds...")
+        heartbeat.report(ServiceStatus.IDLE, phase="przerwa między cyklami")
         sleep(60)
 
 

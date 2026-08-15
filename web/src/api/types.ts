@@ -235,3 +235,40 @@ export interface DistrictStats {
   median_area: number | null
   median_overall_score: number | null
 }
+
+export interface ServiceStatus {
+  service: string
+  label: string
+  status: string
+  reported_status: string | null
+  phase: string | null
+  detail: Record<string, unknown> | null
+  command: string | null
+  started_at: string | null
+  updated_at: string | null
+  seconds_since_update: number | null
+  is_alive: boolean
+}
+
+export interface ServiceLogEntry {
+  id: number
+  level: string
+  logger_name: string
+  message: string
+  logged_at: string
+}
+
+export interface ServiceLogs {
+  service: string
+  entries: ServiceLogEntry[]
+}
+
+export const SERVICE_STATUS_LABELS: Record<string, string> = {
+  starting: 'Uruchamianie',
+  running: 'Pracuje',
+  idle: 'Czeka',
+  failed: 'Błąd',
+  stopped: 'Zatrzymany',
+  stale: 'Brak sygnału',
+  unknown: 'Nigdy nie startował',
+}

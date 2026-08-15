@@ -173,6 +173,20 @@ Przebieg `--update` scrapera, który tylko odświeża `modified_at`, nie kosztuj
 | `ENRICHER_CONCURRENCY` | `4` | równoległych ogłoszeń |
 | `ENRICHER_CYCLE_PAUSE_SECONDS` | `300` | przerwa między cyklami |
 
+## Podgląd statusu i logów
+
+UI ma dwie zakładki: **Wyszukiwarka** i **Status**. Zakładka Status pokazuje:
+
+- lampkę i stan każdej usługi (Pracuje / Czeka / Brak sygnału / Zatrzymany), aktualny etap, czas od ostatniego sygnału, czas działania, statystyki ostatniego cyklu i komendę, z jaką proces wystartował,
+- logi obu usług, przełączane zakładkami, z filtrem poziomu, wyszukiwaniem po treści i wyborem liczby linii (200-2000).
+
+Nie wymaga to dostępu do gniazda Dockera. Scraper i enricher zapisują sygnał życia do tabeli `service_heartbeats`, a swoje logi do `service_logs`, skąd API je czyta. Dzięki temu podgląd działa też przy uruchomieniu spoza kontenerów.
+
+- Wątek w tle odświeża sygnał co 30 s, więc długi przebieg scrapowania nie wygląda na zawieszenie. Brak sygnału przez ponad 3 minuty oznacza zatrzymany albo zawieszony proces.
+- `service_logs` to bufor cykliczny: trzymane jest ostatnie 2000 linii na usługę, starsze są kasowane. Baza nie rośnie w nieskończoność.
+- Zapis logów nie może wywrócić procesu: przy błędzie bazy handler zrzuca komunikat na stderr i wstrzymuje zapisy na minutę.
+- `--dry-run` w enricherze nie zapisuje ani logów, ani sygnału życia.
+
 ## Zdjęcia: URL kontra pobieranie
 
 Domyślnie do modelu lecą same adresy zdjęć, a pobiera je API dostawcy. CDN otodomu potrafi taki request odrzucić:

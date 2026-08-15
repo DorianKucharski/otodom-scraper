@@ -5,6 +5,8 @@ import type {
   DistrictStats,
   Facets,
   SavedSearch,
+  ServiceLogs,
+  ServiceStatus,
 } from './types'
 
 const API_BASE = '/api'
@@ -151,4 +153,20 @@ export function createSavedSearch(name: string, query: AdSearchQuery): Promise<S
 
 export function deleteSavedSearch(savedSearchId: number): Promise<void> {
   return request<void>(`/saved-searches/${savedSearchId}`, { method: 'DELETE' })
+}
+
+export function fetchServices(): Promise<ServiceStatus[]> {
+  return request<ServiceStatus[]>('/services')
+}
+
+export function fetchServiceLogs(
+  service: string,
+  limit: number,
+  minLevel?: string,
+  search?: string,
+): Promise<ServiceLogs> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (minLevel) params.set('min_level', minLevel)
+  if (search) params.set('search', search)
+  return request<ServiceLogs>(`/services/${service}/logs?${params}`)
 }

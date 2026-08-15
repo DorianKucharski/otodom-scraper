@@ -826,6 +826,48 @@ class AdEvaluation(Base):
         return f"<AdEvaluation(ad_id={self.ad_id}, overall_score={self.overall_score})>"
 
 
+class ServiceStatus(str, enum.Enum):
+    STARTING = "starting"
+    RUNNING = "running"
+    IDLE = "idle"
+    FAILED = "failed"
+    STOPPED = "stopped"
+
+
+class ServiceHeartbeat(Base):
+    __tablename__ = 'service_heartbeats'
+
+    service: Mapped[str] = mapped_column(String(50), primary_key=True)
+    status: Mapped[str] = mapped_column(enum_column_type(ServiceStatus, 30), nullable=False)
+    phase: Mapped[Optional[str]] = mapped_column(String(100))
+    detail: Mapped[Optional[dict]] = mapped_column(JSONB)
+    command: Mapped[Optional[str]] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    def __repr__(self):
+        return f"<ServiceHeartbeat(service={self.service}, status={self.status})>"
+
+
+class ServiceLog(Base):
+    __tablename__ = 'service_logs'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    service: Mapped[str] = mapped_column(String(50), nullable=False)
+    level: Mapped[str] = mapped_column(String(20), nullable=False)
+    logger_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    logged_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('idx_service_logs_service_id', 'service', 'id'),
+        Index('idx_service_logs_logged_at', 'logged_at'),
+    )
+
+    def __repr__(self):
+        return f"<ServiceLog(service={self.service}, level={self.level})>"
+
+
 class SavedSearch(Base):
     __tablename__ = 'saved_searches'
 
