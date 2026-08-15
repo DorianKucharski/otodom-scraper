@@ -167,10 +167,33 @@ Przebieg `--update` scrapera, który tylko odświeża `modified_at`, nie kosztuj
 | `SCREENING_MODEL` | `claude-haiku-4-5` | |
 | `EVALUATION_MODEL` | `claude-sonnet-5` | |
 | `LLM_MAX_IMAGES` | `8` | główny czynnik kosztu etapu 2 |
+| `LLM_DOWNLOAD_IMAGES` | `false` | patrz niżej - ustaw `true`, jeśli CDN otodomu blokuje API |
 | `LLM_EFFORT` | `medium` | pomijany dla modeli, które go nie przyjmują (Haiku) |
 | `EVALUATION_PRICE_DRIFT_THRESHOLD` | `0.05` | |
 | `ENRICHER_CONCURRENCY` | `4` | równoległych ogłoszeń |
 | `ENRICHER_CYCLE_PAUSE_SECONDS` | `300` | przerwa między cyklami |
+
+## Zdjęcia: URL kontra pobieranie
+
+Domyślnie do modelu lecą same adresy zdjęć, a pobiera je API dostawcy. CDN otodomu potrafi taki request odrzucić:
+
+```
+Unable to download the file. Please verify the URL and try again.
+```
+
+Enricher radzi sobie z tym sam: po pierwszym takim błędzie pobiera zdjęcia przez `cloudscraper` (tak samo jak scraper) i wysyła je jako base64, a kolejne ogłoszenia w tym procesie idą od razu tą drogą. W logu zobaczysz:
+
+```
+The API could not reach the image URLs of ad 68006816, downloading images from now on.
+```
+
+Ten jeden nieudany request powtarza się po każdym restarcie kontenera. Żeby go uniknąć, ustaw w `.env`:
+
+```
+LLM_DOWNLOAD_IMAGES=true
+```
+
+Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli trochę ruchu i czasu, ale zero dodatkowych tokenów.
 
 ## Diagnostyka
 

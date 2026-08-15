@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Callable, Optional
 
@@ -13,6 +13,7 @@ from database import DatabaseManager
 from .ad_context import AdContext, build_ad_context
 from .config import EnricherConfig, cost_usd_for
 from .fingerprint import content_fingerprint, has_price_drifted
+from .image_fallback import complete_with_image_fallback
 from .image_source import ImageSource
 from .llm.client import LlmClient, LlmImage, LlmRequest, LlmResponse
 from .market_context import MarketContext
@@ -92,6 +93,7 @@ class EnrichmentRunner:
         self.__image_source = ImageSource(config)
         self.__screening_template = load_prompt_template(SCREENING_TEMPLATE_NAME)
         self.__evaluation_template = load_prompt_template(EVALUATION_TEMPLATE_NAME)
+        self.__images_must_be_downloaded = config.download_images
 
     @property
     def screening_prompt_version(self) -> str:
@@ -178,18 +180,10 @@ class EnrichmentRunner:
             if prepared is None:
                 return AdOutcome(ad_id=ad_id, status=SKIPPED)
 
-            response = self.__complete(
-                model=self.__config.evaluation_model,
-                effort=self.__config.evaluation_effort,
-                template=template,
-                context=prepared.context,
-                json_schema=EVALUATION_SCHEMA,
-                schema_name="ad_evaluation",
-                images=prepared.images,
-                description=f"Evaluating ad {ad_id}",
-            )
+            response, images = self.__complete_evaluation(prepared, template)
             result = EvaluationResult.from_payload(response.payload)
-            status = EvaluationStatus.OK if prepared.images else EvaluationStatus.NO_IMAGES
+            status = EvaluationStatus.OK if images else EvaluationStatus.NO_IMAGES
+            prepared = replace(prepared, images=images)
 
             if not dry_run:
                 self.__save(_evaluation_row(prepared, result, response, template.version,
@@ -202,6 +196,45 @@ class EnrichmentRunner:
                 self.__record_failure(ad_id, AdEvaluation, EvaluationStatus.FAILED, template.version,
                                       self.__config.evaluation_model, error)
             return AdOutcome(ad_id=ad_id, status=FAILED, error=str(error))
+
+    def __complete_evaluation(
+            self,
+            prepared: PreparedAd,
+            template: PromptTemplate,
+    ) -> tuple[LlmResponse, tuple[LlmImage, ...]]:
+        attempt = complete_with_image_fallback(
+            evaluate=lambda images: self.__evaluate_once(prepared, template, images),
+            download=self.__image_source.downloaded,
+            images=prepared.images,
+            images_must_be_downloaded=self.__images_must_be_downloaded,
+        )
+
+        if attempt.images_must_be_downloaded and not self.__images_must_be_downloaded:
+            logger.warning(
+                "The API could not reach the image URLs of ad %s, downloading images from now on. "
+                "Set LLM_DOWNLOAD_IMAGES=true to skip this failing attempt after a restart.",
+                prepared.ad_id,
+            )
+            self.__images_must_be_downloaded = True
+
+        return attempt.response, attempt.images
+
+    def __evaluate_once(
+            self,
+            prepared: PreparedAd,
+            template: PromptTemplate,
+            images: tuple[LlmImage, ...],
+    ) -> LlmResponse:
+        return self.__complete(
+            model=self.__config.evaluation_model,
+            effort=self.__config.evaluation_effort,
+            template=template,
+            context=replace(prepared.context, images_evaluated=len(images)),
+            json_schema=EVALUATION_SCHEMA,
+            schema_name="ad_evaluation",
+            images=images,
+            description=f"Evaluating ad {prepared.ad_id}",
+        )
 
     def __prepare_screening(self, ad_id: int, force: bool) -> Optional[PreparedAd]:
         with self.__database_manager.get_session() as session:
