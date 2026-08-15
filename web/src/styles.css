@@ -241,12 +241,22 @@ select {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  gap: 16px;
   padding: 16px;
   overflow-y: auto;
   flex: 1;
   align-content: start;
+  grid-auto-rows: min-content;
+}
+
+.results-grid-medium {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+}
+
+.results-grid-small {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
 }
 
 .results-error,
@@ -269,9 +279,9 @@ select {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   cursor: pointer;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
@@ -288,14 +298,24 @@ select {
 
 .ad-card-image {
   position: relative;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 2;
+  flex: 0 0 auto;
+  min-height: 180px;
   background: #eef1f5;
+  overflow: hidden;
+  border-radius: 9px 9px 0 0;
+}
+
+.results-grid-small .ad-card-image {
+  aspect-ratio: 4 / 3;
+  min-height: 140px;
 }
 
 .ad-card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 

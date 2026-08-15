@@ -11,6 +11,26 @@ import { MapView } from './components/MapView'
 import { SavedSearches } from './components/SavedSearches'
 
 type ResultsView = 'grid' | 'map'
+type GridDensity = 'large' | 'medium' | 'small'
+
+const DENSITY_STORAGE_KEY = 'otodom.grid-density'
+
+const DENSITY_OPTIONS: Array<{ value: GridDensity; label: string }> = [
+  { value: 'large', label: 'Duże' },
+  { value: 'medium', label: 'Średnie' },
+  { value: 'small', label: 'Małe' },
+]
+
+const DENSITY_CLASS: Record<GridDensity, string> = {
+  large: '',
+  medium: ' results-grid-medium',
+  small: ' results-grid-small',
+}
+
+function storedDensity(): GridDensity {
+  const stored = window.localStorage.getItem(DENSITY_STORAGE_KEY)
+  return DENSITY_OPTIONS.some((option) => option.value === stored) ? (stored as GridDensity) : 'large'
+}
 
 const SORT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'created_at', label: 'Data dodania' },
@@ -28,7 +48,12 @@ const SORT_OPTIONS: Array<{ value: string; label: string }> = [
 export function App() {
   const [query, setQuery] = useState<AdSearchQuery>(() => fromSearchParams(new URLSearchParams(window.location.search)))
   const [view, setView] = useState<ResultsView>('grid')
+  const [density, setDensity] = useState<GridDensity>(storedDensity)
   const [selectedAdId, setSelectedAdId] = useState<number | null>(null)
+
+  useEffect(() => {
+    window.localStorage.setItem(DENSITY_STORAGE_KEY, density)
+  }, [density])
 
   useEffect(() => {
     const params = toSearchParams(query)
@@ -94,6 +119,17 @@ export function App() {
             </select>
           </label>
 
+          {view === 'grid' && (
+            <label>
+              Kafelki
+              <select value={density} onChange={(event) => setDensity(event.target.value as GridDensity)}>
+                {DENSITY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="results-view-switch">
             <button type="button" className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>Lista</button>
             <button type="button" className={view === 'map' ? 'active' : ''} onClick={() => setView('map')}>Mapa</button>
@@ -105,7 +141,7 @@ export function App() {
         {error && <p className="results-error">Błąd zapytania: {String(error)}</p>}
 
         {view === 'grid' ? (
-          <div className="results-grid">
+          <div className={`results-grid${DENSITY_CLASS[density]}`}>
             {data?.items.map((ad) => (
               <AdCard
                 key={ad.id}
