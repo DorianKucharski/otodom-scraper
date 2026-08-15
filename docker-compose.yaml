@@ -12,7 +12,7 @@ services:
   otodom-enricher:
     build: .
     image: otodom-scraper:local
-    command: [ "python", "enrich.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000" ]
+    command: [ "python", "enrich.py", "--screen", "--evaluate", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000" ]
     env_file:
       - .env
     restart: on-failure
