@@ -36,7 +36,8 @@ def screening_candidate_ids(
         prompt_version: str,
         force: bool = False,
 ) -> list[int]:
-    return _ids_of(screening_candidate_query(session, ad_filter, prompt_version, force), ad_filter.limit)
+    query = screening_candidate_query(session, ad_filter, prompt_version, force)
+    return _ids_of(query, ad_filter.limit, AdScreening.ad_id.is_(None).desc())
 
 
 def evaluation_candidate_ids(
@@ -50,7 +51,7 @@ def evaluation_candidate_ids(
     query = evaluation_candidate_query(
         session, ad_filter, prompt_version, price_drift_threshold, force, require_passed_screening
     )
-    return _ids_of(query, ad_filter.limit)
+    return _ids_of(query, ad_filter.limit, AdEvaluation.ad_id.is_(None).desc())
 
 
 def screening_candidate_query(
@@ -152,8 +153,8 @@ def _type_matches(column, allowed_values: tuple[str, ...], column_name: str):
     return or_(column.in_(allowed_values), column.is_(None))
 
 
-def _ids_of(query, limit: Optional[int]) -> list[int]:
-    query = query.order_by(Ad.created_at.desc())
+def _ids_of(query, limit: Optional[int], never_processed_first) -> list[int]:
+    query = query.order_by(never_processed_first, Ad.created_at.desc())
     if limit is not None:
         query = query.limit(limit)
     return [row.id for row in query.all()]

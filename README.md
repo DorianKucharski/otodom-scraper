@@ -72,7 +72,42 @@ Nazwy lokalizacji można pisać z ogonkami i z wielkiej litery (`Kraków`, `Mał
 | `--dry-run` | drukuje JSON, nic nie zapisuje |
 | `--ad-url=` | jedno konkretne ogłoszenie |
 
-Koszt przy domyślnych modelach to około 0,002 USD za ogłoszenie na etapie 1 i około 0,05 USD na etapie 2. Zanim puścisz na cały Kraków, ustaw `--limit=20` i zobacz w bazie, co wyszło.
+## Koszty
+
+Zmierzone dla domyślnych modeli i ośmiu zdjęć w wariancie `medium` (655x491, ~429 tokenów każde):
+
+| Etap | Wejście | Wyjście | Koszt za ogłoszenie |
+| --- | --- | --- | --- |
+| Przesiew (Haiku 4.5) | ~2 600 tok. | ~250 tok. | **~0,004 USD** |
+| Ocena (Sonnet 5) | ~6 500 tok. | ~600 tok. | **~0,029 USD** |
+
+Z tego zdjęcia to 3 400 tokenów, czyli ponad połowa wejścia oceny, a odpowiedź modelu to około jedna trzecia całego kosztu i nie zależy od liczby zdjęć.
+
+**Skala ma znaczenie większe niż cokolwiek innego.** Kraków do 2 mln zł to blisko 20 tys. ogłoszeń, czyli około 80 USD samego przesiewu i około 500 USD ocen. Zawężaj filtrami, zanim zaczniesz kręcić gałkami modeli.
+
+### Co realnie obniża rachunek
+
+| Zmiana | Oszczędność | Koszt zmiany |
+| --- | --- | --- |
+| Węższe filtry (dzielnica, wąskie widełki cen, `--no-rent`) | proporcjonalna do liczby ogłoszeń | brak, to zwykle i tak jest to, czego szukasz |
+| `ENRICHER_DAILY_BUDGET_USD` | twardy sufit dobowy | ocenianie rozkłada się na dni |
+| `LLM_MAX_IMAGES=5` | ~13% kosztu oceny | mniej materiału na `photo_trust_score` |
+| `LLM_IMAGE_VARIANT=small` | ~30% kosztu oceny | 314x236 nie wystarcza, by ocenić jakość wykończenia |
+| `LLM_MAX_DESCRIPTION_CHARACTERS=2000` | ~8% kosztu oceny, ~25% przesiewu | dłuższe opisy tracą końcówkę |
+| `EVALUATION_MODEL=claude-haiku-4-5` | ~65% kosztu oceny | wyraźnie słabsza ocena zdjęć, czyli to, po co to narzędzie powstało |
+
+### Czy przesiew się opłaca
+
+Przesiew kosztuje 0,004 USD i oszczędza 0,029 USD na każdym odrzuconym ogłoszeniu, więc zwraca się dopiero przy odrzucaniu ponad 14 procent. Sprawdź swoją stopę:
+
+```sql
+SELECT status, count(*), round(100.0 * count(*) / sum(count(*)) OVER (), 1) AS procent
+FROM ad_screenings GROUP BY status;
+```
+
+Jeśli odrzuconych jest mniej niż 14 procent, przesiew dokłada do rachunku zamiast go zbijać i lepiej wyłączyć go przez `--no-screen`. Jedyne, co wtedy tracisz, to `extracted_attributes` wyciągane z opisu.
+
+Zanim puścisz na szeroki zakres, ustaw `--limit=20` i zobacz w bazie, co wyszło.
 
 ## Codzienne komendy
 

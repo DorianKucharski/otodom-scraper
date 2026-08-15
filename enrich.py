@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from dataclasses import replace
 from time import sleep
 from typing import Optional
 
@@ -9,6 +10,7 @@ import typer
 from data.models import ServiceStatus
 from data.search_url import ObjectType, OfferType
 from database import DatabaseManager
+from enricher.budget import DailyBudget
 from enricher.config import EnricherConfig
 from enricher.llm.factory import build_llm_client
 from enricher.runner import EnrichmentRunner, RunSummary
@@ -22,6 +24,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+DRY_RUN_LIMIT = 3
 
 
 def build_object_types(houses: bool, apartments: bool) -> tuple[str, ...]:
@@ -51,6 +55,19 @@ def _summary_detail(summary: RunSummary) -> dict:
         "błędy": summary.failed,
         "koszt_usd": round(summary.cost_usd, 4),
     }
+
+
+def _budget_detail(budget: DailyBudget) -> dict:
+    spending = budget.spending_today()
+    detail = {
+        "wydano_24h_usd": round(spending.total_usd, 4),
+        "w_tym_przesiew_usd": round(spending.screening_usd, 4),
+        "w_tym_ocena_usd": round(spending.evaluation_usd, 4),
+    }
+    if budget.limit_usd is not None:
+        detail["dzienny_limit_usd"] = budget.limit_usd
+        detail["pozostalo_usd"] = round(budget.remaining_usd() or 0.0, 4)
+    return detail
 
 
 def print_dry_run(summary: RunSummary) -> None:
@@ -97,6 +114,7 @@ def main(
     database_manager.create_all_tables()
     runner = EnrichmentRunner(database_manager, build_llm_client(config), config)
 
+    budget = DailyBudget(database_manager, config.daily_budget_usd)
     heartbeat = ServiceHeartbeatWriter(database_manager, ENRICHER_SERVICE, " ".join(sys.argv))
     if not dry_run:
         attach_database_logging(database_manager, ENRICHER_SERVICE)
@@ -122,7 +140,23 @@ def main(
 
     run_once = not loop or dry_run or ad_url is not None
 
+    if dry_run and ad_url is None and limit is None:
+        limit = DRY_RUN_LIMIT
+        ad_filter = replace(ad_filter, limit=limit)
+        logger.warning(
+            "--dry-run without --ad-url or --limit would call the model for every matching ad, "
+            "capping it at %s. Pass --limit explicitly to change that.", DRY_RUN_LIMIT,
+        )
+
     while True:
+        if budget.is_exhausted():
+            heartbeat.report(ServiceStatus.IDLE, phase="wyczerpany dzienny budżet",
+                             detail=_budget_detail(budget))
+            if run_once:
+                return
+            sleep(config.cycle_pause_seconds)
+            continue
+
         heartbeat.report(ServiceStatus.RUNNING, phase="odświeżanie statystyk dzielnic")
         database_manager.refresh_district_price_stats()
 
@@ -147,7 +181,7 @@ def main(
             return
 
         logger.info("Cycle complete. Restarting in %s seconds...", config.cycle_pause_seconds)
-        heartbeat.report(ServiceStatus.IDLE, phase="przerwa między cyklami")
+        heartbeat.report(ServiceStatus.IDLE, phase="przerwa między cyklami", detail=_budget_detail(budget))
         sleep(config.cycle_pause_seconds)
 
 

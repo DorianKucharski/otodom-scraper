@@ -87,6 +87,8 @@ class EnricherConfig:
     evaluation_effort: Optional[str]
     max_output_tokens: int
     price_drift_threshold: float
+    daily_budget_usd: Optional[float]
+    max_description_characters: int
     concurrency: int
     cycle_pause_seconds: int
     max_tries: int
@@ -131,6 +133,8 @@ class EnricherConfig:
             evaluation_effort=_read_effort("EVALUATION_EFFORT", evaluation_model),
             max_output_tokens=_read_int("LLM_MAX_OUTPUT_TOKENS", 8000),
             price_drift_threshold=_read_float("EVALUATION_PRICE_DRIFT_THRESHOLD", 0.05),
+            daily_budget_usd=_read_optional_float("ENRICHER_DAILY_BUDGET_USD"),
+            max_description_characters=_read_int("LLM_MAX_DESCRIPTION_CHARACTERS", 4000),
             concurrency=_read_int("ENRICHER_CONCURRENCY", 4),
             cycle_pause_seconds=_read_int("ENRICHER_CYCLE_PAUSE_SECONDS", 300),
             max_tries=_read_int("ENRICHER_MAX_TRIES", 3),
@@ -174,6 +178,16 @@ def _read_int(name: str, default: int) -> int:
         return int(value.strip())
     except ValueError as error:
         raise ValueError(f"{name} must be an integer, got '{value}'") from error
+
+
+def _read_optional_float(name: str) -> Optional[float]:
+    value = os.environ.get(name)
+    if value is None or not value.strip():
+        return None
+    try:
+        return float(value.strip())
+    except ValueError as error:
+        raise ValueError(f"{name} must be a number, got '{value}'") from error
 
 
 def _read_float(name: str, default: float) -> float:

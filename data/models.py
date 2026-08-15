@@ -346,24 +346,25 @@ class Ad(Base):
         self.price_value = ad_data.price.value
         self.price_currency = ad_data.price.currency
         self.price_per_m2 = ad_data.price.per_m2
-        self.modified_at = datetime.now()
+        self.modified_at = ad_data.modified_at
+        self.scraped_at = datetime.now()
         self._set_properties(ad_data)
 
     def outdate(self):
         self.status = AdStatus.OUTDATED
-        self.modified_at = datetime.now()
+        self.scraped_at = datetime.now()
 
     def should_update(self, update_if_older_than_days: int) -> bool:
         if update_if_older_than_days == 0:
             return True
         now = datetime.now(timezone.utc)
 
-        modified_at = self.modified_at
-        if modified_at.tzinfo is None:
-            modified_at = modified_at.replace(tzinfo=timezone.utc)
+        scraped_at = self.scraped_at or self.modified_at
+        if scraped_at.tzinfo is None:
+            scraped_at = scraped_at.replace(tzinfo=timezone.utc)
 
         threshold = now - timedelta(days=update_if_older_than_days)
-        return modified_at < threshold
+        return scraped_at < threshold
 
     def _populate_relations(self, ad_data: AdDto):
         for img in ad_data.images:

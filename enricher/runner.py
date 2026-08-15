@@ -248,7 +248,8 @@ class EnrichmentRunner:
                 existing.ad_modified_at = ad.modified_at
                 return None
 
-            return _prepared_ad(ad, fingerprint, build_ad_context(ad))
+            return _prepared_ad(ad, fingerprint, build_ad_context(
+                ad, max_description_characters=self.__config.max_description_characters))
 
     def __prepare_evaluation(
             self,
@@ -278,6 +279,7 @@ class EnrichmentRunner:
                 market_context=market_context,
                 screening_attributes=screening.extracted_attributes if screening else None,
                 images_evaluated=len(images),
+                max_description_characters=self.__config.max_description_characters,
             )
             return _prepared_ad(ad, fingerprint, context, images)
 

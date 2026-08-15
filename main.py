@@ -1,9 +1,11 @@
 import logging
 import sys
+from datetime import datetime, timedelta
 from time import sleep
 from typing import Optional
 
 import typer
+from sqlalchemy import or_
 
 from data.ad_dto import AdDto
 from data.models import Ad, AdStatus, County, Province, City, District, Owner, ServiceStatus
@@ -208,8 +210,11 @@ class ScrapingContext:
             #     query = query.filter(Ad.object_type.in_(object_types))
             # if offer_types:
             #     query = query.filter(Ad.offer_type.in_(offer_types))
+            if self.__update_if_older_than_days:
+                threshold = datetime.now() - timedelta(days=self.__update_if_older_than_days)
+                query = query.filter(or_(Ad.scraped_at.is_(None), Ad.scraped_at < threshold))
             # Start from the stalest ads first
-            query = query.order_by(Ad.modified_at.asc())
+            query = query.order_by(Ad.scraped_at.asc())
             ad_ids = [row.id for row in query.all()]
 
         logger.info(f"Found {len(ad_ids)} ads in DB to verify")

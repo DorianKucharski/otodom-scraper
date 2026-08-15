@@ -55,13 +55,14 @@ def build_ad_context(
         market_context: Optional[MarketContext] = None,
         screening_attributes: Optional[Mapping[str, str]] = None,
         images_evaluated: int = 0,
+        max_description_characters: Optional[int] = None,
 ) -> AdContext:
     return AdContext(
         id=ad.id,
         url=ad.url,
         title=ad.title,
         address=_address_of(ad),
-        description=plain_description(ad.description),
+        description=plain_description(ad.description, max_description_characters),
         price_label=_money_label(ad.price_value, ad.price_currency),
         price_per_m2_label=_money_label(ad.price_per_m2, ad.price_currency, suffix=" za metr"),
         rent_label=_money_label(ad.rent_value, ad.rent_currency or "PLN") if ad.rent_value else None,
