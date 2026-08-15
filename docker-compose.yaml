@@ -30,6 +30,6 @@ services:
       - .env
     restart: on-failure
     ports:
-      - "20138:8000"
+      - "30138:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
