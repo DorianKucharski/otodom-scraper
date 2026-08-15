@@ -1,0 +1,63 @@
+## Ogłoszenie
+
+Tytuł: {{ ad.title }}
+Adres: {{ ad.address }}
+{% if ad.distance_to_center_label %}
+Odległość od centrum miasta: {{ ad.distance_to_center_label }}
+{% endif %}
+Cena: {{ ad.price_label }}
+Cena za metr: {{ ad.price_per_m2_label }}
+{% if ad.rent_label %}
+Czynsz administracyjny: {{ ad.rent_label }}
+{% endif %}
+Powierzchnia: {{ ad.area_label }}
+Liczba pokoi: {{ ad.rooms or 'brak danych' }}
+Piętro: {{ ad.floor or 'brak danych' }}{{ ' z ' ~ ad.building_floors if ad.building_floors else '' }}
+
+Rynek: {{ ad.market or 'brak danych' }}
+Ogłaszający: {{ ad.advertiser_type or 'brak danych' }}
+Typ nieruchomości: {{ ad.property_type or 'brak danych' }}
+Stan wykończenia wg serwisu: {{ ad.property_condition or 'brak danych' }}
+Forma własności: {{ ad.property_ownership or 'brak danych' }}
+Rok budowy: {{ ad.building_year or 'brak danych' }}
+Typ budynku: {{ ad.building_type or 'brak danych' }}
+Materiał: {{ ad.building_material or 'brak danych' }}
+Ogrzewanie: {{ ad.building_heating or 'brak danych' }}
+Data wystawienia: {{ ad.created_at_label }}
+
+## Dane rynkowe dzielnicy
+
+{% if ad.market_stats %}
+Liczba aktywnych ogłoszeń w tej dzielnicy: {{ ad.market_stats.ad_count }}
+Mediana ceny za metr: {{ ad.market_stats.median_price_per_m2 }} zł
+Rozstęp środkowej połowy rynku: {{ ad.market_stats.p25_price_per_m2 }} - {{ ad.market_stats.p75_price_per_m2 }} zł za metr
+To ogłoszenie: {{ ad.market_stats.position_label }}
+{% else %}
+Brak danych rynkowych dla tej dzielnicy. Oceniaj opłacalność ostrożnie.
+{% endif %}
+
+## Cechy zaznaczone w serwisie
+
+{% for group_name, values in ad.feature_groups %}
+{{ group_name }}: {{ values | join(', ') if values else 'brak' }}
+{% endfor %}
+
+{% if ad.screening_attributes %}
+## Fakty wyciągnięte wcześniej z opisu
+
+{% for key, value in ad.screening_attributes %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+## Opis
+
+{{ ad.description or 'Ogłoszenie nie zawiera opisu.' }}
+
+## Zdjęcia
+
+{% if ad.images_evaluated %}
+Powyżej dołączono {{ ad.images_evaluated }} z {{ ad.images_count }} zdjęć z ogłoszenia, w kolejności z serwisu.
+{% else %}
+Ogłoszenie nie ma zdjęć. Oceń to, co da się ocenić z opisu, i ustaw photo_trust_score na 1.
+{% endif %}

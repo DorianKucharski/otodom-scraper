@@ -6,4 +6,8 @@
 __pycache__/
 *.pyc
 Dockerfile
+Dockerfile.api
 .dockerignore
+web/node_modules/
+web/dist/
+tests/

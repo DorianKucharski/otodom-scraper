@@ -2,7 +2,7 @@
 name = "otodom-scraper"
 version = "0.1.0"
 description = "Scraper for otodom.pl real-estate listings into PostgreSQL/PostGIS"
-readme = "CLAUDE.md"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "sqlalchemy>=2.0.23",
@@ -14,6 +14,11 @@ dependencies = [
     "lxml>=4.9.0",
     "python-dotenv>=1.0.0",
     "typer~=0.24.1",
+    "anthropic>=0.122.0",
+    "openai>=3.1.0",
+    "jinja2>=3.1.6",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.3",
 ]
 
 [tool.uv]

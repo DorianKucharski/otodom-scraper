@@ -51,3 +51,9 @@ logs/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+
+# Node
+node_modules/
+
+# Build artifacts
+*.tsbuildinfo

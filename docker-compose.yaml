@@ -1,8 +1,35 @@
 services:
   otodom-scrapper:
     build: .
+    image: otodom-scraper:local
+    command: [ "python", "main.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000"]
     env_file:
       - .env
     restart: on-failure
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  otodom-enricher:
+    build: .
+    image: otodom-scraper:local
+    command: [ "python", "enrich.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000" ]
+    env_file:
+      - .env
+    restart: on-failure
+    depends_on:
+      - otodom-scrapper
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  otodom-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: otodom-api:local
+    env_file:
+      - .env
+    restart: on-failure
+    ports:
+      - "20138:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"

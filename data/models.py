@@ -5,8 +5,9 @@ from typing import List, Optional
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import (
-    BigInteger, Integer, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum, func
+    BigInteger, Integer, SmallInteger, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum, func
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from .ad_dto import DistrictDto, CityDto, CountyDto, ProvinceDto, OwnerDto, AdDto, ImageDto, CharacteristicDto, \
@@ -19,6 +20,34 @@ class AdStatus(str, enum.Enum):
     REMOVED = "removed"
     REMOVED_BY_PARENT_AD = "removed_by_parent_ad"
     REMOVED_BY_USER = "removed_by_user"
+
+
+class ScreeningStatus(str, enum.Enum):
+    PASSED = "passed"
+    REJECTED = "rejected"
+    FAILED = "failed"
+
+
+class EvaluationStatus(str, enum.Enum):
+    OK = "ok"
+    NO_IMAGES = "no_images"
+    FAILED = "failed"
+
+
+class RenovationNeeded(str, enum.Enum):
+    NONE = "none"
+    COSMETIC = "cosmetic"
+    PARTIAL = "partial"
+    FULL = "full"
+
+
+def enum_column_type(enum_cls: type[enum.Enum], length: int = 50) -> Enum:
+    return Enum(
+        enum_cls,
+        native_enum=False,
+        length=length,
+        values_callable=lambda cls: [member.value for member in cls],
+    )
 
 
 class Base(DeclarativeBase):
@@ -696,3 +725,119 @@ class AdBuildingSecurity(Base):
 
     def __repr__(self):
         return f"<AdBuildingSecurity(ad_id={self.ad_id}, security={self.security})>"
+
+
+class AdScreening(Base):
+    __tablename__ = 'ad_screenings'
+
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(enum_column_type(ScreeningStatus), nullable=False)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text)
+    extracted_attributes: Mapped[Optional[dict]] = mapped_column(JSONB)
+
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    ad_modified_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    prompt_version: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[Optional[float]] = mapped_column(Numeric(10, 6))
+    attempts: Mapped[int] = mapped_column(SmallInteger, default=1)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    screened_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp()
+    )
+
+    ad: Mapped["Ad"] = relationship()
+
+    __table_args__ = (
+        Index('idx_ad_screenings_status', 'status'),
+        Index('idx_ad_screenings_fingerprint', 'content_fingerprint'),
+        Index('idx_ad_screenings_attributes', 'extracted_attributes', postgresql_using='gin'),
+    )
+
+    def __repr__(self):
+        return f"<AdScreening(ad_id={self.ad_id}, status={self.status})>"
+
+
+class AdEvaluation(Base):
+    __tablename__ = 'ad_evaluations'
+
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(enum_column_type(EvaluationStatus), nullable=False)
+
+    overall_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    finish_quality_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    freshness_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    move_in_readiness_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    layout_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    natural_light_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    building_condition_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    location_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    value_for_money_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    photo_trust_score: Mapped[Optional[int]] = mapped_column(SmallInteger)
+
+    renovation_needed: Mapped[Optional[str]] = mapped_column(enum_column_type(RenovationNeeded, 20))
+    style_tag: Mapped[Optional[str]] = mapped_column(String(50))
+
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    strengths: Mapped[Optional[list]] = mapped_column(JSONB)
+    concerns: Mapped[Optional[list]] = mapped_column(JSONB)
+    attributes: Mapped[Optional[dict]] = mapped_column(JSONB)
+
+    content_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    ad_modified_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    price_at_evaluation: Mapped[Optional[int]] = mapped_column(Integer)
+    images_evaluated: Mapped[int] = mapped_column(Integer, default=0)
+    prompt_version: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[Optional[float]] = mapped_column(Numeric(10, 6))
+    attempts: Mapped[int] = mapped_column(SmallInteger, default=1)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    evaluated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp()
+    )
+
+    ad: Mapped["Ad"] = relationship()
+
+    __table_args__ = (
+        Index('idx_ad_evaluations_status', 'status'),
+        Index('idx_ad_evaluations_overall_score', 'overall_score'),
+        Index('idx_ad_evaluations_finish_quality_score', 'finish_quality_score'),
+        Index('idx_ad_evaluations_freshness_score', 'freshness_score'),
+        Index('idx_ad_evaluations_move_in_readiness_score', 'move_in_readiness_score'),
+        Index('idx_ad_evaluations_value_for_money_score', 'value_for_money_score'),
+        Index('idx_ad_evaluations_photo_trust_score', 'photo_trust_score'),
+        Index('idx_ad_evaluations_renovation_needed', 'renovation_needed'),
+        Index('idx_ad_evaluations_style_tag', 'style_tag'),
+        Index('idx_ad_evaluations_fingerprint', 'content_fingerprint'),
+        Index('idx_ad_evaluations_attributes', 'attributes', postgresql_using='gin'),
+    )
+
+    def __repr__(self):
+        return f"<AdEvaluation(ad_id={self.ad_id}, overall_score={self.overall_score})>"
+
+
+class SavedSearch(Base):
+    __tablename__ = 'saved_searches'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    query: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    def __repr__(self):
+        return f"<SavedSearch(id={self.id}, name={self.name})>"

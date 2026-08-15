@@ -1,0 +1,32 @@
+## Ogłoszenie
+
+Tytuł: {{ ad.title }}
+Adres: {{ ad.address }}
+Cena: {{ ad.price_label }}
+{% if ad.rent_label %}
+Czynsz administracyjny: {{ ad.rent_label }}
+{% endif %}
+Powierzchnia: {{ ad.area_label }}
+Liczba pokoi: {{ ad.rooms or 'brak danych' }}
+Piętro: {{ ad.floor or 'brak danych' }}{{ ' z ' ~ ad.building_floors if ad.building_floors else '' }}
+
+Rynek: {{ ad.market or 'brak danych' }}
+Ogłaszający: {{ ad.advertiser_type or 'brak danych' }}
+Typ nieruchomości: {{ ad.property_type or 'brak danych' }}
+Stan wykończenia wg serwisu: {{ ad.property_condition or 'brak danych' }}
+Forma własności: {{ ad.property_ownership or 'brak danych' }}
+Rok budowy: {{ ad.building_year or 'brak danych' }}
+Typ budynku: {{ ad.building_type or 'brak danych' }}
+Materiał: {{ ad.building_material or 'brak danych' }}
+Ogrzewanie: {{ ad.building_heating or 'brak danych' }}
+Liczba zdjęć: {{ ad.images_count }}
+
+## Cechy zaznaczone w serwisie
+
+{% for group_name, values in ad.feature_groups %}
+{{ group_name }}: {{ values | join(', ') if values else 'brak' }}
+{% endfor %}
+
+## Opis
+
+{{ ad.description or 'Ogłoszenie nie zawiera opisu.' }}
