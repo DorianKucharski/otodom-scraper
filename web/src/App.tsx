@@ -6,6 +6,7 @@ import type { AdSearchQuery } from './api/types'
 import { SCORE_FIELDS, SCORE_LABELS } from './api/types'
 import { AdCard } from './components/AdCard'
 import { AdDetailPanel } from './components/AdDetailPanel'
+import type { DetailVariant } from './components/AdDetailPanel'
 import { FilterPanel } from './components/FilterPanel'
 import { MapView } from './components/MapView'
 import { SavedSearches } from './components/SavedSearches'
@@ -46,10 +47,16 @@ const SORT_OPTIONS: Array<{ value: string; label: string }> = [
 ]
 
 export function App() {
-  const [query, setQuery] = useState<AdSearchQuery>(() => fromSearchParams(new URLSearchParams(window.location.search)))
+  const initialParams = new URLSearchParams(window.location.search)
+  const [query, setQuery] = useState<AdSearchQuery>(() => fromSearchParams(initialParams))
   const [view, setView] = useState<ResultsView>('grid')
   const [density, setDensity] = useState<GridDensity>(storedDensity)
-  const [selectedAdId, setSelectedAdId] = useState<number | null>(null)
+  const [selectedAdId, setSelectedAdId] = useState<number | null>(
+    () => (initialParams.has('ad') ? Number(initialParams.get('ad')) : null),
+  )
+  const [detailVariant, setDetailVariant] = useState<DetailVariant>(
+    () => (initialParams.get('detail') === 'full' ? 'full' : 'panel'),
+  )
 
   useEffect(() => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, density)
@@ -57,8 +64,12 @@ export function App() {
 
   useEffect(() => {
     const params = toSearchParams(query)
+    if (selectedAdId !== null) {
+      params.set('ad', String(selectedAdId))
+      params.set('detail', detailVariant)
+    }
     window.history.replaceState(null, '', `${window.location.pathname}?${params}`)
-  }, [query])
+  }, [query, selectedAdId, detailVariant])
 
   const { data: facets } = useQuery({ queryKey: ['facets'], queryFn: fetchFacets, staleTime: 5 * 60 * 1000 })
   const { data, isFetching, error } = useQuery({
@@ -77,15 +88,20 @@ export function App() {
     [data, query.limit],
   )
 
+  const showFullDetail = detailVariant === 'full' && selectedAdId !== null
+
   return (
-    <div className="app">
+    <div className={`app${showFullDetail ? ' app-full-detail' : ''}`}>
+      {!showFullDetail && (
       <FilterPanel
         query={query}
         facets={facets}
         onChange={patchQuery}
         onReset={() => setQuery({ ...DEFAULT_QUERY })}
       />
+      )}
 
+      {!showFullDetail && (
       <main className="results">
         <header className="results-toolbar">
           <div className="results-count">
@@ -174,9 +190,18 @@ export function App() {
           </button>
         </footer>
       </main>
+      )}
 
       {selectedAdId !== null && (
-        <AdDetailPanel adId={selectedAdId} onClose={() => setSelectedAdId(null)} />
+        <AdDetailPanel
+          adId={selectedAdId}
+          variant={detailVariant}
+          onClose={() => {
+            setSelectedAdId(null)
+            setDetailVariant('panel')
+          }}
+          onToggleVariant={() => setDetailVariant(detailVariant === 'full' ? 'panel' : 'full')}
+        />
       )}
     </div>
   )

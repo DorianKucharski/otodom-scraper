@@ -57,3 +57,7 @@ node_modules/
 
 # Build artifacts
 *.tsbuildinfo
+
+# Zrzuty ekranu wrzucane ad hoc do katalogu repo
+Screenshot *.png
+Screenshot *.jpg

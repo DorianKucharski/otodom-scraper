@@ -6,22 +6,28 @@ import { RENOVATION_LABELS, SCORE_FIELDS, SCORE_LABELS } from '../api/types'
 import { formatArea, formatFloor, formatMoney } from './AdCard'
 import { ScoreBar } from './ScoreBadge'
 
+export type DetailVariant = 'panel' | 'full'
+
 interface AdDetailPanelProps {
   adId: number
+  variant: DetailVariant
   onClose: () => void
+  onToggleVariant: () => void
 }
 
-export function AdDetailPanel({ adId, onClose }: AdDetailPanelProps) {
+export function AdDetailPanel({ adId, variant, onClose, onToggleVariant }: AdDetailPanelProps) {
   const [activeImage, setActiveImage] = useState(0)
   const { data: ad, isLoading, error } = useQuery({
     queryKey: ['ad', adId],
     queryFn: () => fetchAd(adId),
   })
 
-  if (isLoading) return <aside className="detail-panel"><p className="detail-status">Wczytywanie...</p></aside>
+  const className = variant === 'full' ? 'detail-panel detail-panel-full' : 'detail-panel'
+
+  if (isLoading) return <aside className={className}><p className="detail-status">Wczytywanie...</p></aside>
   if (error || !ad) {
     return (
-      <aside className="detail-panel">
+      <aside className={className}>
         <p className="detail-status">Nie udało się wczytać ogłoszenia.</p>
         <button type="button" onClick={onClose}>Zamknij</button>
       </aside>
@@ -32,12 +38,19 @@ export function AdDetailPanel({ adId, onClose }: AdDetailPanelProps) {
   const image = ad.images[Math.min(activeImage, Math.max(ad.images.length - 1, 0))]
 
   return (
-    <aside className="detail-panel">
+    <aside className={className}>
       <header className="detail-header">
         <h2>{ad.title}</h2>
-        <button type="button" onClick={onClose}>×</button>
+        <div className="detail-header-actions">
+          <button type="button" onClick={onToggleVariant}>
+            {variant === 'full' ? 'Wróć do wyników' : 'Pełny widok'}
+          </button>
+          <button type="button" onClick={onClose}>×</button>
+        </div>
       </header>
 
+      <div className="detail-body">
+      <div className="detail-column">
       {image && (
         <div className="detail-gallery">
           <img src={image.large} alt={ad.title} />
@@ -126,6 +139,9 @@ export function AdDetailPanel({ adId, onClose }: AdDetailPanelProps) {
         </section>
       )}
 
+      </div>
+
+      <div className="detail-column">
       <section className="detail-parameters">
         <h3>Parametry</h3>
         <dl className="detail-attributes">
@@ -154,7 +170,7 @@ export function AdDetailPanel({ adId, onClose }: AdDetailPanelProps) {
       )}
 
       <section className="detail-parameters">
-        <h3>Cechy</h3>
+        <h3>Cechy i wyposażenie</h3>
         {Object.entries(ad.feature_groups).map(([group, values]) => (
           values.length > 0 && (
             <p key={group} className="detail-feature-group">
@@ -170,6 +186,8 @@ export function AdDetailPanel({ adId, onClose }: AdDetailPanelProps) {
           <p className="detail-description">{ad.description}</p>
         </section>
       )}
+      </div>
+      </div>
     </aside>
   )
 }
