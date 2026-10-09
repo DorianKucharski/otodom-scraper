@@ -242,11 +242,11 @@ class ScrapingContext:
             logger.info(f"Updated ad {ad_id} - status: {ad_dto.status} - url: {url}")
 
 
-def scrape(urls: list[SearchUrl]):
+def scrape(urls: list[SearchUrl], max_age_days: int = 30):
     scraper = OtodomScraper()
     db_manager = DatabaseManager()
     db_manager.create_all_tables()
-    scraping_context = ScrapingContext(db_manager, scraper)
+    scraping_context = ScrapingContext(db_manager, scraper, max_age_days)
 
     for url in urls:
         page_number = 1
@@ -267,11 +267,12 @@ def update_ads(
         max_price: Optional[int] = None,
         object_types: Optional[list[ObjectType]] = None,
         offer_types: Optional[list[OfferType]] = None,
+        max_age_days: int = 30,
 ):
     scraper = OtodomScraper()
     db_manager = DatabaseManager()
     db_manager.create_all_tables()
-    scraping_context = ScrapingContext(db_manager, scraper)
+    scraping_context = ScrapingContext(db_manager, scraper, max_age_days)
 
     scraping_context.update_existing_ads(
         city=city,
@@ -350,6 +351,10 @@ def main(
             True, '--update/--no-update',
             help="Re-scrape ads already in the DB to refresh their status."
         ),
+        max_age_days: int = typer.Option(
+            30, '--max-age-days', min=0,
+            help="Re-scrape a stored ad once its last check is older than this many days (0 = always)."
+        ),
 ):
     if district and not city:
         raise typer.BadParameter("--district requires --city")
@@ -383,7 +388,7 @@ def main(
         if scrape_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="zbieranie nowych ogłoszeń",
                              detail={"adresy_wyszukiwania": len(urls)})
-            scrape(urls)
+            scrape(urls, max_age_days)
             logger.info("All listings have been scraped.")
 
         if update_enabled:
@@ -394,6 +399,7 @@ def main(
                 max_price=max_price if max_price else None,
                 object_types=build_object_types(houses, apartments),
                 offer_types=build_offer_types(sale, rent),
+                max_age_days=max_age_days,
             )
             logger.info("All existing ads have been verified.")
 

@@ -59,6 +59,7 @@ Nazwy lokalizacji można pisać z ogonkami i z wielkiej litery (`Kraków`, `Mał
 | --- | --- |
 | `--scrape` / `--no-scrape` | zbieranie nowych ogłoszeń |
 | `--update` / `--no-update` | odświeżanie już zapisanych (cena, status) |
+| `--max-age-days=` | po ilu dniach od ostatniego sprawdzenia ogłoszenie jest odświeżane (domyślnie `30`, `0` = zawsze) |
 
 ### Flagi tylko enrichera
 

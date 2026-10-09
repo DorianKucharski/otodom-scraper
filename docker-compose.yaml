@@ -2,7 +2,7 @@ services:
   otodom-scrapper:
     build: .
     image: otodom-scraper:local
-    command: [ "python", "main.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000"]
+    command: [ "python", "main.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000", "--max-age-days=1"]
     env_file:
       - .env
     restart: on-failure
