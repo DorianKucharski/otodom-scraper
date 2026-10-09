@@ -8,19 +8,63 @@ import typer
 from sqlalchemy import or_
 
 from data.ad_dto import AdDto
+from data.search_dto import SearchResultDto
 from data.models import Ad, AdStatus, County, Province, City, District, Owner, ServiceStatus
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
 from database import DatabaseManager
 from monitoring.heartbeat import ServiceHeartbeatWriter
 from monitoring.log_handler import attach_database_logging
 from monitoring.services import SCRAPER_SERVICE
-from otodom_scraper import OtodomScraper
+from otodom_scraper import OtodomBlockedError, OtodomScraper
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+FAILURE_PAUSE_SECONDS = 10
+BLOCKED_PAUSE_SECONDS = 60
+BLOCKED_MAX_PAUSE_SECONDS = 1800
+
+
+class ScrapeRetry:
+    def __init__(self, scraper: OtodomScraper, max_tries: int = 3, max_blocked_tries: int = 6):
+        self.__scraper = scraper
+        self.__max_tries = max_tries
+        self.__max_blocked_tries = max_blocked_tries
+        self.consecutive_blocks = 0
+
+    def blocked_pause_seconds(self) -> int:
+        exponent = min(self.consecutive_blocks - 1, 10)
+        return min(BLOCKED_PAUSE_SECONDS * 2 ** exponent, BLOCKED_MAX_PAUSE_SECONDS)
+
+    def __call__(self, func: callable, *args, **kwargs):
+        failures = 0
+        blocked_tries = 0
+        while True:
+            try:
+                result = func(*args, **kwargs)
+                self.consecutive_blocks = 0
+                return result
+            except OtodomBlockedError as e:
+                self.consecutive_blocks += 1
+                blocked_tries += 1
+                pause = self.blocked_pause_seconds()
+                logger.warning(
+                    f"Blocked by otodom - {blocked_tries} of {self.__max_blocked_tries} tries - "
+                    f"pausing {pause}s with a fresh session - {e}"
+                )
+                sleep(pause)
+                self.__scraper.reset_session()
+                if blocked_tries >= self.__max_blocked_tries:
+                    raise
+            except Exception as e:
+                failures += 1
+                logger.error(f"Error calling {func.__name__} - {failures} of {self.__max_tries} tries - {e}")
+                if failures >= self.__max_tries:
+                    raise
+                sleep(FAILURE_PAUSE_SECONDS)
 
 
 class ScrapingContext:
@@ -41,6 +85,7 @@ class ScrapingContext:
         self.__database_manager = database_manager
         self.__scraper = scraper
         self.__update_if_older_than_days = update_if_older_than_days
+        self.with_retry = ScrapeRetry(scraper)
 
         with database_manager.get_session() as session:
             self.existing_ad_ids = {a.id for a in session.query(Ad.id).all()}
@@ -64,20 +109,18 @@ class ScrapingContext:
             session.flush()
             cache.add(entity_id)
 
-    @staticmethod
-    def with_retry(func: callable, *args, max_tries: int = 3, **kwargs):
-        exception = None
-        for try_number in range(max_tries):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                exception = e
-                logger.error(f"Error calling {func.__name__} - {try_number} of {max_tries} tries - {e}")
-                sleep(10)
-        raise exception
+    def scrape_search(self, url: str) -> Optional[SearchResultDto]:
+        try:
+            return self.with_retry(self.__scraper.scrape_search, url)
+        except Exception as e:
+            logger.error(f"Giving up on search page {url} - {e}")
+            return None
 
     def scrape_ad(self, url: str, offer_type: OfferType, object_type: ObjectType):
-        return self.with_retry(self.__scrape_ad, url, offer_type.name, object_type.name)
+        try:
+            self.with_retry(self.__scrape_ad, url, offer_type.name, object_type.name)
+        except Exception as e:
+            logger.error(f"Giving up on ad {url} - {e}")
 
     def __scrape_ad(self, url: str, offer_type: str, object_type: str):
         is_update_enabled: bool = self.__update_if_older_than_days is not None
@@ -222,7 +265,10 @@ class ScrapingContext:
             self.update_existing_ad(ad_id)
 
     def update_existing_ad(self, ad_id: int):
-        return self.with_retry(self.__update_existing_ad, ad_id)
+        try:
+            self.with_retry(self.__update_existing_ad, ad_id)
+        except Exception as e:
+            logger.error(f"Giving up on updating ad {ad_id} - {e}")
 
     def __update_existing_ad(self, ad_id: int):
         with self.__database_manager.get_session() as session:
@@ -242,22 +288,22 @@ class ScrapingContext:
             logger.info(f"Updated ad {ad_id} - status: {ad_dto.status} - url: {url}")
 
 
-def scrape(urls: list[SearchUrl], max_age_days: int = 30):
-    scraper = OtodomScraper()
+def scrape(urls: list[SearchUrl], max_age_days: int = 30, request_delay_seconds: float = 0.0):
+    scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
     db_manager.create_all_tables()
     scraping_context = ScrapingContext(db_manager, scraper, max_age_days)
 
     for url in urls:
         page_number = 1
-        while True:
+        total_pages = 1
+        while page_number <= total_pages:
             url.page_number = page_number
-            search_result = scraper.scrape_search(url.build())
-            for ad_item in search_result.items:
-                scraping_context.scrape_ad(ad_item.url, url.offer_type, url.object_type)
-
-            if page_number >= search_result.total_pages:
-                break
+            search_result = scraping_context.scrape_search(url.build())
+            if search_result is not None:
+                total_pages = search_result.total_pages
+                for ad_item in search_result.items:
+                    scraping_context.scrape_ad(ad_item.url, url.offer_type, url.object_type)
             page_number += 1
 
 
@@ -268,8 +314,9 @@ def update_ads(
         object_types: Optional[list[ObjectType]] = None,
         offer_types: Optional[list[OfferType]] = None,
         max_age_days: int = 30,
+        request_delay_seconds: float = 0.0,
 ):
-    scraper = OtodomScraper()
+    scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
     db_manager.create_all_tables()
     scraping_context = ScrapingContext(db_manager, scraper, max_age_days)
@@ -355,6 +402,10 @@ def main(
             30, '--max-age-days', min=0,
             help="Re-scrape a stored ad once its last check is older than this many days (0 = always)."
         ),
+        request_delay_seconds: float = typer.Option(
+            2.0, '--request-delay', min=0,
+            help="Minimum pause between requests to otodom, in seconds; each pause adds up to 50% random jitter."
+        ),
 ):
     if district and not city:
         raise typer.BadParameter("--district requires --city")
@@ -388,7 +439,7 @@ def main(
         if scrape_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="zbieranie nowych ogłoszeń",
                              detail={"adresy_wyszukiwania": len(urls)})
-            scrape(urls, max_age_days)
+            scrape(urls, max_age_days, request_delay_seconds)
             logger.info("All listings have been scraped.")
 
         if update_enabled:
@@ -400,6 +451,7 @@ def main(
                 object_types=build_object_types(houses, apartments),
                 offer_types=build_offer_types(sale, rent),
                 max_age_days=max_age_days,
+                request_delay_seconds=request_delay_seconds,
             )
             logger.info("All existing ads have been verified.")
 
