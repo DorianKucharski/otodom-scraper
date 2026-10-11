@@ -77,7 +77,7 @@ Flag rules enforced in `main()`: `--district` requires `--city`; `--city` requir
 ```bash
 docker compose up -d --build   # uses .env; restarts on failure
 ```
-Three services: `otodom-scrapper`, `otodom-enricher` (same image, different `command`) and `otodom-api` (own `Dockerfile.api`, multi-stage: Node builds `web/`, Python serves it). Pushing to `main` runs the unit tests and the web build, then SSH-deploys: the server fast-forwards its checkout in `/opt/docker/otodom-scraper` and runs `docker compose up -d --build`. The images are built on the server because compose uses local `build:` tags; publishing them to a registry would need `image:` pointing there.
+Three services: `otodom-scrapper`, `otodom-enricher` (same image, different `command`) and `otodom-api` (own `Dockerfile.api`, multi-stage: Node builds `web/`, Python serves it). Pushing to `main` runs the unit tests and the web build, then SSH-deploys: the server fast-forwards its checkout in `/opt/github/otodom-scraper` and runs `docker compose up -d --build`. The images are built on the server because compose uses local `build:` tags; publishing them to a registry would need `image:` pointing there.
 
 ## Required environment
 

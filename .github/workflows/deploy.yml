@@ -54,7 +54,7 @@ jobs:
           command_timeout: 30m
           script: |
             set -e
-            cd /opt/docker/otodom-scraper
+            cd /opt/github/otodom-scraper
             git fetch origin main
             git checkout main
             git merge --ff-only origin/main
