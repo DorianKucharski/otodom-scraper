@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from data.inferred_types import inferred_types_view_sql
 from data.models import (
     Base
 )
@@ -58,6 +59,13 @@ CREATE INDEX IF NOT EXISTS idx_district_price_stats_lookup
 """
 
 
+AD_INFERRED_TYPES_INDEXES = (
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_inferred_types_ad_id ON ad_inferred_types (ad_id)",
+    "CREATE INDEX IF NOT EXISTS idx_ad_inferred_types_object_type ON ad_inferred_types (object_type)",
+    "CREATE INDEX IF NOT EXISTS idx_ad_inferred_types_offer_type ON ad_inferred_types (offer_type)",
+)
+
+
 class DatabaseManager:
     def __init__(self, echo: bool = False):
         load_dotenv()
@@ -86,12 +94,20 @@ class DatabaseManager:
             conn.execute(text(AD_ALL_FEATURES_VIEW))
             conn.execute(text(DISTRICT_PRICE_STATS_VIEW))
             conn.execute(text(DISTRICT_PRICE_STATS_INDEX))
+            conn.exec_driver_sql(inferred_types_view_sql())
+            for index_sql in AD_INFERRED_TYPES_INDEXES:
+                conn.exec_driver_sql(index_sql)
             logger.info("Read model views created")
 
     def refresh_district_price_stats(self):
         with self.engine.begin() as conn:
             conn.execute(text("REFRESH MATERIALIZED VIEW district_price_stats"))
         logger.info("District price stats view refreshed")
+
+    def refresh_inferred_types(self):
+        with self.engine.begin() as conn:
+            conn.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY ad_inferred_types"))
+        logger.info("Inferred offer and object types refreshed")
 
     def drop_all_tables(self):
         Base.metadata.drop_all(self.engine)

@@ -159,6 +159,7 @@ def main(
 
         heartbeat.report(ServiceStatus.RUNNING, phase="odświeżanie statystyk dzielnic")
         database_manager.refresh_district_price_stats()
+        database_manager.refresh_inferred_types()
 
         if screen_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="przesiew opisów")

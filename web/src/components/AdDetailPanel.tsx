@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { fetchAd } from '../api/client'
 import { RENOVATION_LABELS, SCORE_FIELDS, SCORE_LABELS } from '../api/types'
-import { formatArea, formatFloor, formatMoney, formatPrice } from './AdCard'
+import { INVESTMENT_NOTE, formatArea, formatFloor, formatMoney, formatPrice } from './AdCard'
 import { ScoreBar } from './ScoreBadge'
 import { TrackingPanel } from './TrackingPanel'
 
@@ -86,6 +86,8 @@ export function AdDetailPanel({ adId, variant, onClose, onToggleVariant }: AdDet
         )}
         <a className="detail-link" href={ad.url} target="_blank" rel="noreferrer">Otwórz w otodom</a>
       </section>
+
+      {ad.object_type === 'INVESTMENT' && <p className="investment-note">{INVESTMENT_NOTE}</p>}
 
       <TrackingPanel ad={ad} />
 

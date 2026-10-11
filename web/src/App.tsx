@@ -25,6 +25,18 @@ type ResultsView = 'grid' | 'map'
 type GridDensity = 'large' | 'medium' | 'small'
 
 const DENSITY_STORAGE_KEY = 'otodom.grid-density'
+const SEARCH_DEBOUNCE_MS = 400
+
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(timer)
+  }, [value, delayMs])
+
+  return debounced
+}
 
 const DENSITY_OPTIONS: Array<{ value: GridDensity; label: string }> = [
   { value: 'large', label: 'Duże' },
@@ -89,9 +101,10 @@ export function App() {
   }, [query, selectedAdId, detailVariant, tab])
 
   const { data: facets } = useQuery({ queryKey: ['facets'], queryFn: fetchFacets, staleTime: 5 * 60 * 1000 })
+  const searchedQuery = useDebounced(query, SEARCH_DEBOUNCE_MS)
   const { data, isFetching, error } = useQuery({
-    queryKey: ['ads', toSearchParams(query).toString()],
-    queryFn: () => searchAds(query),
+    queryKey: ['ads', toSearchParams(searchedQuery).toString()],
+    queryFn: () => searchAds(searchedQuery),
     placeholderData: (previous) => previous,
   })
 
@@ -183,7 +196,7 @@ export function App() {
           {tabs}
           <button type="button" className="mobile-only" onClick={() => setFiltersOpen(true)}>Filtry</button>
           <div className="results-count">
-            {isFetching ? 'Szukam...' : `${data?.total ?? 0} ogłoszeń`}
+            {isFetching || searchedQuery !== query ? 'Szukam...' : `${(data?.total ?? 0).toLocaleString('pl-PL')} ogłoszeń`}
           </div>
 
           <label>

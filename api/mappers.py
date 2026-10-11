@@ -9,7 +9,7 @@ from .labels import (
     ADVERTISER_TYPES, BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS, PROPERTY_CONDITIONS,
     PROPERTY_OWNERSHIP, STYLE_TAGS, display_label, feature_label,
 )
-from .query import object_type_of, offer_type_of
+from data.inferred_types import object_type_of, offer_type_of
 from .schemas import (
     AdDetailResponse, AdSummaryResponse, EvaluationResponse, ImageResponse, MarketStatsResponse,
     TrackingDetailResponse, TrackingEventResponse, TrackingResponse,

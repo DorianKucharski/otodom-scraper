@@ -217,7 +217,7 @@ export interface AdSummary {
   floor: string | null
   building_year: number | null
   offer_type: 'SALE' | 'RENT'
-  object_type: 'APARTMENT' | 'HOUSE' | null
+  object_type: 'APARTMENT' | 'HOUSE' | 'INVESTMENT' | null
   market: string | null
   advertiser_type: string | null
   property_condition: string | null

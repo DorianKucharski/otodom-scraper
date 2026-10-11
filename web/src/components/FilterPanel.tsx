@@ -218,7 +218,7 @@ export function FilterPanel({ query, facets, onChange, onReset, onClose }: Filte
       <ChoiceSwitch
         label="Rodzaj nieruchomości"
         options={facets?.object_types ?? []}
-        order={['APARTMENT', 'HOUSE']}
+        order={['APARTMENT', 'HOUSE', 'INVESTMENT']}
         selected={query.object_types}
         onChange={(object_types) => onChange({ object_types })}
       />

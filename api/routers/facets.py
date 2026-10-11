@@ -15,7 +15,7 @@ from ..labels import (
     ADVERTISER_TYPES, BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS,
     OBJECT_TYPES, OFFER_TYPES, PROPERTY_CONDITIONS, RENOVATION_NEEDED, STYLE_TAGS, ValueLabel, feature_label, humanize, label_of,
 )
-from ..query import OBJECT_TYPE, OFFER_TYPE
+from ..query import OBJECT_TYPE, OFFER_TYPE, with_inferred_types
 from ..schemas import FacetValue, FacetsResponse, RangeFacet
 
 router = APIRouter(prefix="/api/facets", tags=["facets"])
@@ -40,8 +40,8 @@ def get_facets() -> FacetsResponse:
 
 def compute_facets(session: Session) -> FacetsResponse:
     return FacetsResponse(
-        offer_types=_column_facets(session, OFFER_TYPE, OFFER_TYPES),
-        object_types=_column_facets(session, OBJECT_TYPE, OBJECT_TYPES),
+        offer_types=_inferred_facets(session, OFFER_TYPE, OFFER_TYPES),
+        object_types=_inferred_facets(session, OBJECT_TYPE, OBJECT_TYPES),
         voivodeships=_location_facets(session, Province, Ad.province_id),
         cities=_location_facets(session, City, Ad.city_id),
         districts=_location_facets(session, District, Ad.district_id),
@@ -76,6 +76,16 @@ def _location_facets(session: Session, location_model, foreign_key) -> list[Face
 def _column_facets(session: Session, column, labels: dict[str, ValueLabel]) -> list[FacetValue]:
     statement = (
         select(column, func.count(Ad.id))
+        .where(_ACTIVE_ADS, column.is_not(None))
+        .group_by(column)
+        .order_by(func.count(Ad.id).desc())
+    )
+    return _to_facets(session, statement, labels)
+
+
+def _inferred_facets(session: Session, column, labels: dict[str, ValueLabel]) -> list[FacetValue]:
+    statement = (
+        with_inferred_types(select(column, func.count(Ad.id)).select_from(Ad))
         .where(_ACTIVE_ADS, column.is_not(None))
         .group_by(column)
         .order_by(func.count(Ad.id).desc())

@@ -15,8 +15,13 @@ export function formatMoney(value: number | null | undefined, suffix = 'zł'): s
 }
 
 export function formatPrice(ad: Pick<AdSummary, 'price_value' | 'offer_type'>): string {
+  if (!ad.price_value) return 'cena do ustalenia'
   return formatMoney(ad.price_value, ad.offer_type === 'RENT' ? 'zł/mies.' : 'zł')
 }
+
+export const INVESTMENT_NOTE =
+  'Inwestycja dewelopera w budowie: wizualizacje zamiast zdjęć, bez ceny i metrażu konkretnego lokalu. Dlatego bez oceny AI. Pojedyncze lokale z inwestycji, wystawione osobno, są oceniane normalnie.'
+
 
 export function formatArea(value: number | null): string {
   return value === null ? '-' : `${value.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} m²`
@@ -44,6 +49,7 @@ export function AdCard({ ad, selected, onSelect }: AdCardProps) {
           <ScoreBadge label="Ocena ogólna" value={evaluation.overall_score} compact />
         )}
         {ad.tracking && <TrackingPill tracking={ad.tracking} />}
+        {ad.object_type === 'INVESTMENT' && <span className="investment-badge" title={INVESTMENT_NOTE}>Inwestycja</span>}
       </div>
 
       <div className="ad-card-body">

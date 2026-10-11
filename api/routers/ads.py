@@ -37,7 +37,12 @@ def search_ads(
         session: Annotated[Session, Depends(get_session)],
 ) -> AdSearchResponse:
     statements = build_search_statements(query)
-    rows = session.execute(statements.rows.options(selectinload(Ad.images))).all()
+    ad_ids = list(session.execute(statements.page).scalars())
+    rows = session.execute(
+        statements.rows_for(ad_ids).options(selectinload(Ad.images), selectinload(Ad.city), selectinload(Ad.district))
+    ).all() if ad_ids else []
+    position = {ad_id: index for index, ad_id in enumerate(ad_ids)}
+    rows = sorted(rows, key=lambda row: position[row[0].id])
     total = session.execute(statements.total).scalar_one()
 
     return AdSearchResponse(

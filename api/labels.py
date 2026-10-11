@@ -18,6 +18,10 @@ OFFER_TYPES = {
 OBJECT_TYPES = {
     "APARTMENT": ValueLabel("Mieszkanie"),
     "HOUSE": ValueLabel("Dom"),
+    "INVESTMENT": ValueLabel(
+        "Inwestycja",
+        "Projekt dewelopera w budowie. Wizualizacje zamiast zdjęć, bez ceny i metrażu konkretnego lokalu.",
+    ),
 }
 
 BUILDING_TYPES = {

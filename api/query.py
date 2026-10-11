@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -8,7 +7,7 @@ from geoalchemy2 import Geography
 from sqlalchemy import Integer, Select, and_, case, cast, exists, func, or_, select
 
 from data.models import DISMISSED_TRACKING_STATUSES, Ad, AdEvaluation, AdTracking, City, District, Province
-from data.read_models import ad_all_features
+from data.read_models import ad_all_features, ad_inferred_types
 from enricher.schema import SCORE_FIELD_NAMES
 from .labels import feature_values_for
 from .schemas import AdSearchQuery, FeatureMatchMode, SortDirection
@@ -19,60 +18,12 @@ FLOOR_NUMBER = case(
     else_=None,
 )
 
-RENT_PRICE_CEILING = 30000
-SALE_MARKETS = ("PRIMARY", "SECONDARY")
-
-OFFER_TYPE = case(
-    (Ad.offer_type.is_not(None), Ad.offer_type),
-    (Ad.market.in_(SALE_MARKETS), "SALE"),
-    (Ad.price_value < RENT_PRICE_CEILING, "RENT"),
-    else_="SALE",
-)
+OFFER_TYPE = func.coalesce(ad_inferred_types.c.offer_type, Ad.offer_type)
+OBJECT_TYPE = func.coalesce(ad_inferred_types.c.object_type, Ad.object_type)
 
 
-def offer_type_of(ad: Ad) -> str:
-    if ad.offer_type is not None:
-        return ad.offer_type
-    if ad.market in SALE_MARKETS:
-        return "SALE"
-    return "RENT" if ad.price_value < RENT_PRICE_CEILING else "SALE"
-
-
-_LETTER = "a-ząćęłńóśźż"
-HOUSE_TITLE_PATTERN = (
-    f"((^|[^{_LETTER}])(dom|domek|domu|domy|domów|domki|willa|segment|siedlisko|rezydencja|bliźniak|blizniak)"
-    f"([^{_LETTER}]|$)|bliźniacz|blizniacz|szeregow|szeregówk|parterow|wolnostoj|działk|dzialk)"
-)
-FLAT_TITLE_PATTERN = "(mieszkani|kawalerk|apartament|garsonier|kamienic|pokój|pokoj|pokoi|[0-9] ?-?pok|studio|loft|penthouse)"
-HOUSE_BUILDING_TYPES = ("DETACHED", "SEMI_DETACHED", "FARM", "RESIDENCE")
-FLAT_BUILDING_TYPES = ("BLOCK", "APARTMENT", "TENEMENT", "INFILL", "LOFT")
-
-OBJECT_TYPE = case(
-    (Ad.object_type.is_not(None), Ad.object_type),
-    (Ad.flat_floor.is_not(None), "APARTMENT"),
-    (Ad.building_type.in_(HOUSE_BUILDING_TYPES), "HOUSE"),
-    (Ad.property_type == "FLAT", "APARTMENT"),
-    (Ad.building_type.in_(FLAT_BUILDING_TYPES), "APARTMENT"),
-    (Ad.title.regexp_match(HOUSE_TITLE_PATTERN, flags="i"), "HOUSE"),
-    (Ad.title.regexp_match(FLAT_TITLE_PATTERN, flags="i"), "APARTMENT"),
-    else_=None,
-)
-
-
-def object_type_of(ad: Ad) -> Optional[str]:
-    if ad.object_type is not None:
-        return ad.object_type
-    if ad.flat_floor is not None:
-        return "APARTMENT"
-    if ad.building_type in HOUSE_BUILDING_TYPES:
-        return "HOUSE"
-    if ad.property_type == "FLAT" or ad.building_type in FLAT_BUILDING_TYPES:
-        return "APARTMENT"
-    if re.search(HOUSE_TITLE_PATTERN, ad.title or "", re.IGNORECASE):
-        return "HOUSE"
-    if re.search(FLAT_TITLE_PATTERN, ad.title or "", re.IGNORECASE):
-        return "APARTMENT"
-    return None
+def with_inferred_types(statement: Select) -> Select:
+    return statement.outerjoin(ad_inferred_types, ad_inferred_types.c.ad_id == Ad.id)
 
 
 FEATURES_COUNT = (
@@ -86,18 +37,29 @@ FEATURES_COUNT = (
 
 @dataclass(frozen=True)
 class SearchStatements:
-    rows: Select
+    page: Select
     total: Select
+    distance: Optional[object]
+
+    def rows_for(self, ad_ids: list[int]) -> Select:
+        return (
+            select(Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"), _distance_column(self.distance))
+            .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
+            .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+            .where(Ad.id.in_(ad_ids))
+        )
 
 
 def build_search_statements(query: AdSearchQuery) -> SearchStatements:
     conditions = _conditions_of(query)
     distance = _distance_expression(query)
 
-    rows = (
-        select(Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"), _distance_column(distance))
-        .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
-        .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+    page = (
+        with_inferred_types(
+            select(Ad.id)
+            .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
+            .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+        )
         .where(*conditions)
         .order_by(*_order_by(query, distance))
         .limit(query.limit)
@@ -105,14 +67,16 @@ def build_search_statements(query: AdSearchQuery) -> SearchStatements:
     )
 
     total = (
-        select(func.count())
-        .select_from(Ad)
-        .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
-        .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+        with_inferred_types(
+            select(func.count())
+            .select_from(Ad)
+            .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
+            .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+        )
         .where(*conditions)
     )
 
-    return SearchStatements(rows=rows, total=total)
+    return SearchStatements(page=page, total=total, distance=distance)
 
 
 def _conditions_of(query: AdSearchQuery) -> list:

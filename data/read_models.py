@@ -23,3 +23,10 @@ district_price_stats = table(
     column("median_price"),
     column("median_area"),
 )
+
+ad_inferred_types = table(
+    "ad_inferred_types",
+    column("ad_id"),
+    column("offer_type"),
+    column("object_type"),
+)
