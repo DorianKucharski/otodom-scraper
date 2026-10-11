@@ -285,8 +285,8 @@ Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli t
 Od czerwca 2026 otodom przestał wysyłać miasto, dzielnicę, powiat i województwo w starym polu `address`, więc ~30 tys. ogłoszeń trafiło do bazy bez lokalizacji. Scraper czyta ją już z nowego miejsca i sam naprawia te ogłoszenia przy ponownym pobraniu, ale przy zwykłym tempie trwa to około doby. Żeby to przyspieszyć, uruchom proces, który pobiera wyłącznie ogłoszenia bez miasta. Najlepiej dwa, z różnych IP (otodom blokuje per adres), z podziałem pracy przez `--shard`:
 
 ```bash
-# na VPS-ie, obok głównego kontenera
-docker compose run --rm -d --name otodom-location-repair otodom-scrapper   python main.py --no-scrape --update --only-missing-locations --max-price=0 --shard=1/2
+# na VPS-ie, obok głównego kontenera; --build buduje obraz z bieżącego kodu w katalogu repozytorium
+docker compose run --build --rm -d --name otodom-location-repair otodom-scrapper python main.py --no-scrape --update --only-missing-locations --max-price=0 --shard=1/2
 docker logs -f otodom-location-repair
 
 # na własnym komputerze (lokalny .env wskazuje na tę samą bazę)
