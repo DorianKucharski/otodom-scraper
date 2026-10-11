@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 
 from data.models import AdEvaluation, AdScreening, EvaluationStatus, ScreeningStatus
-from enricher.llm.client import LlmResponse
+from llm.client import LlmResponse
 from enricher.results import EvaluationResult, ScreeningResult
 from enricher.runner import AdOutcome, FAILED, PreparedAd, SKIPPED, _evaluation_row, _is_up_to_date, _screening_row, \
     _summarize

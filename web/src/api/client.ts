@@ -1,5 +1,10 @@
 import type {
   AdDetail,
+  AssistantInterpretResponse,
+  AssistantPlan,
+  AssistantRankResponse,
+  AssistantStatus,
+  EvaluationRequest,
   AdSearchQuery,
   AdSearchResponse,
   DistrictStats,
@@ -236,4 +241,39 @@ export function addTrackingEvent(adId: number, event: TrackingEventInput): Promi
 
 export function deleteTracking(adId: number): Promise<void> {
   return request<void>(`/tracking/${adId}`, { method: 'DELETE' })
+}
+
+export function fetchAssistantStatus(): Promise<AssistantStatus> {
+  return request<AssistantStatus>('/assistant')
+}
+
+export function interpretWish(
+  message: string,
+  history: string[],
+  previous: AssistantPlan | null,
+): Promise<AssistantInterpretResponse> {
+  return request<AssistantInterpretResponse>('/assistant/interpret', {
+    method: 'POST',
+    body: JSON.stringify({ message, history, previous }),
+  })
+}
+
+export function rankCandidates(message: string, history: string[], plan: AssistantPlan): Promise<AssistantRankResponse> {
+  return request<AssistantRankResponse>('/assistant/rank', {
+    method: 'POST',
+    body: JSON.stringify({ message, history, plan }),
+  })
+}
+
+export function requestEvaluations(adIds: number[]): Promise<EvaluationRequest[]> {
+  return request<EvaluationRequest[]>('/assistant/evaluation-requests', {
+    method: 'POST',
+    body: JSON.stringify({ ad_ids: adIds }),
+  })
+}
+
+export function fetchEvaluationRequests(adIds: number[]): Promise<EvaluationRequest[]> {
+  const params = new URLSearchParams()
+  adIds.forEach((adId) => params.append('ids', String(adId)))
+  return request<EvaluationRequest[]>(`/assistant/evaluation-requests?${params}`)
 }

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .auth import AuthSettings, install_auth
 from .https import install_https_redirect, public_url_from_env
-from .routers import ads, auth, facets, saved_searches, services, stats, tracking
+from .routers import ads, assistant, auth, facets, saved_searches, services, stats, tracking
 from .routers.facets import facets_cache
 
 logging.basicConfig(
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(ads.router)
+    app.include_router(assistant.router)
     app.include_router(facets.router)
     app.include_router(saved_searches.router)
     app.include_router(services.router)

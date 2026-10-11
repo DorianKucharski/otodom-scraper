@@ -7,8 +7,8 @@ from typing import Optional
 import cloudscraper
 
 from data.models import Ad, AdImage
+from llm.client import LlmImage
 from .config import EnricherConfig
-from .llm.client import LlmImage
 
 logger = logging.getLogger(__name__)
 

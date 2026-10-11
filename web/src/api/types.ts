@@ -364,3 +364,56 @@ export const SERVICE_STATUS_LABELS: Record<string, string> = {
   stale: 'Brak sygnału',
   unknown: 'Nigdy nie startował',
 }
+
+export interface AssistantCriterion {
+  text: string
+  importance: 'must' | 'nice' | string
+}
+
+export interface AssistantPlan {
+  query: AdSearchQuery
+  keywords: string[]
+  criteria: AssistantCriterion[]
+  understood: string
+  sort: string
+  warnings: string[]
+}
+
+export interface AssistantInterpretResponse {
+  plan: AssistantPlan
+  cost_usd: number
+}
+
+export interface AssistantRankedAd {
+  ad: AdSummary
+  fit_score: number
+  headline: string
+  matches: string[]
+  gaps: string[]
+  evaluated: boolean
+}
+
+export interface AssistantRankResponse {
+  overview: string
+  items: AssistantRankedAd[]
+  candidates_considered: number
+  total_matching: number
+  cost_usd: number
+}
+
+export interface AssistantStatus {
+  enabled: boolean
+  reason: string | null
+  spent_today_usd: number
+  daily_budget_usd: number
+}
+
+export type EvaluationRequestStatus = 'pending' | 'done' | 'rejected' | 'failed'
+
+export interface EvaluationRequest {
+  ad_id: number
+  status: EvaluationRequestStatus
+  message: string | null
+  requested_at: string
+  finished_at: string | null
+}

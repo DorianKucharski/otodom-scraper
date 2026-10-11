@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class AdFilter:
     url: Optional[str] = None
+    ad_ids: tuple[int, ...] = ()
     voivodeship: Optional[str] = None
     city: Optional[str] = None
     district: Optional[str] = None
@@ -115,6 +116,8 @@ def _filtered_query(session: Session, ad_filter: AdFilter):
 
     if ad_filter.url:
         return query.filter(Ad.url == ad_filter.url)
+    if ad_filter.ad_ids:
+        return query.filter(Ad.id.in_(ad_filter.ad_ids))
 
     if ad_filter.voivodeship:
         query = query.join(Province, Ad.province_id == Province.id).filter(

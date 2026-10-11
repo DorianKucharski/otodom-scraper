@@ -242,6 +242,29 @@ Przejścia są dowolne. Wyszukiwarka domyślnie ukrywa odrzucone i niedostępne,
 
 Tabele tworzą się przy starcie scrapera albo enrichera, jak wszystkie inne. `drop_tables()` w `main.py` kasuje także je.
 
+## Asystent AI
+
+Nad listą wyników w zakładce **Wyszukiwarka** jest pole „Zapytaj asystenta”. Wpisujesz po ludzku, czego szukasz („jasne 3 pokoje w Krakowie do 950 tys., blisko zieleni, nie parter”), a asystent działa w dwóch krokach:
+
+1. **Rozumienie** (`ASSISTANT_INTERPRET_MODEL`, domyślnie Haiku, 0,005-0,01 USD, 5-7 s) zamienia wiadomość na zwykłe filtry po lewej (miasto, dzielnica albo okolica punktu, cena, metraż, pokoje, piętro), słowa kluczowe do opisów i listę miękkich kryteriów („musi: jasne wnętrze”, „mile widziane: blisko zieleni”). Filtry widzisz i możesz poprawić. Miękkie rzeczy celowo nie są filtrami, bo połowa ogłoszeń ich nie zaznacza.
+2. **Ranking** (`ASSISTANT_RANK_MODEL`, domyślnie Sonnet 5, zmierzone 0,11 USD i 31 s dla 30 ogłoszeń bez ocen, do około 0,20 USD, gdy wszystkie mają ocenę ze zdjęć) bierze `ASSISTANT_CANDIDATES` (30) ogłoszeń spełniających filtry, w kolejności po trafieniach słów kluczowych i ocenie AI. Czyta ich dane, fakty z przesiewu, ocenę ze zdjęć i początek opisu, a potem wybiera najwyżej 10 z oceną dopasowania, uzasadnieniem i listą rzeczy niespełnionych albo niepewnych.
+
+„Pod Warszawą” czy „okolice Krakowa” to promień 20-40 km od centrum, bez filtra miasta, więc łapie też ogłoszenia, które mają tylko współrzędne. Kolejna wiadomość w tej samej rozmowie („taniej”, „a może Dębniki”) poprawia poprzednie ustawienia, zamiast zaczynać od zera. Po ręcznej zmianie filtrów „Przelicz ranking” ocenia od nowa z tymi filtrami.
+
+**Oceń ze zdjęć**: większość ogłoszeń poza zakresem enrichera nie ma oceny ze zdjęć, więc ranking opiera się wtedy tylko na tekście. Przycisk dopisuje je do kolejki `ad_evaluation_requests`. Enricher sprawdza ją co 10 s w osobnym wątku, robi przesiew i pełną ocenę bez względu na swoje filtry `--city` i `--max-price`, a wynik zapisuje w bazie jak każdą inną ocenę. Po zakończeniu pojawia się „Przelicz z nowymi ocenami”. Działa tylko wtedy, gdy kontener enrichera chodzi w pętli.
+
+| Zmienna | Domyślnie | Uwaga |
+| --- | --- | --- |
+| `ASSISTANT_DAILY_BUDGET_USD` | `2` | suma kosztów asystenta z 24 h (`assistant_calls`), po przekroczeniu API zwraca 429 |
+| `ENRICHER_REQUEST_DAILY_BUDGET_USD` | `3` | osobny limit na oceny na żądanie, niezależny od `ENRICHER_DAILY_BUDGET_USD` |
+| `ASSISTANT_INTERPRET_MODEL` | `claude-haiku-4-5` | |
+| `ASSISTANT_RANK_MODEL` | `claude-sonnet-5` | |
+| `ASSISTANT_RANK_EFFORT` | `low` | wyższy wydłuża odpowiedź, a Cloudflare zrywa połączenie po 100 s |
+| `ASSISTANT_CANDIDATES` | `30` | więcej kandydatów to proporcjonalnie droższy ranking |
+| `ASSISTANT_DESCRIPTION_CHARACTERS` | `800` | ile opisu trafia do rankingu na ogłoszenie |
+
+Asystent używa tego samego klucza co enricher (`ANTHROPIC_API_KEY`), więc kontener `otodom-api` musi go mieć w `.env`. Bez klucza panel pokazuje, że asystent jest wyłączony. Każde wywołanie, z żądaniem, odpowiedzią i kosztem, jest w tabeli `assistant_calls`.
+
 ## Podgląd statusu i logów
 
 UI ma trzy zakładki: **Wyszukiwarka**, **Moje mieszkania** i **Status**. Zakładka Status pokazuje:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from .llm.client import LlmImage, LlmPermanentError, LlmResponse
+from llm.client import LlmImage, LlmPermanentError, LlmResponse
 
 Images = tuple[LlmImage, ...]
 

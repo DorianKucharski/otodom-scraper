@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import operator
 from dataclasses import dataclass
+from functools import reduce
 from typing import Optional
 
 from geoalchemy2 import Geography
@@ -12,9 +14,14 @@ from enricher.schema import SCORE_FIELD_NAMES
 from .labels import feature_values_for
 from .schemas import AdSearchQuery, FeatureMatchMode, SortDirection
 
+TOP_FLOOR_CODE = "GARRET"
+FLOOR_ABOVE_TEN = 11
+
 FLOOR_NUMBER = case(
     (Ad.flat_floor == "GROUND_FLOOR", 0),
-    (Ad.flat_floor.startswith("FLOOR_", autoescape=True), cast(func.substring(Ad.flat_floor, 7), Integer)),
+    (Ad.flat_floor == "CELLAR", -1),
+    (Ad.flat_floor == "FLOOR_HIGHER_10", FLOOR_ABOVE_TEN),
+    (Ad.flat_floor.regexp_match("^FLOOR_[0-9]+$"), cast(func.substring(Ad.flat_floor, 7), Integer)),
     else_=None,
 )
 
@@ -50,9 +57,14 @@ class SearchStatements:
         )
 
 
-def build_search_statements(query: AdSearchQuery) -> SearchStatements:
+def build_search_statements(query: AdSearchQuery, relevance=None, relevance_first: bool = False) -> SearchStatements:
     conditions = _conditions_of(query)
     distance = _distance_expression(query)
+    order = _order_by(query, distance)
+    if relevance is not None and relevance_first:
+        order = [relevance.desc(), AdEvaluation.overall_score.desc().nullslast(), *order]
+    elif relevance is not None:
+        order = [order[0], relevance.desc(), *order[1:]]
 
     page = (
         with_inferred_types(
@@ -61,7 +73,7 @@ def build_search_statements(query: AdSearchQuery) -> SearchStatements:
             .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
         )
         .where(*conditions)
-        .order_by(*_order_by(query, distance))
+        .order_by(*order)
         .limit(query.limit)
         .offset(query.offset)
     )
@@ -160,6 +172,7 @@ def _property_conditions(query: AdSearchQuery) -> list:
     if query.exclude_ground_floor:
         conditions.append(or_(FLOOR_NUMBER.is_(None), FLOOR_NUMBER > 0))
     if query.exclude_top_floor:
+        conditions.append(Ad.flat_floor.is_distinct_from(TOP_FLOOR_CODE))
         conditions.append(or_(
             FLOOR_NUMBER.is_(None),
             Ad.building_number_of_floors.is_(None),
@@ -308,6 +321,19 @@ def _order_by(query: AdSearchQuery, distance) -> list:
 
     ordered = expression.desc() if descending else expression.asc()
     return [ordered.nullslast(), Ad.id.desc()]
+
+
+def keyword_relevance(keywords) -> Optional[object]:
+    matches = [
+        case((or_(Ad.title.ilike(pattern, escape="!"), Ad.description.ilike(pattern, escape="!")), 1), else_=0)
+        for pattern in (_contains_pattern(keyword) for keyword in keywords)
+    ]
+    return reduce(operator.add, matches) if matches else None
+
+
+def _contains_pattern(text: str) -> str:
+    escaped = text.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+    return f"%{escaped}%"
 
 
 def _lowered(values: list[str]) -> list[str]:

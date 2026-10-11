@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from enricher.image_fallback import complete_with_image_fallback, is_image_download_error
-from enricher.llm.client import LlmImage, LlmPermanentError, LlmResponse
+from llm.client import LlmImage, LlmPermanentError, LlmResponse
 
 _UNREACHABLE_URL_ERROR = (
     "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', "

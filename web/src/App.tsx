@@ -6,6 +6,7 @@ import type { AdSearchQuery } from './api/types'
 import { SCORE_FIELDS, SCORE_LABELS } from './api/types'
 import { AdCard } from './components/AdCard'
 import { AdDetailPanel } from './components/AdDetailPanel'
+import { AssistantPanel } from './components/AssistantPanel'
 import { SessionBadge } from './components/AuthGate'
 import type { DetailVariant } from './components/AdDetailPanel'
 import { FilterPanel } from './components/FilterPanel'
@@ -25,6 +26,7 @@ type ResultsView = 'grid' | 'map'
 type GridDensity = 'large' | 'medium' | 'small'
 
 const DENSITY_STORAGE_KEY = 'otodom.grid-density'
+const ASSISTANT_STORAGE_KEY = 'otodom.assistant-open'
 const SEARCH_DEBOUNCE_MS = 400
 
 function useDebounced<T>(value: T, delayMs: number): T {
@@ -48,6 +50,14 @@ const DENSITY_CLASS: Record<GridDensity, string> = {
   large: '',
   medium: ' results-grid-medium',
   small: ' results-grid-small',
+}
+
+function storedAssistantOpen(): boolean {
+  try {
+    return window.localStorage.getItem(ASSISTANT_STORAGE_KEY) !== 'false'
+  } catch {
+    return true
+  }
 }
 
 function storedDensity(): GridDensity {
@@ -83,6 +93,15 @@ export function App() {
     () => APP_TABS.find((option) => option.value === initialParams.get('tab'))?.value ?? 'search',
   )
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(storedAssistantOpen)
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ASSISTANT_STORAGE_KEY, String(assistantOpen))
+    } catch {
+      return
+    }
+  }, [assistantOpen])
 
   useEffect(() => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, density)
@@ -195,6 +214,13 @@ export function App() {
         <header className="results-toolbar">
           {tabs}
           <button type="button" className="mobile-only" onClick={() => setFiltersOpen(true)}>Filtry</button>
+          <button
+            type="button"
+            className={assistantOpen ? 'active assistant-toggle' : 'assistant-toggle'}
+            onClick={() => setAssistantOpen(!assistantOpen)}
+          >
+            Asystent AI
+          </button>
           <div className="results-count">
             {isFetching || searchedQuery !== query ? 'Szukam...' : `${(data?.total ?? 0).toLocaleString('pl-PL')} ogłoszeń`}
           </div>
@@ -247,7 +273,14 @@ export function App() {
 
         {error && <p className="results-error">Błąd zapytania: {String(error)}</p>}
 
-        {view === 'grid' ? (
+        <div className="results-scroll" hidden={view !== 'grid'}>
+          <AssistantPanel
+            hidden={!assistantOpen}
+            query={query}
+            onApplyQuery={setQuery}
+            selectedAdId={selectedAdId}
+            onSelect={setSelectedAdId}
+          />
           <div className={`results-grid${DENSITY_CLASS[density]}`}>
             {data?.items.map((ad) => (
               <AdCard
@@ -259,9 +292,8 @@ export function App() {
             ))}
             {data && data.items.length === 0 && <p className="results-empty">Brak ogłoszeń dla tych filtrów.</p>}
           </div>
-        ) : (
-          <MapView ads={data?.items ?? []} onSelect={setSelectedAdId} />
-        )}
+        </div>
+        {view === 'map' && <MapView ads={data?.items ?? []} onSelect={setSelectedAdId} />}
 
         <footer className="results-pagination">
           <button

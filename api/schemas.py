@@ -338,3 +338,70 @@ class DistrictStatsResponse(BaseModel):
     median_price: Optional[int]
     median_area: Optional[float]
     median_overall_score: Optional[float] = None
+
+
+class AssistantCriterion(BaseModel):
+    text: str = Field(..., max_length=500)
+    importance: str = Field("nice", description="must = warunek konieczny, nice = życzenie.")
+
+
+class AssistantPlan(BaseModel):
+    query: AdSearchQuery
+    keywords: list[str] = Field(default_factory=list)
+    criteria: list[AssistantCriterion] = Field(default_factory=list)
+    understood: str = ""
+    sort: str = "relevance"
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AssistantInterpretRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    history: list[str] = Field(default_factory=list, max_length=10)
+    previous: Optional[AssistantPlan] = None
+
+
+class AssistantInterpretResponse(BaseModel):
+    plan: AssistantPlan
+    cost_usd: float
+
+
+class AssistantRankRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    history: list[str] = Field(default_factory=list, max_length=10)
+    plan: AssistantPlan
+
+
+class AssistantRankedAd(BaseModel):
+    ad: AdSummaryResponse
+    fit_score: int
+    headline: str
+    matches: list[str]
+    gaps: list[str]
+    evaluated: bool
+
+
+class AssistantRankResponse(BaseModel):
+    overview: str
+    items: list[AssistantRankedAd]
+    candidates_considered: int
+    total_matching: int
+    cost_usd: float
+
+
+class AssistantStatusResponse(BaseModel):
+    enabled: bool
+    reason: Optional[str] = None
+    spent_today_usd: float = 0
+    daily_budget_usd: float = 0
+
+
+class EvaluationRequestsRequest(BaseModel):
+    ad_ids: list[int] = Field(..., min_length=1, max_length=20)
+
+
+class EvaluationRequestResponse(BaseModel):
+    ad_id: int
+    status: str
+    message: Optional[str]
+    requested_at: datetime
+    finished_at: Optional[datetime]

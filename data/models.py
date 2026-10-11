@@ -51,6 +51,18 @@ class TrackingStatus(str, enum.Enum):
 DISMISSED_TRACKING_STATUSES = (TrackingStatus.REJECTED, TrackingStatus.UNAVAILABLE)
 
 
+class EvaluationRequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    DONE = "done"
+    REJECTED = "rejected"
+    FAILED = "failed"
+
+
+class AssistantCallKind(str, enum.Enum):
+    INTERPRET = "interpret"
+    RANK = "rank"
+
+
 class RenovationNeeded(str, enum.Enum):
     NONE = "none"
     COSMETIC = "cosmetic"
@@ -996,3 +1008,47 @@ class AdRawPayload(Base):
 
     def __repr__(self):
         return f"<AdRawPayload(ad_id={self.ad_id}, bytes={len(self.payload or b'')})>"
+
+
+class AdEvaluationRequest(Base):
+    __tablename__ = 'ad_evaluation_requests'
+
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(enum_column_type(EvaluationRequestStatus, 20), nullable=False)
+    message: Mapped[Optional[str]] = mapped_column(Text)
+    requested_by: Mapped[Optional[str]] = mapped_column(String(100))
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index('idx_ad_evaluation_requests_status', 'status', 'requested_at'),
+    )
+
+    def __repr__(self):
+        return f"<AdEvaluationRequest(ad_id={self.ad_id}, status={self.status})>"
+
+
+class AssistantCall(Base):
+    __tablename__ = 'assistant_calls'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(enum_column_type(AssistantCallKind, 20), nullable=False)
+    author: Mapped[Optional[str]] = mapped_column(String(100))
+    message: Mapped[Optional[str]] = mapped_column(Text)
+    request: Mapped[Optional[dict]] = mapped_column(JSONB)
+    response: Mapped[Optional[dict]] = mapped_column(JSONB)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[Optional[float]] = mapped_column(Numeric(10, 6))
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index('idx_assistant_calls_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<AssistantCall(id={self.id}, kind={self.kind})>"

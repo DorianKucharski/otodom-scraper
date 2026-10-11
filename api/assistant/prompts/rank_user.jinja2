@@ -1,0 +1,46 @@
+## Wiadomość klienta
+
+{{ message }}
+{% if history %}
+
+Wcześniej pisał:
+{% for previous in history %}
+- {{ previous }}
+{% endfor %}
+{% endif %}
+
+## Jak zrozumiano wymagania
+
+{{ understood or 'brak' }}
+
+Kryteria do sprawdzenia w ogłoszeniach:
+{% for criterion in criteria %}
+- [{{ criterion.importance }}] {{ criterion.text }}
+{% else %}
+- brak dodatkowych kryteriów, liczy się wiadomość klienta
+{% endfor %}
+
+## Ogłoszenia ({{ cards | length }} z {{ total_matching }} pasujących do filtrów)
+
+{% for card in cards %}
+### Ogłoszenie {{ card.id }}
+
+Tytuł: {{ card.title }}
+Rodzaj: {{ card.kind }}
+Adres: {{ card.address }}
+Cena: {{ card.price }}{{ ', ' ~ card.price_per_m2 ~ ' za m2' if card.price_per_m2 else '' }}{{ ', czynsz ' ~ card.rent if card.rent else '' }}
+Powierzchnia: {{ card.area or 'brak danych' }}, pokoje: {{ card.rooms or 'brak danych' }}, piętro: {{ card.floor or 'brak danych' }}
+Budynek: {{ card.building }}
+Rynek: {{ card.market or 'brak danych' }}, stan: {{ card.condition or 'brak danych' }}
+Cechy: {{ card.features }}
+Fakty z opisu: {{ card.screening_attributes }}
+{% if card.evaluation %}
+Ocena AI ze zdjęć:
+{{ card.evaluation }}
+{% else %}
+Ocena AI ze zdjęć: brak
+{% endif %}
+Opis:
+{{ card.description or 'brak opisu' }}
+
+{% endfor %}

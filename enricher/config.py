@@ -4,80 +4,20 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
-from dotenv import load_dotenv
-
-ANTHROPIC_PROVIDER = "anthropic"
-OPENAI_PROVIDER = "openai"
+from llm.factory import LlmSettings
+from llm.pricing import supports_effort
 
 DEFAULT_SCREENING_MODEL = "claude-haiku-4-5"
 DEFAULT_EVALUATION_MODEL = "claude-sonnet-5"
 
 _TRUTHY_VALUES = frozenset({"1", "true", "yes", "on"})
-
-_API_KEY_VARIABLE_BY_PROVIDER = {
-    ANTHROPIC_PROVIDER: "ANTHROPIC_API_KEY",
-    OPENAI_PROVIDER: "OPENAI_API_KEY",
-}
-
-_MODEL_PREFIXES_WITHOUT_EFFORT = ("claude-haiku", "claude-3", "claude-sonnet-4-5")
 _EFFORT_DISABLED_VALUES = frozenset({"none", "off", "-"})
 _DEFAULT_EFFORT = "medium"
 
 
-def supports_effort(model: str) -> bool:
-    return not any(model.startswith(prefix) for prefix in _MODEL_PREFIXES_WITHOUT_EFFORT)
-
-
-@dataclass(frozen=True)
-class ModelPricing:
-    input_usd_per_million: float
-    output_usd_per_million: float
-
-    def cost_usd(
-            self,
-            input_tokens: int,
-            output_tokens: int,
-            cache_read_tokens: int = 0,
-            cache_write_tokens: int = 0,
-    ) -> float:
-        per_input_token = self.input_usd_per_million / 1_000_000
-        per_output_token = self.output_usd_per_million / 1_000_000
-        return (
-                input_tokens * per_input_token
-                + cache_read_tokens * per_input_token * 0.1
-                + cache_write_tokens * per_input_token * 1.25
-                + output_tokens * per_output_token
-        )
-
-
-MODEL_PRICING: dict[str, ModelPricing] = {
-    "claude-haiku-4-5": ModelPricing(1.0, 5.0),
-    "claude-sonnet-5": ModelPricing(3.0, 15.0),
-    "claude-sonnet-4-6": ModelPricing(3.0, 15.0),
-    "claude-opus-5": ModelPricing(5.0, 25.0),
-    "claude-opus-4-8": ModelPricing(5.0, 25.0),
-    "claude-fable-5": ModelPricing(10.0, 50.0),
-}
-
-
-def cost_usd_for(
-        model: str,
-        input_tokens: int,
-        output_tokens: int,
-        cache_read_tokens: int = 0,
-        cache_write_tokens: int = 0,
-) -> Optional[float]:
-    pricing = MODEL_PRICING.get(model)
-    if pricing is None:
-        return None
-    return pricing.cost_usd(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
-
-
 @dataclass(frozen=True)
 class EnricherConfig:
-    provider: str
-    api_key: str
-    base_url: Optional[str]
+    llm: LlmSettings
     screening_model: str
     evaluation_model: str
     max_images: int
@@ -88,6 +28,7 @@ class EnricherConfig:
     max_output_tokens: int
     price_drift_threshold: float
     daily_budget_usd: Optional[float]
+    request_daily_budget_usd: float
     max_description_characters: int
     concurrency: int
     cycle_pause_seconds: int
@@ -96,20 +37,7 @@ class EnricherConfig:
 
     @classmethod
     def from_env(cls) -> "EnricherConfig":
-        load_dotenv()
-
-        provider = os.environ.get("LLM_PROVIDER", ANTHROPIC_PROVIDER).strip().lower()
-        if provider not in _API_KEY_VARIABLE_BY_PROVIDER:
-            raise ValueError(
-                f"LLM_PROVIDER must be one of {sorted(_API_KEY_VARIABLE_BY_PROVIDER)}, got '{provider}'"
-            )
-
-        api_key_variable = _API_KEY_VARIABLE_BY_PROVIDER[provider]
-        api_key = os.environ.get(api_key_variable, "").strip()
-        if not api_key:
-            raise ValueError(
-                f"Missing API key for provider '{provider}'. Set the {api_key_variable} environment variable."
-            )
+        llm = LlmSettings.from_env()
 
         image_variant = os.environ.get("LLM_IMAGE_VARIANT", "medium").strip().lower()
         if image_variant not in {"thumbnail", "small", "medium", "large"}:
@@ -121,9 +49,7 @@ class EnricherConfig:
         evaluation_model = os.environ.get("EVALUATION_MODEL", DEFAULT_EVALUATION_MODEL).strip()
 
         return cls(
-            provider=provider,
-            api_key=api_key,
-            base_url=_read_optional("LLM_BASE_URL"),
+            llm=llm,
             screening_model=screening_model,
             evaluation_model=evaluation_model,
             max_images=_read_int("LLM_MAX_IMAGES", 8),
@@ -134,6 +60,7 @@ class EnricherConfig:
             max_output_tokens=_read_int("LLM_MAX_OUTPUT_TOKENS", 8000),
             price_drift_threshold=_read_float("EVALUATION_PRICE_DRIFT_THRESHOLD", 0.05),
             daily_budget_usd=_read_optional_float("ENRICHER_DAILY_BUDGET_USD"),
+            request_daily_budget_usd=_read_float("ENRICHER_REQUEST_DAILY_BUDGET_USD", 3.0),
             max_description_characters=_read_int("LLM_MAX_DESCRIPTION_CHARACTERS", 4000),
             concurrency=_read_int("ENRICHER_CONCURRENCY", 4),
             cycle_pause_seconds=_read_int("ENRICHER_CYCLE_PAUSE_SECONDS", 300),

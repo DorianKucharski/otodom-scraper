@@ -1,0 +1,34 @@
+Dzisiaj jest {{ today }}.
+
+## Słownik kodów
+
+{% for name, values in vocabulary.coded_filters %}
+{{ name }}:
+{% for code, label, description in values %}
+- {{ code }}: {{ label }}{{ ' (' ~ description ~ ')' if description else '' }}
+{% endfor %}
+{% endfor %}
+
+Województwa: {{ vocabulary.voivodeships | join(', ') }}
+
+Najczęstsze miejscowości w bazie: {{ vocabulary.top_cities | join(', ') }}
+
+Cechy z listy serwisu (dozwolone wartości `features`): {{ vocabulary.features | join(', ') }}
+
+{% if previous %}
+## Poprzednie ustawienia
+
+{{ previous }}
+
+{% endif %}
+{% if history %}
+## Wcześniejsze wiadomości użytkownika
+
+{% for message in history %}
+- {{ message }}
+{% endfor %}
+
+{% endif %}
+## Wiadomość użytkownika
+
+{{ message }}

@@ -12,7 +12,8 @@ from data.search_url import ObjectType, OfferType
 from database import DatabaseManager
 from enricher.budget import DailyBudget
 from enricher.config import EnricherConfig
-from enricher.llm.factory import build_llm_client
+from llm.factory import build_llm_client
+from enricher.requests import EvaluationRequestWorker
 from enricher.runner import EnrichmentRunner, RunSummary
 from enricher.selector import AdFilter
 from monitoring.heartbeat import ServiceHeartbeatWriter
@@ -112,7 +113,7 @@ def main(
     config = EnricherConfig.from_env()
     database_manager = DatabaseManager()
     database_manager.create_all_tables()
-    runner = EnrichmentRunner(database_manager, build_llm_client(config), config)
+    runner = EnrichmentRunner(database_manager, build_llm_client(config.llm), config)
 
     budget = DailyBudget(database_manager, config.daily_budget_usd)
     heartbeat = ServiceHeartbeatWriter(database_manager, ENRICHER_SERVICE, " ".join(sys.argv))
@@ -134,11 +135,13 @@ def main(
 
     logger.info(
         "Provider %s, screening model %s (prompt %s), evaluation model %s (prompt %s)",
-        config.provider, config.screening_model, runner.screening_prompt_version,
+        config.llm.provider, config.screening_model, runner.screening_prompt_version,
         config.evaluation_model, runner.evaluation_prompt_version,
     )
 
     run_once = not loop or dry_run or ad_url is not None
+    if not run_once:
+        EvaluationRequestWorker(database_manager, runner, config.request_daily_budget_usd).start()
 
     if dry_run and ad_url is None and limit is None:
         limit = DRY_RUN_LIMIT

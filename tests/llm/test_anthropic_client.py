@@ -9,9 +9,9 @@ from unittest.mock import patch
 import anthropic
 import httpx
 
-from enricher.llm.anthropic_client import AnthropicLlmClient
-from enricher.llm.client import LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponseFormatError
-from enricher.retry import call_with_retry
+from llm.anthropic_client import AnthropicLlmClient
+from llm.client import LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponseFormatError
+from llm.retry import call_with_retry
 
 
 @dataclass
@@ -70,7 +70,7 @@ def _request(images: tuple[LlmImage, ...] = (), effort: str | None = "medium") -
 
 def _client_for(response: _FakeMessage) -> tuple[AnthropicLlmClient, _RecordingMessages]:
     fake = _FakeAnthropic(response)
-    with patch("enricher.llm.anthropic_client.anthropic.Anthropic", return_value=fake):
+    with patch("llm.anthropic_client.anthropic.Anthropic", return_value=fake):
         client = AnthropicLlmClient(api_key="sk-ant-test")
     return client, fake.messages
 
@@ -174,7 +174,7 @@ class TestPermanentErrors(unittest.TestCase):
             raise error
 
         fake.messages.create = raising
-        with patch("enricher.llm.anthropic_client.anthropic.Anthropic", return_value=fake):
+        with patch("llm.anthropic_client.anthropic.Anthropic", return_value=fake):
             return AnthropicLlmClient(api_key="sk-ant-test")
 
     def __bad_request(self) -> anthropic.BadRequestError:

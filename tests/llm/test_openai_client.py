@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 from unittest.mock import patch
 
-from enricher.llm.client import LlmImage, LlmRefusalError, LlmRequest, LlmResponseFormatError
-from enricher.llm.openai_client import OpenAiLlmClient
+from llm.client import LlmImage, LlmRefusalError, LlmRequest, LlmResponseFormatError
+from llm.openai_client import OpenAiLlmClient
 
 
 @dataclass
@@ -69,7 +69,7 @@ def _request(images: tuple[LlmImage, ...] = ()) -> LlmRequest:
 
 def _client_for(response: _FakeCompletion) -> tuple[OpenAiLlmClient, _RecordingCompletions]:
     fake = _FakeOpenAi(response)
-    with patch("enricher.llm.openai_client.OpenAI", return_value=fake):
+    with patch("llm.openai_client.OpenAI", return_value=fake):
         client = OpenAiLlmClient(api_key="sk-test")
     return client, fake.chat.completions
 

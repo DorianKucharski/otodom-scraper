@@ -82,6 +82,12 @@ class TestSearchStatement(unittest.TestCase):
         self.assertIn("GROUND_FLOOR", sql)
         self.assertIn("SUBSTRING(ads.flat_floor FROM 7)", sql)
 
+    def test_floor_codes_without_a_plain_number_are_not_cast(self):
+        sql = _sql(min_floor=2)
+
+        self.assertIn("ads.flat_floor ~ '^FLOOR_[0-9]+$'", sql)
+        self.assertIn("FLOOR_HIGHER_10", sql)
+
     def test_top_floor_can_be_excluded(self):
         sql = _sql(exclude_top_floor=True)
 

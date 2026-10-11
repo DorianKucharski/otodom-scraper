@@ -4,7 +4,7 @@ import logging
 from time import sleep
 from typing import Callable, TypeVar
 
-from .llm.client import LlmPermanentError
+from .client import LlmPermanentError
 
 logger = logging.getLogger(__name__)
 
