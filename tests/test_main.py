@@ -1,7 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from main import BLOCKED_MAX_PAUSE_SECONDS, BLOCKED_PAUSE_SECONDS, ScrapeRetry
+import typer
+from typer.testing import CliRunner
+
+from main import BLOCKED_MAX_PAUSE_SECONDS, BLOCKED_PAUSE_SECONDS, ScrapeRetry, main
 from otodom_scraper import OtodomBlockedError
 
 
@@ -58,6 +61,17 @@ class ScrapeRetryTest(unittest.TestCase):
         retry(self._failing([]))
         self.assertEqual(0, retry.consecutive_blocks)
 
+
+
+class OnlyMissingLocationsFlagTest(unittest.TestCase):
+    def test_the_flag_needs_the_update_pass(self):
+        app = typer.Typer()
+        app.command()(main)
+
+        result = CliRunner().invoke(app, ["--no-update", "--only-missing-locations"])
+
+        self.assertNotEqual(0, result.exit_code)
+        self.assertIn("--only-missing-locations requires --update", result.output)
 
 if __name__ == "__main__":
     unittest.main()

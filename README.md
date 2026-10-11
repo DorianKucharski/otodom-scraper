@@ -278,6 +278,23 @@ LLM_DOWNLOAD_IMAGES=true
 
 Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli trochę ruchu i czasu, ale zero dodatkowych tokenów.
 
+## Tymczasowo: naprawa ogłoszeń bez lokalizacji
+
+> **Tymczasowe.** Do usunięcia, gdy w bazie nie będzie już aktywnych ogłoszeń bez miasta (`select count(*) from ads where status='active' and city_id is null`).
+
+Od czerwca 2026 otodom przestał wysyłać miasto, dzielnicę, powiat i województwo w starym polu `address`, więc ~30 tys. ogłoszeń trafiło do bazy bez lokalizacji. Scraper czyta ją już z nowego miejsca i sam naprawia te ogłoszenia przy ponownym pobraniu, ale przy zwykłym tempie trwa to około doby. Żeby to przyspieszyć, uruchom obok głównego kontenera jednorazowy proces, który pobiera wyłącznie ogłoszenia bez miasta:
+
+```bash
+docker compose run --rm -d --name otodom-location-repair otodom-scrapper   python main.py --no-scrape --update --only-missing-locations --max-price=2000000 --request-delay=1
+docker logs -f otodom-location-repair   # postęp
+docker stop otodom-location-repair      # gdy w logu pojawi się "Found 0 ads in DB to verify"
+```
+
+- `--only-missing-locations` bierze **wszystkie** aktywne ogłoszenia bez miasta, bez względu na `--max-age-days` i `--city`, bo bez miasta nie da się ich przypisać do żadnego.
+- Proces nie kończy się sam (jak każdy przebieg `main.py`), tylko co minutę sprawdza kolejkę od nowa. Zatrzymaj go ręcznie.
+- Oba procesy pytają otodom z tego samego IP, więc ryzyko blokady rośnie. Scraper je przeczeka (pauza od 1 do 30 minut), ale jeśli w logach jest dużo `Blocked by otodom`, zwiększ `--request-delay`.
+- Oba procesy raportują się jako ta sama usługa, więc zakładka Status pokazuje stan tego, który zgłosił się ostatnio.
+
 ## Surowe JSON-y i ponowne parsowanie
 
 Scraper zapisuje ostatni JSON każdego pobranego ogłoszenia (skompresowany, 5-8 kB) w tabeli `ad_raw_payloads`. Gdy okaże się, że parser coś gubi albo otodom zmienił format, poprawia się parser i odtwarza dane bez ponownego pobierania stron:

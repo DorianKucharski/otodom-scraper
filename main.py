@@ -261,6 +261,7 @@ class ScrapingContext:
             max_price: Optional[int] = None,
             object_types: Optional[list[str]] = None,
             offer_types: Optional[list[str]] = None,
+            only_missing_locations: bool = False,
     ):
         """Re-scrape ads already stored in the DB and refresh them (status, price, ...).
 
@@ -269,7 +270,9 @@ class ScrapingContext:
         """
         with self.__database_manager.get_session() as session:
             query = session.query(Ad.id).filter(Ad.status == AdStatus.ACTIVE)
-            if city:
+            if only_missing_locations:
+                query = query.filter(Ad.city_id.is_(None))
+            elif city:
                 query = query.outerjoin(Ad.city).filter(or_(City.name.ilike(city), Ad.city_id.is_(None)))
             if min_price is not None:
                 query = query.filter(Ad.price_value >= min_price)
@@ -280,7 +283,7 @@ class ScrapingContext:
             #     query = query.filter(Ad.object_type.in_(object_types))
             # if offer_types:
             #     query = query.filter(Ad.offer_type.in_(offer_types))
-            if self.__update_if_older_than_days:
+            if self.__update_if_older_than_days and not only_missing_locations:
                 threshold = datetime.now() - timedelta(days=self.__update_if_older_than_days)
                 query = query.filter(or_(Ad.scraped_at.is_(None), Ad.scraped_at < threshold))
             # Start from the stalest ads first
@@ -350,6 +353,7 @@ def update_ads(
         max_age_days: int = 30,
         request_delay_seconds: float = 0.0,
         store_raw_payloads: bool = True,
+        only_missing_locations: bool = False,
 ):
     scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
@@ -362,6 +366,7 @@ def update_ads(
         max_price=max_price,
         object_types=[o.name for o in object_types] if object_types else None,
         offer_types=[o.name for o in offer_types] if offer_types else None,
+        only_missing_locations=only_missing_locations,
     )
 
 
@@ -445,6 +450,11 @@ def main(
             True, '--store-raw/--no-store-raw',
             help="Keep the latest compressed page JSON of every scraped ad in ad_raw_payloads, for re-parsing later."
         ),
+        only_missing_locations: bool = typer.Option(
+            False, '--only-missing-locations',
+            help="Temporary: the update pass re-scrapes only active ads with no city, regardless of --max-age-days "
+                 "and --city. Repairs ads stored without a location before the reverse geocoding fix.",
+        ),
 ):
     if district and not city:
         raise typer.BadParameter("--district requires --city")
@@ -452,6 +462,8 @@ def main(
         raise typer.BadParameter("--city requires --voivodeship")
     if not scrape_enabled and not update_enabled:
         raise typer.BadParameter("At least one of --scrape / --update must be enabled")
+    if only_missing_locations and not update_enabled:
+        raise typer.BadParameter("--only-missing-locations requires --update")
 
     location = Location(
         voivodeship=voivodeship,
@@ -492,6 +504,7 @@ def main(
                 max_age_days=max_age_days,
                 request_delay_seconds=request_delay_seconds,
                 store_raw_payloads=store_raw_payloads,
+                only_missing_locations=only_missing_locations,
             )
             logger.info("All existing ads have been verified.")
 
