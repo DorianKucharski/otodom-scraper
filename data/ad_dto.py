@@ -10,6 +10,8 @@ from typing import Optional, Type, TypeVar
 
 T = TypeVar("T")
 
+RAW_PAYLOAD_KEYS = ('ad', 'adTrackingData', 'developmentData')
+
 
 def parse_datetime(value: str) -> datetime:
     # Python 3.10's datetime.fromisoformat does not accept a trailing "Z".
@@ -179,17 +181,70 @@ class AddressDto:
 
 
 @dataclass
+class LocationHintsDto:
+    province_code: Optional[str]
+    province_name: Optional[str]
+    county_code: Optional[str]
+    city_id: Optional[int]
+    city_code: Optional[str]
+    city_name: Optional[str]
+    city_path: Optional[str]
+    district_code: Optional[str]
+    district_name: Optional[str]
+    district_path: Optional[str]
+
+    @classmethod
+    def from_json(cls, location: Optional[dict], tracking: Optional[dict]) -> Optional['LocationHintsDto']:
+        levels = {
+            item.get('locationLevel'): item
+            for item in ((location or {}).get('reverseGeocoding') or {}).get('locations') or []
+            if isinstance(item, dict)
+        }
+        tracking = tracking or {}
+        voivodeship = levels.get('voivodeship') or {}
+        city = levels.get('city_or_village') or {}
+        district = levels.get('district') or {}
+
+        hints = cls(
+            province_code=tracking.get('region_id') or voivodeship.get('id'),
+            province_name=voivodeship.get('name'),
+            county_code=tracking.get('subregion_id'),
+            city_id=_int_or_none(tracking.get('city_id')),
+            city_code=tracking.get('city_name') or _last_segment(city.get('id')),
+            city_name=city.get('name'),
+            city_path=city.get('id'),
+            district_code=_last_segment(district.get('id')),
+            district_name=district.get('name'),
+            district_path=district.get('id'),
+        )
+        return hints if any(dataclasses.astuple(hints)) else None
+
+
+def _int_or_none(value) -> Optional[int]:
+    try:
+        return int(value) if value not in (None, '') else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _last_segment(path: Optional[str]) -> Optional[str]:
+    return path.rsplit('/', 1)[-1] if path else None
+
+
+@dataclass
 class LocationDto:
     coordinates: Optional[CoordinatesDto]
     address: Optional[AddressDto]
+    hints: Optional[LocationHintsDto] = None
 
     @classmethod
-    def from_json(cls, data: Optional[dict]) -> Optional['LocationDto']:
+    def from_json(cls, data: Optional[dict], tracking: Optional[dict] = None) -> Optional['LocationDto']:
         if not data:
             return None
         return cls(
             coordinates=CoordinatesDto.from_json(data.get('coordinates')),
-            address=AddressDto.from_json(data.get('address'))
+            address=AddressDto.from_json(data.get('address')),
+            hints=LocationHintsDto.from_json(data, tracking),
         )
 
 
@@ -413,6 +468,7 @@ class AdDto:
     features: List[str]
     images: List[ImageDto]
     characteristics: List[CharacteristicDto]
+    raw_payload: Optional[dict] = dataclasses.field(default=None, repr=False, compare=False)
 
     @cached_property
     def characteristic_by_key(self) -> Dict[str, CharacteristicDto]:
@@ -423,14 +479,17 @@ class AdDto:
 
     def __str__(self):
         dictionary = dataclasses.asdict(self)
+        dictionary.pop('raw_payload', None)
         dumps = json.dumps(dictionary, indent=4, sort_keys=True, default=str)
         return dumps.encode('utf-8').decode('unicode_escape')
 
     @classmethod
     def from_json(cls, data: dict) -> Optional['AdDto']:
-        ad = data.get('props', {}).get('pageProps', {}).get('ad')
+        page_props = data.get('props', {}).get('pageProps', {})
+        ad = page_props.get('ad')
         if ad is None:
             return None
+        tracking = page_props.get('adTrackingData')
         return cls(
             id=ad['id'],
             public_id=ad['publicId'],
@@ -444,10 +503,11 @@ class AdDto:
             market=ad['market'],
             advertiser_type=ad['advertiserType'],
             price=PriceDto.from_json(ad),
-            location=LocationDto.from_json(ad.get('location')),
+            location=LocationDto.from_json(ad.get('location'), tracking),
             property=PropertyDto.from_json(ad.get('property')),
             owner=OwnerDto.from_json(ad['owner']),
             features=ad.get('features', []),
             images=ImageDto.from_json_list(ad.get('images')),
-            characteristics=CharacteristicDto.from_json_list(ad.get('characteristics'))
+            characteristics=CharacteristicDto.from_json_list(ad.get('characteristics')),
+            raw_payload={key: page_props.get(key) for key in RAW_PAYLOAD_KEYS},
         )

@@ -5,7 +5,8 @@ from typing import List, Optional
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import (
-    BigInteger, Integer, SmallInteger, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum, func
+    BigInteger, Integer, SmallInteger, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum, func,
+    LargeBinary
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -365,6 +366,30 @@ class Ad(Base):
         self.modified_at = ad_data.modified_at
         self.scraped_at = datetime.now()
         self._set_properties(ad_data)
+        self._fill_location(ad_data)
+
+    def _fill_location(self, ad_data: AdDto):
+        location = ad_data.location
+        address = location.address if location else None
+        coordinates = location.coordinates if location else None
+
+        if address:
+            if address.province:
+                self.province_id = address.province.id
+            if address.county:
+                self.county_id = address.county.id
+            if address.city:
+                self.city_id = address.city.id
+            if address.district:
+                self.district_id = address.district.id
+            if address.street:
+                self.street = address.street.name
+            if address.postal_code:
+                self.postal_code = address.postal_code
+        if coordinates and coordinates.latitude and coordinates.longitude:
+            self.latitude = coordinates.latitude
+            self.longitude = coordinates.longitude
+            self.location_point = self._create_location_point(coordinates)
 
     def outdate(self):
         self.status = AdStatus.OUTDATED
@@ -958,3 +983,16 @@ class AdTrackingEvent(Base):
 
     def __repr__(self):
         return f"<AdTrackingEvent(ad_id={self.ad_id}, status={self.status})>"
+
+
+class AdRawPayload(Base):
+    __tablename__ = 'ad_raw_payloads'
+
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), primary_key=True
+    )
+    payload: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    scraped_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    def __repr__(self):
+        return f"<AdRawPayload(ad_id={self.ad_id}, bytes={len(self.payload or b'')})>"

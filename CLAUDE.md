@@ -112,6 +112,19 @@ Data flows: **HTTP fetch → DTO parse → ORM model → DB upsert**, orchestrat
   - `ScrapeRetry` (`ScrapingContext.with_retry`) wraps every search page and ad scrape: 3 tries with a 10s pause for ordinary errors. A 403/429 from otodom's CloudFront is an IP-wide block, so `OtodomScraper` raises `OtodomBlockedError` instead; that pauses 1 min doubling to 30 min (the backoff carries across items until a request succeeds), opens a fresh cloudscraper session, and does not use up the ordinary tries. An item that still fails is logged and skipped, never raised - a crash restarts the container, which walks the search pages from page 1 again and never reaches the update pass. `--request-delay` (default 2 s, plus up to 50% jitter) spaces out every request so blocks are rarer in the first place.
   - `scrape()` loops every search URL across all pages; `main()` wraps both passes in a `while True` with a 60s pause — **the process is designed to run forever**.
 
+## Location (`data/location_resolver.py`)
+
+Since June 2026 otodom sends `ad.location.address` with `province`/`county`/`city`/`district` all null (only the street sometimes survives). Every ad inserted after that had no location: 30k active ads by October, and city-scoped runs could not see them. The update pass joined on `City`, and so did the enricher, so those ads were never refreshed or scored.
+
+- The location now comes from two other places in the page JSON, parsed into `LocationHintsDto`: `ad.location.reverseGeocoding.locations` (levels `voivodeship`/`city_or_village`/`district`/`residential`, slug paths, no numeric ids) and `pageProps.adTrackingData` (`city_id` is otodom's numeric city id, the same one `cities` is keyed by; `region_id`/`subregion_id` are the province and county codes).
+- `complete_location()` fills only what the old `address` format left empty. Province and county resolve by code, city by the tracking id. District resolves by `(city_id, code)` learned from existing ads, because district codes repeat across cities (`zwierzyniec`); failing that, a unique code that no other city uses. Anything unresolved gets a stable negative id from `synthetic_location_id(level, path)`, so it can never collide with otodom's own ids. `LocationIndex` is built once in `ScrapingContext` and grows as new rows are created.
+- `Ad.update()` fills location fields only when the new value is present and never sets them back to NULL, so a re-scrape repairs an ad and a format change cannot wipe one. Every scrape path now calls `_store_dimensions` before `update()`.
+- The city-filtered update pass also includes ads with `city_id IS NULL`, so broken rows inside a scoped deployment get re-scraped and repaired.
+
+### Raw payloads (`ad_raw_payloads`, `data/raw_payload.py`)
+
+Every successful ad scrape keeps the latest zlib-compressed `{ad, adTrackingData, developmentData}` from the page (5-8 kB per ad; the full page is ~100-140 kB but mostly UI state). The rest of `pageProps` (current user, experiments, cookies) is deliberately not stored. `--no-store-raw` turns it off. When a parser bug or an upstream format change is found, `uv run python reparse.py` re-parses the stored payloads without touching otodom: a dry run by default, `--apply` to write, `--all` to go beyond ads with no city. `scraped_at` is kept, because nothing was actually re-checked.
+
 ## The AI enrichment layer (`enricher/`, `enrich.py`)
 
 Two stages, both writing one row per ad into tables the scraper never touches (`Ad` has **no** relationship to them on purpose - a relationship would let `session.merge(ad)` in the scraper cascade into and wipe them):

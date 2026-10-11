@@ -278,6 +278,18 @@ LLM_DOWNLOAD_IMAGES=true
 
 Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli trochę ruchu i czasu, ale zero dodatkowych tokenów.
 
+## Surowe JSON-y i ponowne parsowanie
+
+Scraper zapisuje ostatni JSON każdego pobranego ogłoszenia (skompresowany, 5-8 kB) w tabeli `ad_raw_payloads`. Gdy okaże się, że parser coś gubi albo otodom zmienił format, poprawia się parser i odtwarza dane bez ponownego pobierania stron:
+
+```bash
+uv run python reparse.py            # tylko liczy, co by się zmieniło (ogłoszenia bez miasta)
+uv run python reparse.py --apply    # zapisuje
+uv run python reparse.py --all --apply --limit 1000
+```
+
+`--no-store-raw` w `main.py` wyłącza zapisywanie.
+
 ## Diagnostyka
 
 ```bash

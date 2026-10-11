@@ -5,9 +5,11 @@ from time import sleep
 from typing import Optional
 
 import typer
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from data.ad_dto import AdDto
+from data.location_resolver import LocationIndex, complete_location
+from data.raw_payload import raw_payload_row
 from data.search_dto import SearchResultDto
 from data.models import Ad, AdStatus, County, Province, City, District, Owner, ServiceStatus
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
@@ -80,11 +82,13 @@ class ScrapingContext:
             self,
             database_manager: DatabaseManager,
             scraper: OtodomScraper,
-            update_if_older_than_days: Optional[int] = 30
+            update_if_older_than_days: Optional[int] = 30,
+            store_raw_payloads: bool = True,
     ):
         self.__database_manager = database_manager
         self.__scraper = scraper
         self.__update_if_older_than_days = update_if_older_than_days
+        self.__store_raw_payloads = store_raw_payloads
         self.with_retry = ScrapeRetry(scraper)
 
         with database_manager.get_session() as session:
@@ -99,6 +103,65 @@ class ScrapingContext:
             self.existing_county_ids = {c.id for c in session.query(County.id).all()}
             self.existing_city_ids = {c.id for c in session.query(City.id).all()}
             self.existing_district_ids = {d.id for d in session.query(District.id).all()}
+            self.location_index = self._load_location_index(session)
+
+    @staticmethod
+    def _load_location_index(session) -> LocationIndex:
+        district_usage = (
+            session.query(Ad.city_id, District.code, District.id, func.count(Ad.id))
+            .join(District, District.id == Ad.district_id)
+            .filter(Ad.city_id.is_not(None))
+            .group_by(Ad.city_id, District.code, District.id)
+            .all()
+        )
+        return LocationIndex.build(
+            provinces=session.query(Province.id, Province.code).all(),
+            counties=session.query(County.id, County.code).all(),
+            city_ids=[row.id for row in session.query(City.id).all()],
+            districts=session.query(District.id, District.code).all(),
+            district_usage=district_usage,
+        )
+
+    def _fetch_ad(self, url: str) -> Optional[AdDto]:
+        ad_dto = self.__scraper.scrape_ad(url)
+        if ad_dto:
+            complete_location(ad_dto, self.location_index)
+        return ad_dto
+
+    def _store_dimensions(self, session, ad: AdDto):
+        if ad.owner:
+            self._ensure_entity(session, self.existing_owner_ids, ad.owner.id, lambda: Owner.from_dataclass(ad.owner))
+
+        address = ad.location.address if ad.location else None
+        if address is None:
+            return
+        if address.province:
+            self._ensure_entity(
+                session, self.existing_province_ids, address.province.id,
+                lambda: Province.from_dataclass(address.province),
+            )
+        if address.county:
+            self._ensure_entity(
+                session, self.existing_county_ids, address.county.id,
+                lambda: County.from_dataclass(address.county),
+            )
+        if address.city:
+            self._ensure_entity(
+                session, self.existing_city_ids, address.city.id,
+                lambda: City.from_dataclass(address.city),
+            )
+        if address.district:
+            self._ensure_entity(
+                session, self.existing_district_ids, address.district.id,
+                lambda: District.from_dataclass(address.district),
+            )
+
+    def _store_raw_payload(self, session, ad: AdDto):
+        if not self.__store_raw_payloads:
+            return
+        row = raw_payload_row(ad.id, ad.raw_payload, datetime.now())
+        if row is not None:
+            session.merge(row)
 
     @staticmethod
     def _ensure_entity(session, cache: set, entity_id, factory):
@@ -139,9 +202,11 @@ class ScrapingContext:
                         return
                     if saved_ad.should_update(self.__update_if_older_than_days):
                         logger.info(f"Updating ad with url: {url} - last update was at - {saved_ad.modified_at}")
-                        ad_dto: AdDto | None = self.__scraper.scrape_ad(url)
+                        ad_dto: AdDto | None = self._fetch_ad(url)
                         if ad_dto:
+                            self._store_dimensions(session, ad_dto)
                             saved_ad.update(ad_dto, offer_type, object_type)
+                            self._store_raw_payload(session, ad_dto)
                         else:
                             saved_ad.outdate()
                             logger.warning(f"Marking as outdated - {saved_ad.id} - {url}")
@@ -151,14 +216,16 @@ class ScrapingContext:
                 logger.info(f"URL {url} already exists, skipping...")
             return
 
-        ad_dto: AdDto | None= self.__scraper.scrape_ad(url)
+        ad_dto: AdDto | None= self._fetch_ad(url)
         if ad_dto:
             if ad_dto.id in self.existing_ad_ids:
                 with self.__database_manager.get_session() as session:
                     saved_ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
 
                     if saved_ad is not None:
+                        self._store_dimensions(session, ad_dto)
                         saved_ad.update(ad_dto, offer_type, object_type)
+                        self._store_raw_payload(session, ad_dto)
                         self.existing_ad_urls.add(ad_dto.url)
                         logger.info(f"Updating ad - id: {ad_dto.id} - url: {ad_dto.url}")
                         return
@@ -179,50 +246,10 @@ class ScrapingContext:
     def __save_new_ad(self, ad: AdDto, offer_type: str, object_type: str):
         try:
             with self.__database_manager.get_session() as session:
-                if ad.owner:
-                    self._ensure_entity(
-                        session,
-                        self.existing_owner_ids,
-                        ad.owner.id,
-                        lambda: Owner.from_dataclass(ad.owner)
-                    )
-
-                address = ad.location.address if ad.location else None
-
-                if address and address.province:
-                    self._ensure_entity(
-                        session,
-                        self.existing_province_ids,
-                        address.province.id,
-                        lambda: Province.from_dataclass(address.province)
-                    )
-
-                if address and address.county:
-                    self._ensure_entity(
-                        session,
-                        self.existing_county_ids,
-                        address.county.id,
-                        lambda: County.from_dataclass(address.county)
-                    )
-
-                if address and address.city:
-                    self._ensure_entity(
-                        session,
-                        self.existing_city_ids,
-                        address.city.id,
-                        lambda: City.from_dataclass(address.city)
-                    )
-
-                if address and address.district:
-                    self._ensure_entity(
-                        session,
-                        self.existing_district_ids,
-                        address.district.id,
-                        lambda: District.from_dataclass(address.district)
-                    )
-
-                ad_model = Ad.from_dataclass(ad, offer_type, object_type)
-                session.merge(ad_model)
+                self._store_dimensions(session, ad)
+                session.merge(Ad.from_dataclass(ad, offer_type, object_type))
+                session.flush()
+                self._store_raw_payload(session, ad)
         except Exception as e:
             logger.error(f"Error processing ad: {ad.url} - {e}")
             raise
@@ -243,7 +270,7 @@ class ScrapingContext:
         with self.__database_manager.get_session() as session:
             query = session.query(Ad.id).filter(Ad.status == AdStatus.ACTIVE)
             if city:
-                query = query.join(Ad.city).filter(City.name.ilike(city))
+                query = query.outerjoin(Ad.city).filter(or_(City.name.ilike(city), Ad.city_id.is_(None)))
             if min_price is not None:
                 query = query.filter(Ad.price_value >= min_price)
             if max_price is not None:
@@ -277,22 +304,29 @@ class ScrapingContext:
                 return
 
             url = saved_ad.url
-            ad_dto: AdDto | None = self.__scraper.scrape_ad(url)
+            ad_dto: AdDto | None = self._fetch_ad(url)
             if ad_dto is None:
                 saved_ad.outdate()
                 logger.warning(f"Marking as outdated - {ad_id} - {url}")
                 return
 
             # Preserve offer_type/object_type - they are not part of the scraped JSON
+            self._store_dimensions(session, ad_dto)
             saved_ad.update(ad_dto, saved_ad.offer_type, saved_ad.object_type)
+            self._store_raw_payload(session, ad_dto)
             logger.info(f"Updated ad {ad_id} - status: {ad_dto.status} - url: {url}")
 
 
-def scrape(urls: list[SearchUrl], max_age_days: int = 30, request_delay_seconds: float = 0.0):
+def scrape(
+        urls: list[SearchUrl],
+        max_age_days: int = 30,
+        request_delay_seconds: float = 0.0,
+        store_raw_payloads: bool = True,
+):
     scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
     db_manager.create_all_tables()
-    scraping_context = ScrapingContext(db_manager, scraper, max_age_days)
+    scraping_context = ScrapingContext(db_manager, scraper, max_age_days, store_raw_payloads)
 
     for url in urls:
         page_number = 1
@@ -315,11 +349,12 @@ def update_ads(
         offer_types: Optional[list[OfferType]] = None,
         max_age_days: int = 30,
         request_delay_seconds: float = 0.0,
+        store_raw_payloads: bool = True,
 ):
     scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
     db_manager.create_all_tables()
-    scraping_context = ScrapingContext(db_manager, scraper, max_age_days)
+    scraping_context = ScrapingContext(db_manager, scraper, max_age_days, store_raw_payloads)
 
     scraping_context.update_existing_ads(
         city=city,
@@ -406,6 +441,10 @@ def main(
             2.0, '--request-delay', min=0,
             help="Minimum pause between requests to otodom, in seconds; each pause adds up to 50% random jitter."
         ),
+        store_raw_payloads: bool = typer.Option(
+            True, '--store-raw/--no-store-raw',
+            help="Keep the latest compressed page JSON of every scraped ad in ad_raw_payloads, for re-parsing later."
+        ),
 ):
     if district and not city:
         raise typer.BadParameter("--district requires --city")
@@ -439,7 +478,7 @@ def main(
         if scrape_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="zbieranie nowych ogłoszeń",
                              detail={"adresy_wyszukiwania": len(urls)})
-            scrape(urls, max_age_days, request_delay_seconds)
+            scrape(urls, max_age_days, request_delay_seconds, store_raw_payloads)
             logger.info("All listings have been scraped.")
 
         if update_enabled:
@@ -452,6 +491,7 @@ def main(
                 offer_types=build_offer_types(sale, rent),
                 max_age_days=max_age_days,
                 request_delay_seconds=request_delay_seconds,
+                store_raw_payloads=store_raw_payloads,
             )
             logger.info("All existing ads have been verified.")
 
