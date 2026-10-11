@@ -262,6 +262,7 @@ class ScrapingContext:
             object_types: Optional[list[str]] = None,
             offer_types: Optional[list[str]] = None,
             only_missing_locations: bool = False,
+            shard: Optional[tuple[int, int]] = None,
     ):
         """Re-scrape ads already stored in the DB and refresh them (status, price, ...).
 
@@ -270,6 +271,9 @@ class ScrapingContext:
         """
         with self.__database_manager.get_session() as session:
             query = session.query(Ad.id).filter(Ad.status == AdStatus.ACTIVE)
+            if shard:
+                index, count = shard
+                query = query.filter(Ad.id.op('%')(count) == index - 1)
             if only_missing_locations:
                 query = query.filter(Ad.city_id.is_(None))
             elif city:
@@ -354,6 +358,7 @@ def update_ads(
         request_delay_seconds: float = 0.0,
         store_raw_payloads: bool = True,
         only_missing_locations: bool = False,
+        shard: Optional[tuple[int, int]] = None,
 ):
     scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
@@ -367,6 +372,7 @@ def update_ads(
         object_types=[o.name for o in object_types] if object_types else None,
         offer_types=[o.name for o in offer_types] if offer_types else None,
         only_missing_locations=only_missing_locations,
+        shard=shard,
     )
 
 
@@ -420,6 +426,18 @@ def build_urls(
     ]
 
 
+def parse_shard(value: Optional[str]) -> Optional[tuple[int, int]]:
+    if value is None:
+        return None
+    index, separator, count = value.partition("/")
+    if not separator or not index.isdigit() or not count.isdigit():
+        raise typer.BadParameter(f"--shard must look like 1/2, got {value}")
+    index, count = int(index), int(count)
+    if count < 1 or not 1 <= index <= count:
+        raise typer.BadParameter(f"--shard {value}: the first number must be between 1 and {count}")
+    return index, count
+
+
 def main(
         houses: bool = typer.Option(True, '--houses/--no-houses'),
         apartments: bool = typer.Option(True, '--apartments/--no-apartments'),
@@ -455,6 +473,11 @@ def main(
             help="Temporary: the update pass re-scrapes only active ads with no city, regardless of --max-age-days "
                  "and --city. Repairs ads stored without a location before the reverse geocoding fix.",
         ),
+        shard: Optional[str] = typer.Option(
+            None, '--shard',
+            help="Split the update pass between processes: 1/2 takes ads with id % 2 == 0, 2/2 the rest. "
+                 "Give every process the same total.",
+        ),
 ):
     if district and not city:
         raise typer.BadParameter("--district requires --city")
@@ -464,6 +487,9 @@ def main(
         raise typer.BadParameter("At least one of --scrape / --update must be enabled")
     if only_missing_locations and not update_enabled:
         raise typer.BadParameter("--only-missing-locations requires --update")
+    parsed_shard = parse_shard(shard)
+    if parsed_shard and not update_enabled:
+        raise typer.BadParameter("--shard requires --update")
 
     location = Location(
         voivodeship=voivodeship,
@@ -505,6 +531,7 @@ def main(
                 request_delay_seconds=request_delay_seconds,
                 store_raw_payloads=store_raw_payloads,
                 only_missing_locations=only_missing_locations,
+                shard=parsed_shard,
             )
             logger.info("All existing ads have been verified.")
 

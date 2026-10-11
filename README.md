@@ -282,18 +282,23 @@ Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli t
 
 > **Tymczasowe.** Do usunięcia, gdy w bazie nie będzie już aktywnych ogłoszeń bez miasta (`select count(*) from ads where status='active' and city_id is null`).
 
-Od czerwca 2026 otodom przestał wysyłać miasto, dzielnicę, powiat i województwo w starym polu `address`, więc ~30 tys. ogłoszeń trafiło do bazy bez lokalizacji. Scraper czyta ją już z nowego miejsca i sam naprawia te ogłoszenia przy ponownym pobraniu, ale przy zwykłym tempie trwa to około doby. Żeby to przyspieszyć, uruchom obok głównego kontenera jednorazowy proces, który pobiera wyłącznie ogłoszenia bez miasta:
+Od czerwca 2026 otodom przestał wysyłać miasto, dzielnicę, powiat i województwo w starym polu `address`, więc ~30 tys. ogłoszeń trafiło do bazy bez lokalizacji. Scraper czyta ją już z nowego miejsca i sam naprawia te ogłoszenia przy ponownym pobraniu, ale przy zwykłym tempie trwa to około doby. Żeby to przyspieszyć, uruchom proces, który pobiera wyłącznie ogłoszenia bez miasta. Najlepiej dwa, z różnych IP (otodom blokuje per adres), z podziałem pracy przez `--shard`:
 
 ```bash
-docker compose run --rm -d --name otodom-location-repair otodom-scrapper   python main.py --no-scrape --update --only-missing-locations --max-price=2000000 --request-delay=1
-docker logs -f otodom-location-repair   # postęp
-docker stop otodom-location-repair      # gdy w logu pojawi się "Found 0 ads in DB to verify"
+# na VPS-ie, obok głównego kontenera
+docker compose run --rm -d --name otodom-location-repair otodom-scrapper   python main.py --no-scrape --update --only-missing-locations --max-price=0 --shard=1/2
+docker logs -f otodom-location-repair
+
+# na własnym komputerze (lokalny .env wskazuje na tę samą bazę)
+uv run python main.py --no-scrape --update --only-missing-locations --max-price 0 --shard 2/2
 ```
 
-- `--only-missing-locations` bierze **wszystkie** aktywne ogłoszenia bez miasta, bez względu na `--max-age-days` i `--city`, bo bez miasta nie da się ich przypisać do żadnego.
-- Proces nie kończy się sam (jak każdy przebieg `main.py`), tylko co minutę sprawdza kolejkę od nowa. Zatrzymaj go ręcznie.
-- Oba procesy pytają otodom z tego samego IP, więc ryzyko blokady rośnie. Scraper je przeczeka (pauza od 1 do 30 minut), ale jeśli w logach jest dużo `Blocked by otodom`, zwiększ `--request-delay`.
-- Oba procesy raportują się jako ta sama usługa, więc zakładka Status pokazuje stan tego, który zgłosił się ostatnio.
+- `--only-missing-locations` bierze **wszystkie** aktywne ogłoszenia bez miasta, bez względu na `--max-age-days` i `--city`, bo bez miasta nie da się ich przypisać do żadnego. `--max-price 0` wyłącza filtr ceny (domyślnie 1 mln zł).
+- `--shard 1/2` bierze ogłoszenia o parzystym ID, `--shard 2/2` o nieparzystym. Bez podziału dwa procesy pobierałyby w większości te same ogłoszenia, bo każdy na starcie bierze tę samą listę w tej samej kolejności. Działa dla dowolnej liczby procesów (`1/3`, `2/3`, `3/3`), byle każdy dostał tę samą liczbę po ukośniku.
+- Proces nie kończy się sam (jak każdy przebieg `main.py`), tylko co minutę sprawdza kolejkę od nowa. Zatrzymaj go (`docker stop otodom-location-repair` albo Ctrl+C), gdy w logu pojawi się `Found 0 ads in DB to verify`.
+- Dwa procesy z jednego IP to dwa razy więcej zapytań do otodom i większe ryzyko blokady. Scraper je przeczeka (pauza od 1 do 30 minut), ale jeśli w logach jest dużo `Blocked by otodom`, zwiększ `--request-delay`.
+- Wszystkie procesy raportują się jako ta sama usługa, więc zakładka Status pokazuje stan tego, który zgłosił się ostatnio, a logi się mieszają.
+- Główny scraper z `--no-scrape` nie zbiera nowych ogłoszeń. Jeśli na czas naprawy zmieniasz jego komendę, przywróć ją potem. Zbieranie nadrobi pominięte ogłoszenia przy następnym przejściu stron wyników.
 
 ## Surowe JSON-y i ponowne parsowanie
 

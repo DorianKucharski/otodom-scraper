@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import typer
 from typer.testing import CliRunner
 
-from main import BLOCKED_MAX_PAUSE_SECONDS, BLOCKED_PAUSE_SECONDS, ScrapeRetry, main
+from main import BLOCKED_MAX_PAUSE_SECONDS, BLOCKED_PAUSE_SECONDS, ScrapeRetry, main, parse_shard
 from otodom_scraper import OtodomBlockedError
 
 
@@ -61,6 +61,19 @@ class ScrapeRetryTest(unittest.TestCase):
         retry(self._failing([]))
         self.assertEqual(0, retry.consecutive_blocks)
 
+
+
+class ShardTest(unittest.TestCase):
+    def test_a_shard_is_parsed_into_index_and_count(self):
+        self.assertEqual((2, 3), parse_shard("2/3"))
+
+    def test_no_shard_means_everything(self):
+        self.assertIsNone(parse_shard(None))
+
+    def test_malformed_shards_are_rejected(self):
+        for value in ("2", "0/2", "3/2", "a/b", "1/0", "-1/2"):
+            with self.assertRaises(typer.BadParameter, msg=value):
+                parse_shard(value)
 
 
 class OnlyMissingLocationsFlagTest(unittest.TestCase):
