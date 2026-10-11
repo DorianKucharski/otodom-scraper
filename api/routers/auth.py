@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from ..auth import SESSION_COOKIE, SESSION_LIFETIME, AuthSettings, issue_session, password_matches
 from ..dependencies import get_user_name
+from ..https import is_https
 from ..schemas import LoginRequest, SessionResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -43,7 +44,7 @@ def login(login_request: LoginRequest, request: Request, response: Response) -> 
         max_age=int(SESSION_LIFETIME.total_seconds()),
         httponly=True,
         samesite="lax",
-        secure=request.url.scheme == "https",
+        secure=is_https(request),
     )
     return SessionResponse(name=name, auth_enabled=settings.enabled)
 

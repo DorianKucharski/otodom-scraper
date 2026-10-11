@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .auth import AuthSettings, install_auth
+from .https import install_https_redirect, public_url_from_env
 from .routers import ads, auth, facets, saved_searches, services, stats, tracking
 
 logging.basicConfig(
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    install_https_redirect(app, public_url_from_env())
 
     app.include_router(auth.router)
     app.include_router(ads.router)

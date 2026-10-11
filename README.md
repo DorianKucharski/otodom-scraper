@@ -218,7 +218,8 @@ Ustaw `APP_PASSWORD` w `.env` i zrestartuj `otodom-api`. Bez tej zmiennej API je
 - Ciasteczko jest ważne rok, więc na każdym urządzeniu logujesz się raz.
 - Zmiana `APP_PASSWORD` wylogowuje wszystkie urządzenia, bo ciasteczko jest nim podpisane.
 - Chronione jest całe `/api` (także logi usług) oraz `/docs`. Sam zbudowany frontend jest publiczny, ale bez sesji pokazuje tylko ekran logowania.
-- **API stoi na gołym porcie bez HTTPS, więc hasło i ciasteczko lecą otwartym tekstem.** Chroni to przed przypadkowym gościem, nie przed kimś, kto podsłuchuje sieć (np. publiczne Wi-Fi). Żeby to zamknąć, postaw przed API reverse proxy z certyfikatem, np. Caddy z domeną. Ciasteczko dostanie wtedy flagę `Secure` samo.
+- **HTTPS daje domena od Mikrusa** (`https://steve138-30138.wykr.es`, przez Cloudflare). Goły port `:30138` i `http://` na tej domenie nadal działają bez szyfrowania. Dlatego ustaw `APP_PUBLIC_URL=https://steve138-30138.wykr.es`: każde zapytanie, które nie przyszło po HTTPS, dostaje przekierowanie 308 na ten adres, więc formularz logowania nigdy nie wyświetli się po HTTP. Wyjątkiem jest `/api/health`.
+- O tym, czy połączenie było szyfrowane, API wnioskuje z nagłówka `X-Forwarded-Proto` od Cloudflare. Na tej podstawie ciasteczko dostaje też flagę `Secure`.
 
 ## Moje mieszkania
 

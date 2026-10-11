@@ -93,6 +93,15 @@ class TestAuthMiddleware(unittest.TestCase):
         self.assertEqual(200, client.get("/api/ads").status_code)
         self.assertEqual({"name": "Dorian", "auth_enabled": True}, client.get("/api/auth/me").json())
 
+    def test_the_cookie_is_secure_behind_an_https_proxy(self):
+        response = _client(_SETTINGS).post(
+            "/api/auth/login",
+            json={"name": "Dorian", "password": "tajne"},
+            headers={"X-Forwarded-Proto": "https"},
+        )
+
+        self.assertIn("secure", response.headers["set-cookie"].lower())
+
     def test_logging_out_closes_the_api(self):
         client = _client(_SETTINGS)
         client.post("/api/auth/login", json={"name": "Dorian", "password": "tajne"})
