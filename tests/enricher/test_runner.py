@@ -6,7 +6,7 @@ from datetime import datetime
 from data.models import AdEvaluation, AdScreening, EvaluationStatus, ScreeningStatus
 from llm.client import LlmResponse
 from enricher.results import EvaluationResult, ScreeningResult
-from enricher.runner import AdOutcome, FAILED, PreparedAd, SKIPPED, _evaluation_row, _is_up_to_date, _screening_row, \
+from enricher.runner import AdOutcome, FAILED, HALTED, PreparedAd, RunGuard, SKIPPED, _evaluation_row, _is_up_to_date, _screening_row, \
     _summarize
 from enricher.schema import SCORE_FIELD_NAMES
 from tests.enricher.ad_builder import AdBuilder
@@ -181,11 +181,40 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(150, summary.output_tokens)
         self.assertAlmostEqual(0.015, summary.cost_usd)
 
+    def test_halted_ads_are_neither_processed_nor_failed(self):
+        outcomes = (AdOutcome(ad_id=1, status=HALTED), AdOutcome(ad_id=2, status=FAILED, error="boom"))
+
+        summary = _summarize("evaluation", candidates=2, outcomes=outcomes)
+
+        self.assertEqual((0, 1, 1), (summary.processed, summary.failed, summary.halted))
+
     def test_an_empty_run_summarises_to_zero(self):
         summary = _summarize("evaluation", candidates=0, outcomes=())
 
         self.assertEqual(0, summary.processed)
         self.assertEqual(0.0, summary.cost_usd)
+
+
+class TestRunGuard(unittest.TestCase):
+
+    def test_a_halt_stays_for_the_rest_of_the_run(self):
+        guard = RunGuard("evaluation", should_stop=lambda: False)
+
+        guard.halt("no credits")
+
+        self.assertTrue(guard.is_halted())
+
+    def test_the_stop_condition_is_checked_until_it_fires(self):
+        checks = []
+
+        def budget_used_up():
+            checks.append(1)
+            return len(checks) >= 2
+
+        guard = RunGuard("screening", should_stop=budget_used_up)
+
+        self.assertEqual([False, True, True], [guard.is_halted() for _ in range(3)])
+        self.assertEqual(2, len(checks))
 
 
 if __name__ == "__main__":

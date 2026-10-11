@@ -14,7 +14,7 @@ from data.models import (
     ScreeningStatus,
 )
 from database import DatabaseManager
-from .runner import EnrichmentRunner
+from .runner import HALTED, EnrichmentRunner
 from .selector import AdFilter
 
 logger = logging.getLogger(__name__)
@@ -108,10 +108,14 @@ class EvaluationRequestWorker:
 
         logger.info("Evaluating %s requested ads: %s", len(ad_ids), ad_ids)
         ad_filter = AdFilter(ad_ids=tuple(ad_ids))
-        self.__runner.screen(ad_filter).log()
-        self.__runner.evaluate(ad_filter).log()
-        self.__resolve(ad_ids)
-        return len(ad_ids)
+        screening = self.__runner.screen(ad_filter)
+        screening.log()
+        evaluation = self.__runner.evaluate(ad_filter)
+        evaluation.log()
+        halted = {outcome.ad_id for outcome in (*screening.outcomes, *evaluation.outcomes) if outcome.status == HALTED}
+        resolved = [ad_id for ad_id in ad_ids if ad_id not in halted]
+        self.__resolve(resolved)
+        return len(resolved)
 
     def __is_over_budget(self, session: Session) -> bool:
         if self.__daily_budget_usd is None:

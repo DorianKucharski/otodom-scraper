@@ -12,6 +12,10 @@ class LlmRefusalError(LlmPermanentError):
     pass
 
 
+class LlmAccountError(LlmPermanentError):
+    pass
+
+
 class LlmResponseFormatError(Exception):
     pass
 

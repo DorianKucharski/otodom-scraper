@@ -92,7 +92,7 @@ Z tego zdjęcia to 3 400 tokenów, czyli ponad połowa wejścia oceny, a odpowie
 | Zmiana | Oszczędność | Koszt zmiany |
 | --- | --- | --- |
 | Węższe filtry (dzielnica, wąskie widełki cen, `--no-rent`) | proporcjonalna do liczby ogłoszeń | brak, to zwykle i tak jest to, czego szukasz |
-| `ENRICHER_DAILY_BUDGET_USD` | twardy sufit dobowy | ocenianie rozkłada się na dni |
+| `ENRICHER_DAILY_BUDGET_USD` (domyślnie 10) | twardy sufit dobowy, sprawdzany przed każdym ogłoszeniem | ocenianie rozkłada się na dni |
 | `LLM_MAX_IMAGES=5` | ~13% kosztu oceny | mniej materiału na `photo_trust_score` |
 | `LLM_IMAGE_VARIANT=small` | ~30% kosztu oceny | 314x236 nie wystarcza, by ocenić jakość wykończenia |
 | `LLM_MAX_DESCRIPTION_CHARACTERS=2000` | ~8% kosztu oceny, ~25% przesiewu | dłuższe opisy tracą końcówkę |

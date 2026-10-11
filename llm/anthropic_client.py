@@ -5,9 +5,14 @@ from typing import Optional
 
 import anthropic
 
-from .client import LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponse, LlmResponseFormatError
+from .client import LlmAccountError, LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponse, LlmResponseFormatError
 
 _PROVIDER = "anthropic"
+
+_ACCOUNT_ERRORS = (
+    anthropic.AuthenticationError,
+    anthropic.PermissionDeniedError,
+)
 
 _PERMANENT_ERRORS = (
     anthropic.BadRequestError,
@@ -43,6 +48,8 @@ class AnthropicLlmClient:
                 }],
             )
         except _PERMANENT_ERRORS as error:
+            if _is_account_error(error):
+                raise LlmAccountError(str(error)) from error
             raise LlmPermanentError(str(error)) from error
 
         if response.stop_reason == "refusal":
@@ -56,6 +63,14 @@ class AnthropicLlmClient:
             cache_read_tokens=response.usage.cache_read_input_tokens or 0,
             cache_write_tokens=response.usage.cache_creation_input_tokens or 0,
         )
+
+
+def _is_account_error(error: anthropic.APIStatusError) -> bool:
+    if isinstance(error, _ACCOUNT_ERRORS):
+        return True
+    body = error.body if isinstance(error.body, dict) else {}
+    details = body.get("error") if isinstance(body.get("error"), dict) else {}
+    return details.get("type") == "billing_error" or "credit balance" in str(error).lower()
 
 
 def _output_config(request: LlmRequest) -> dict:

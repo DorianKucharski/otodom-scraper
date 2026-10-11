@@ -166,7 +166,7 @@ def main(
 
         if screen_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="przesiew opisów")
-            summary = runner.screen(ad_filter, force=force, dry_run=dry_run)
+            summary = runner.screen(ad_filter, force=force, dry_run=dry_run, should_stop=budget.is_used_up)
             summary.log()
             heartbeat.report(ServiceStatus.RUNNING, phase="przesiew opisów", detail=_summary_detail(summary))
             if dry_run:
@@ -174,7 +174,7 @@ def main(
 
         if evaluate_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="ocena ze zdjęciami")
-            summary = runner.evaluate(ad_filter, force=force, dry_run=dry_run)
+            summary = runner.evaluate(ad_filter, force=force, dry_run=dry_run, should_stop=budget.is_used_up)
             summary.log()
             heartbeat.report(ServiceStatus.RUNNING, phase="ocena ze zdjęciami", detail=_summary_detail(summary))
             if dry_run:

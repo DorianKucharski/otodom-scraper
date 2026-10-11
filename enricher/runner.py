@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from data.models import Ad, AdEvaluation, AdScreening, EvaluationStatus, ScreeningStatus
 from database import DatabaseManager
-from llm.client import LlmClient, LlmImage, LlmRequest, LlmResponse
+from llm.client import LlmAccountError, LlmClient, LlmImage, LlmRequest, LlmResponse
 from llm.pricing import cost_usd_for
 from llm.retry import call_with_retry
 from .ad_context import AdContext, build_ad_context
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 SKIPPED = "skipped"
 FAILED = "failed"
+HALTED = "halted"
 
 _AD_RELATIONS = (
     "images",
@@ -77,13 +79,42 @@ class RunSummary:
     cost_usd: float
     outcomes: tuple[AdOutcome, ...]
 
+    halted: int = 0
+
     def log(self) -> None:
         logger.info(
-            "%s finished: %s candidates, %s processed, %s skipped, %s failed, "
+            "%s finished: %s candidates, %s processed, %s skipped, %s failed, %s halted, "
             "%s input tokens, %s output tokens, %.4f USD",
-            self.stage, self.candidates, self.processed, self.skipped, self.failed,
+            self.stage, self.candidates, self.processed, self.skipped, self.failed, self.halted,
             self.input_tokens, self.output_tokens, self.cost_usd,
         )
+
+
+class RunGuard:
+    def __init__(self, stage: str, should_stop: Callable[[], bool]):
+        self.__stage = stage
+        self.__should_stop = should_stop
+        self.__halted = threading.Event()
+        self.__lock = threading.Lock()
+
+    def is_halted(self) -> bool:
+        if self.__halted.is_set():
+            return True
+        if self.__should_stop():
+            self.halt("the daily budget is used up")
+            return True
+        return False
+
+    def halt(self, reason: str) -> None:
+        with self.__lock:
+            if self.__halted.is_set():
+                return
+            self.__halted.set()
+        logger.warning("Stopping %s for this cycle, %s", self.__stage, reason)
+
+
+def _never() -> bool:
+    return False
 
 
 class EnrichmentRunner:
@@ -104,17 +135,30 @@ class EnrichmentRunner:
     def evaluation_prompt_version(self) -> str:
         return self.__evaluation_template.version
 
-    def screen(self, ad_filter: AdFilter, force: bool = False, dry_run: bool = False) -> RunSummary:
+    def screen(
+            self,
+            ad_filter: AdFilter,
+            force: bool = False,
+            dry_run: bool = False,
+            should_stop: Callable[[], bool] = _never,
+    ) -> RunSummary:
         with self.__database_manager.get_session() as session:
             candidate_ids = screening_candidate_ids(
                 session, ad_filter, self.__screening_template.version, force
             )
 
         logger.info("Screening %s ads with %s", len(candidate_ids), self.__config.screening_model)
-        outcomes = self.__run_all(candidate_ids, lambda ad_id: self.__screen_ad(ad_id, force, dry_run))
+        guard = RunGuard("screening", should_stop)
+        outcomes = self.__run_all(candidate_ids, lambda ad_id: self.__screen_ad(ad_id, force, dry_run, guard))
         return _summarize("screening", len(candidate_ids), outcomes)
 
-    def evaluate(self, ad_filter: AdFilter, force: bool = False, dry_run: bool = False) -> RunSummary:
+    def evaluate(
+            self,
+            ad_filter: AdFilter,
+            force: bool = False,
+            dry_run: bool = False,
+            should_stop: Callable[[], bool] = _never,
+    ) -> RunSummary:
         with self.__database_manager.get_session() as session:
             candidate_ids = evaluation_candidate_ids(
                 session,
@@ -127,8 +171,9 @@ class EnrichmentRunner:
             market_context = MarketContext.load(session)
 
         logger.info("Evaluating %s ads with %s", len(candidate_ids), self.__config.evaluation_model)
+        guard = RunGuard("evaluation", should_stop)
         outcomes = self.__run_all(
-            candidate_ids, lambda ad_id: self.__evaluate_ad(ad_id, market_context, force, dry_run)
+            candidate_ids, lambda ad_id: self.__evaluate_ad(ad_id, market_context, force, dry_run, guard)
         )
         return _summarize("evaluation", len(candidate_ids), outcomes)
 
@@ -138,8 +183,10 @@ class EnrichmentRunner:
         with ThreadPoolExecutor(max_workers=self.__config.concurrency) as executor:
             return tuple(executor.map(action, ad_ids))
 
-    def __screen_ad(self, ad_id: int, force: bool, dry_run: bool) -> AdOutcome:
+    def __screen_ad(self, ad_id: int, force: bool, dry_run: bool, guard: RunGuard) -> AdOutcome:
         template = self.__screening_template
+        if guard.is_halted():
+            return AdOutcome(ad_id=ad_id, status=HALTED)
         try:
             prepared = self.__prepare_screening(ad_id, force)
             if prepared is None:
@@ -161,6 +208,9 @@ class EnrichmentRunner:
                 self.__save(_screening_row(prepared, result, response, template.version, self.__llm_client.provider))
 
             return _outcome_of(ad_id, result, response, result.status)
+        except LlmAccountError as error:
+            guard.halt(f"the provider rejected the account: {error}")
+            return AdOutcome(ad_id=ad_id, status=HALTED, error=str(error))
         except Exception as error:
             logger.error("Screening ad %s failed: %s", ad_id, error)
             if not dry_run:
@@ -174,8 +224,11 @@ class EnrichmentRunner:
             market_context: MarketContext,
             force: bool,
             dry_run: bool,
+            guard: RunGuard,
     ) -> AdOutcome:
         template = self.__evaluation_template
+        if guard.is_halted():
+            return AdOutcome(ad_id=ad_id, status=HALTED)
         try:
             prepared = self.__prepare_evaluation(ad_id, market_context, force)
             if prepared is None:
@@ -191,6 +244,9 @@ class EnrichmentRunner:
                                             self.__llm_client.provider, status))
 
             return _outcome_of(ad_id, result, response, status.value)
+        except LlmAccountError as error:
+            guard.halt(f"the provider rejected the account: {error}")
+            return AdOutcome(ad_id=ad_id, status=HALTED, error=str(error))
         except Exception as error:
             logger.error("Evaluating ad %s failed: %s", ad_id, error)
             if not dry_run:
@@ -452,11 +508,12 @@ def _summarize(stage: str, candidates: int, outcomes: tuple[AdOutcome, ...]) -> 
     return RunSummary(
         stage=stage,
         candidates=candidates,
-        processed=sum(1 for outcome in outcomes if outcome.status not in (SKIPPED, FAILED)),
+        processed=sum(1 for outcome in outcomes if outcome.status not in (SKIPPED, FAILED, HALTED)),
         skipped=sum(1 for outcome in outcomes if outcome.status == SKIPPED),
         failed=sum(1 for outcome in outcomes if outcome.status == FAILED),
         input_tokens=sum(outcome.input_tokens for outcome in outcomes),
         output_tokens=sum(outcome.output_tokens for outcome in outcomes),
         cost_usd=sum(outcome.cost_usd for outcome in outcomes),
         outcomes=outcomes,
+        halted=sum(1 for outcome in outcomes if outcome.status == HALTED),
     )

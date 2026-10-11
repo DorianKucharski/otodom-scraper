@@ -50,17 +50,16 @@ class DailyBudget:
             return None
         return max(self.__limit_usd - self.spending_today().total_usd, 0.0)
 
-    def is_exhausted(self) -> bool:
+    def is_used_up(self) -> bool:
         remaining = self.remaining_usd()
-        if remaining is None:
-            return False
+        return remaining is not None and remaining <= 0
 
-        if remaining <= 0:
+    def is_exhausted(self) -> bool:
+        if self.is_used_up():
             logger.warning(
                 "Daily budget of %.2f USD is used up, skipping this cycle. "
                 "Raise ENRICHER_DAILY_BUDGET_USD or wait for the window to roll over.",
                 self.__limit_usd,
             )
             return True
-
         return False

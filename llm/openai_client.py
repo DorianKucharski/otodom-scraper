@@ -6,9 +6,14 @@ from typing import Optional
 import openai
 from openai import OpenAI
 
-from .client import LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponse, LlmResponseFormatError
+from .client import LlmAccountError, LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponse, LlmResponseFormatError
 
 _PROVIDER = "openai"
+
+_ACCOUNT_ERRORS = (
+    openai.AuthenticationError,
+    openai.PermissionDeniedError,
+)
 
 _PERMANENT_ERRORS = (
     openai.BadRequestError,
@@ -51,6 +56,12 @@ class OpenAiLlmClient:
                     },
                 ],
             )
+        except _ACCOUNT_ERRORS as error:
+            raise LlmAccountError(str(error)) from error
+        except openai.RateLimitError as error:
+            if error.code == "insufficient_quota":
+                raise LlmAccountError(str(error)) from error
+            raise
         except _PERMANENT_ERRORS as error:
             raise LlmPermanentError(str(error)) from error
 

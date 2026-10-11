@@ -10,7 +10,7 @@ import anthropic
 import httpx
 
 from llm.anthropic_client import AnthropicLlmClient
-from llm.client import LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponseFormatError
+from llm.client import LlmAccountError, LlmImage, LlmPermanentError, LlmRefusalError, LlmRequest, LlmResponseFormatError
 from llm.retry import call_with_retry
 
 
@@ -189,7 +189,29 @@ class TestPermanentErrors(unittest.TestCase):
     def test_bad_request_is_permanent(self):
         client = self.__client_raising(self.__bad_request())
 
-        with self.assertRaises(LlmPermanentError):
+        with self.assertRaises(LlmPermanentError) as raised:
+            client.complete(_request())
+
+        self.assertNotIsInstance(raised.exception, LlmAccountError)
+
+    def test_an_empty_credit_balance_is_an_account_error(self):
+        body = {"type": "error", "error": {"type": "invalid_request_error",
+                                           "message": "Your credit balance is too low to access the Anthropic API."}}
+        response = httpx.Response(
+            status_code=400, request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"), json=body,
+        )
+        client = self.__client_raising(anthropic.BadRequestError(f"Error code: 400 - {body}", response=response, body=body))
+
+        with self.assertRaises(LlmAccountError):
+            client.complete(_request())
+
+    def test_a_rejected_key_is_an_account_error(self):
+        response = httpx.Response(
+            status_code=401, request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"), json={},
+        )
+        client = self.__client_raising(anthropic.AuthenticationError("invalid x-api-key", response=response, body=None))
+
+        with self.assertRaises(LlmAccountError):
             client.complete(_request())
 
     def test_a_permanent_error_is_not_retried(self):

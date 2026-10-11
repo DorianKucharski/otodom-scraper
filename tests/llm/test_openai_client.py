@@ -5,7 +5,10 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 from unittest.mock import patch
 
-from llm.client import LlmImage, LlmRefusalError, LlmRequest, LlmResponseFormatError
+import httpx
+import openai
+
+from llm.client import LlmAccountError, LlmImage, LlmRefusalError, LlmRequest, LlmResponseFormatError
 from llm.openai_client import OpenAiLlmClient
 
 
@@ -130,6 +133,37 @@ class TestOpenAiClient(unittest.TestCase):
         client, _ = _client_for(_FakeCompletion(choices=[_Choice(_Message(content="to nie jest json"))]))
 
         with self.assertRaises(LlmResponseFormatError):
+            client.complete(_request())
+
+
+class TestOpenAiAccountErrors(unittest.TestCase):
+
+    def __client_raising(self, error: Exception) -> OpenAiLlmClient:
+        client, completions = _client_for(_FakeCompletion(choices=[]))
+
+        def raising(**_kwargs):
+            raise error
+
+        completions.create = raising
+        return client
+
+    def __rate_limit(self, code: str) -> openai.RateLimitError:
+        body = {"message": "limit", "type": code, "code": code}
+        response = httpx.Response(
+            status_code=429, request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"), json=body,
+        )
+        return openai.RateLimitError("limit", response=response, body=body)
+
+    def test_an_exhausted_quota_is_an_account_error(self):
+        client = self.__client_raising(self.__rate_limit("insufficient_quota"))
+
+        with self.assertRaises(LlmAccountError):
+            client.complete(_request())
+
+    def test_an_ordinary_rate_limit_stays_transient(self):
+        client = self.__client_raising(self.__rate_limit("rate_limit_exceeded"))
+
+        with self.assertRaises(openai.RateLimitError):
             client.complete(_request())
 
 
