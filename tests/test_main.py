@@ -1,3 +1,4 @@
+import re
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -84,7 +85,7 @@ class OnlyMissingLocationsFlagTest(unittest.TestCase):
         result = CliRunner().invoke(app, ["--no-update", "--only-missing-locations"])
 
         self.assertNotEqual(0, result.exit_code)
-        self.assertIn("--only-missing-locations requires --update", result.output)
+        self.assertIn("--only-missing-locations requires --update", re.sub(r"\x1b\[[0-9;]*m", "", result.output))
 
 if __name__ == "__main__":
     unittest.main()
