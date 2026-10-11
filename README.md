@@ -210,9 +210,40 @@ Przebieg `--update` scrapera, który tylko odświeża `modified_at`, nie kosztuj
 | `ENRICHER_CONCURRENCY` | `4` | równoległych ogłoszeń |
 | `ENRICHER_CYCLE_PAUSE_SECONDS` | `300` | przerwa między cyklami |
 
+## Logowanie
+
+Ustaw `APP_PASSWORD` w `.env` i zrestartuj `otodom-api`. Bez tej zmiennej API jest otwarte dla każdego, kto trafi na port (w logu pojawi się ostrzeżenie).
+
+- Jedno hasło dla wszystkich, a przy logowaniu wpisuje się imię. Trafia ono do historii statusów, więc widać, kto co zmienił.
+- Ciasteczko jest ważne rok, więc na każdym urządzeniu logujesz się raz.
+- Zmiana `APP_PASSWORD` wylogowuje wszystkie urządzenia, bo ciasteczko jest nim podpisane.
+- Chronione jest całe `/api` (także logi usług) oraz `/docs`. Sam zbudowany frontend jest publiczny, ale bez sesji pokazuje tylko ekran logowania.
+- **API stoi na gołym porcie bez HTTPS, więc hasło i ciasteczko lecą otwartym tekstem.** Chroni to przed przypadkowym gościem, nie przed kimś, kto podsłuchuje sieć (np. publiczne Wi-Fi). Żeby to zamknąć, postaw przed API reverse proxy z certyfikatem, np. Caddy z domeną. Ciasteczko dostanie wtedy flagę `Secure` samo.
+
+## Moje mieszkania
+
+Każde ogłoszenie można zapisać ze statusem z panelu szczegółów. Każda zmiana statusu i każda notatka to osobny wpis w historii z komentarzem, autorem i datą (`ad_tracking_events`). Bieżący stan leży w `ad_tracking`.
+
+| Status | Znaczenie |
+|---|---|
+| Do sprawdzenia | wpadło w oko, trzeba się przyjrzeć |
+| Do zadzwonienia | warte kontaktu |
+| Po kontakcie | czekam: oddzwonią, wyślą zdjęcia, nie odebrał |
+| Umówione oglądanie | wymaga daty i godziny |
+| Obejrzane | po wizycie, opcjonalna ocena 1-5 |
+| Faworyt | poważny kandydat po obejrzeniu |
+| Negocjacje / oferta | opcjonalna kwota oferty |
+| Wybrane | koniec poszukiwań |
+| Odrzucone | rezygnuję, powód w komentarzu |
+| Niedostępne | sprzedane, wynajęte, wycofane |
+
+Przejścia są dowolne. Wyszukiwarka domyślnie ukrywa odrzucone i niedostępne, a w sekcji filtrów "Moje statusy" można to wyłączyć albo pokazać tylko wybrane statusy. Zakładka **Moje mieszkania** grupuje zapisane ogłoszenia po statusie, a nad nimi pokazuje listę umówionych oglądań. Przy każdym zapisanym ogłoszeniu widać zmianę ceny od chwili zapisania.
+
+Tabele tworzą się przy starcie scrapera albo enrichera, jak wszystkie inne. `drop_tables()` w `main.py` kasuje także je.
+
 ## Podgląd statusu i logów
 
-UI ma dwie zakładki: **Wyszukiwarka** i **Status**. Zakładka Status pokazuje:
+UI ma trzy zakładki: **Wyszukiwarka**, **Moje mieszkania** i **Status**. Zakładka Status pokazuje:
 
 - lampkę i stan każdej usługi (Pracuje / Czeka / Brak sygnału / Zatrzymany), aktualny etap, czas od ostatniego sygnału, czas działania, statystyki ostatniego cyklu i komendę, z jaką proces wystartował,
 - logi obu usług, przełączane zakładkami, z filtrem poziomu, wyszukiwaniem po treści i wyborem liczby linii (200-2000).

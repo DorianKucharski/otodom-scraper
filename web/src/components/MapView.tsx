@@ -2,7 +2,7 @@ import { CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import type { AdSummary } from '../api/types'
-import { formatMoney } from './AdCard'
+import { formatMoney, formatPrice } from './AdCard'
 
 interface MapViewProps {
   ads: AdSummary[]
@@ -48,7 +48,7 @@ export function MapView({ ads, onSelect }: MapViewProps) {
           <Popup>
             <strong>{ad.title}</strong>
             <br />
-            {formatMoney(ad.price_value)} · {formatMoney(ad.price_per_m2, 'zł/m²')}
+            {formatPrice(ad)} · {formatMoney(ad.price_per_m2, 'zł/m²')}
             <br />
             Ocena AI: {ad.evaluation?.overall_score ?? 'brak'}
           </Popup>

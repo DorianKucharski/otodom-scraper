@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from data.models import Ad, AdEvaluation, AdScreening
+from data.models import Ad, AdEvaluation, AdScreening, AdTracking
 from data.read_models import ad_all_features, district_price_stats
 from ..dependencies import get_session
 from ..mappers import to_ad_detail, to_ad_summary
@@ -45,8 +45,8 @@ def search_ads(
         limit=query.limit,
         offset=query.offset,
         items=[
-            to_ad_summary(ad, evaluation, features_count, distance_m)
-            for ad, evaluation, features_count, distance_m in rows
+            to_ad_summary(ad, evaluation, tracking, features_count, distance_m)
+            for ad, evaluation, tracking, features_count, distance_m in rows
         ],
     )
 
@@ -67,6 +67,7 @@ def get_ad(
         ad=ad,
         evaluation=session.get(AdEvaluation, ad_id),
         screening=session.get(AdScreening, ad_id),
+        tracking=session.get(AdTracking, ad_id),
         features_count=_features_count(session, ad_id),
         market_stats=_market_stats(session, ad),
     )

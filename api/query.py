@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Optional
 
 from geoalchemy2 import Geography
 from sqlalchemy import Integer, Select, and_, case, cast, exists, func, or_, select
 
-from data.models import Ad, AdEvaluation, City, District, Province
+from data.models import DISMISSED_TRACKING_STATUSES, Ad, AdEvaluation, AdTracking, City, District, Province
 from data.read_models import ad_all_features
 from enricher.schema import SCORE_FIELD_NAMES
+from .labels import feature_values_for
 from .schemas import AdSearchQuery, FeatureMatchMode, SortDirection
 
 FLOOR_NUMBER = case(
@@ -16,6 +18,62 @@ FLOOR_NUMBER = case(
     (Ad.flat_floor.startswith("FLOOR_", autoescape=True), cast(func.substring(Ad.flat_floor, 7), Integer)),
     else_=None,
 )
+
+RENT_PRICE_CEILING = 30000
+SALE_MARKETS = ("PRIMARY", "SECONDARY")
+
+OFFER_TYPE = case(
+    (Ad.offer_type.is_not(None), Ad.offer_type),
+    (Ad.market.in_(SALE_MARKETS), "SALE"),
+    (Ad.price_value < RENT_PRICE_CEILING, "RENT"),
+    else_="SALE",
+)
+
+
+def offer_type_of(ad: Ad) -> str:
+    if ad.offer_type is not None:
+        return ad.offer_type
+    if ad.market in SALE_MARKETS:
+        return "SALE"
+    return "RENT" if ad.price_value < RENT_PRICE_CEILING else "SALE"
+
+
+_LETTER = "a-ząćęłńóśźż"
+HOUSE_TITLE_PATTERN = (
+    f"((^|[^{_LETTER}])(dom|domek|domu|domy|domów|domki|willa|segment|siedlisko|rezydencja|bliźniak|blizniak)"
+    f"([^{_LETTER}]|$)|bliźniacz|blizniacz|szeregow|szeregówk|parterow|wolnostoj|działk|dzialk)"
+)
+FLAT_TITLE_PATTERN = "(mieszkani|kawalerk|apartament|garsonier|kamienic|pokój|pokoj|pokoi|[0-9] ?-?pok|studio|loft|penthouse)"
+HOUSE_BUILDING_TYPES = ("DETACHED", "SEMI_DETACHED", "FARM", "RESIDENCE")
+FLAT_BUILDING_TYPES = ("BLOCK", "APARTMENT", "TENEMENT", "INFILL", "LOFT")
+
+OBJECT_TYPE = case(
+    (Ad.object_type.is_not(None), Ad.object_type),
+    (Ad.flat_floor.is_not(None), "APARTMENT"),
+    (Ad.building_type.in_(HOUSE_BUILDING_TYPES), "HOUSE"),
+    (Ad.property_type == "FLAT", "APARTMENT"),
+    (Ad.building_type.in_(FLAT_BUILDING_TYPES), "APARTMENT"),
+    (Ad.title.regexp_match(HOUSE_TITLE_PATTERN, flags="i"), "HOUSE"),
+    (Ad.title.regexp_match(FLAT_TITLE_PATTERN, flags="i"), "APARTMENT"),
+    else_=None,
+)
+
+
+def object_type_of(ad: Ad) -> Optional[str]:
+    if ad.object_type is not None:
+        return ad.object_type
+    if ad.flat_floor is not None:
+        return "APARTMENT"
+    if ad.building_type in HOUSE_BUILDING_TYPES:
+        return "HOUSE"
+    if ad.property_type == "FLAT" or ad.building_type in FLAT_BUILDING_TYPES:
+        return "APARTMENT"
+    if re.search(HOUSE_TITLE_PATTERN, ad.title or "", re.IGNORECASE):
+        return "HOUSE"
+    if re.search(FLAT_TITLE_PATTERN, ad.title or "", re.IGNORECASE):
+        return "APARTMENT"
+    return None
+
 
 FEATURES_COUNT = (
     select(func.count())
@@ -37,8 +95,9 @@ def build_search_statements(query: AdSearchQuery) -> SearchStatements:
     distance = _distance_expression(query)
 
     rows = (
-        select(Ad, AdEvaluation, FEATURES_COUNT.label("features_count"), _distance_column(distance))
+        select(Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"), _distance_column(distance))
         .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
+        .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
         .where(*conditions)
         .order_by(*_order_by(query, distance))
         .limit(query.limit)
@@ -49,6 +108,7 @@ def build_search_statements(query: AdSearchQuery) -> SearchStatements:
         select(func.count())
         .select_from(Ad)
         .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
+        .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
         .where(*conditions)
     )
 
@@ -71,6 +131,7 @@ def _conditions_of(query: AdSearchQuery) -> list:
     conditions.extend(_feature_conditions(query))
     conditions.extend(_freshness_conditions(query))
     conditions.extend(_evaluation_conditions(query))
+    conditions.extend(_tracking_conditions(query))
 
     return conditions
 
@@ -159,8 +220,8 @@ def _classification_conditions(query: AdSearchQuery) -> list:
             (Ad.advertiser_type, query.advertiser_types),
             (Ad.property_type, query.property_types),
             (Ad.property_condition, query.property_conditions),
-            (Ad.object_type, query.object_types),
-            (Ad.offer_type, query.offer_types),
+            (OBJECT_TYPE, query.object_types),
+            (OFFER_TYPE, query.offer_types),
         )
         if values
     ]
@@ -170,12 +231,12 @@ def _feature_conditions(query: AdSearchQuery) -> list:
     conditions = []
 
     if query.features and query.feature_match is FeatureMatchMode.ALL:
-        conditions.extend(_has_feature([feature]) for feature in query.features)
+        conditions.extend(_has_feature(feature_values_for(feature)) for feature in query.features)
     elif query.features:
-        conditions.append(_has_feature(query.features))
+        conditions.append(_has_feature(_expanded(query.features)))
 
     if query.excluded_features:
-        conditions.append(~_has_feature(query.excluded_features))
+        conditions.append(~_has_feature(_expanded(query.excluded_features)))
 
     if query.min_features_count is not None:
         conditions.append(FEATURES_COUNT >= query.min_features_count)
@@ -218,12 +279,27 @@ def _evaluation_conditions(query: AdSearchQuery) -> list:
     return conditions
 
 
+def _tracking_conditions(query: AdSearchQuery) -> list:
+    conditions = []
+
+    if query.tracking_statuses:
+        conditions.append(AdTracking.status.in_(query.tracking_statuses))
+    if query.hide_dismissed:
+        conditions.append(or_(AdTracking.status.is_(None), AdTracking.status.not_in(DISMISSED_TRACKING_STATUSES)))
+
+    return conditions
+
+
 def _has_feature(values: list[str]):
     return exists(
         select(ad_all_features.c.ad_id)
         .where(and_(ad_all_features.c.ad_id == Ad.id, ad_all_features.c.value.in_(values)))
         .correlate(Ad)
     )
+
+
+def _expanded(features: list[str]) -> list[str]:
+    return sorted({value for feature in features for value in feature_values_for(feature)})
 
 
 def _parsed_attributes(raw_attributes: list[str]) -> list[tuple[str, str]]:

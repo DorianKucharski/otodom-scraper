@@ -3,14 +3,23 @@ from __future__ import annotations
 from typing import Optional
 
 from data.feature_groups import labelled_feature_groups
-from data.models import Ad, AdEvaluation, AdScreening
+from data.models import Ad, AdEvaluation, AdScreening, AdTracking
 from data.description import plain_description
-from .schemas import AdDetailResponse, AdSummaryResponse, EvaluationResponse, ImageResponse, MarketStatsResponse
+from .labels import (
+    ADVERTISER_TYPES, BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS, PROPERTY_CONDITIONS,
+    PROPERTY_OWNERSHIP, STYLE_TAGS, display_label, feature_label,
+)
+from .query import object_type_of, offer_type_of
+from .schemas import (
+    AdDetailResponse, AdSummaryResponse, EvaluationResponse, ImageResponse, MarketStatsResponse,
+    TrackingDetailResponse, TrackingEventResponse, TrackingResponse,
+)
 
 
 def to_ad_summary(
         ad: Ad,
         evaluation: Optional[AdEvaluation],
+        tracking: Optional[AdTracking],
         features_count: int,
         distance_m: Optional[float],
 ) -> AdSummaryResponse:
@@ -20,6 +29,7 @@ def to_ad_summary(
         features_count=features_count,
         thumbnail=_thumbnail_of(ad),
         evaluation=to_evaluation(evaluation),
+        tracking=to_tracking(tracking),
     )
 
 
@@ -27,6 +37,7 @@ def to_ad_detail(
         ad: Ad,
         evaluation: Optional[AdEvaluation],
         screening: Optional[AdScreening],
+        tracking: Optional[AdTracking],
         features_count: int,
         market_stats: Optional[MarketStatsResponse],
 ) -> AdDetailResponse:
@@ -35,15 +46,16 @@ def to_ad_detail(
         features_count=features_count,
         thumbnail=_thumbnail_of(ad),
         evaluation=to_evaluation(evaluation),
+        tracking=to_tracking(tracking),
         description=plain_description(ad.description),
         province=ad.province.name if ad.province else None,
         county=ad.county.name if ad.county else None,
         postal_code=ad.postal_code,
-        building_type=ad.building_type,
-        building_material=ad.building_material,
-        building_heating=ad.building_heating,
+        building_type=display_label(BUILDING_TYPES, ad.building_type),
+        building_material=display_label(BUILDING_MATERIALS, ad.building_material),
+        building_heating=display_label(BUILDING_HEATING, ad.building_heating),
         building_number_of_floors=ad.building_number_of_floors,
-        property_ownership=ad.property_ownership,
+        property_ownership=display_label(PROPERTY_OWNERSHIP, ad.property_ownership),
         status=_status_value(ad.status),
         images=[
             ImageResponse(
@@ -54,7 +66,10 @@ def to_ad_detail(
             )
             for image in sorted(ad.images, key=lambda image: image.position)
         ],
-        feature_groups={label: list(values) for label, values in labelled_feature_groups(ad)},
+        feature_groups={
+            label: sorted({feature_label(value) for value in values})
+            for label, values in labelled_feature_groups(ad)
+        },
         screening_attributes=dict(screening.extracted_attributes or {}) if screening else {},
         market_stats=market_stats,
     )
@@ -77,7 +92,7 @@ def to_evaluation(evaluation: Optional[AdEvaluation]) -> Optional[EvaluationResp
         value_for_money_score=evaluation.value_for_money_score,
         photo_trust_score=evaluation.photo_trust_score,
         renovation_needed=_status_value(evaluation.renovation_needed),
-        style_tag=evaluation.style_tag,
+        style_tag=display_label(STYLE_TAGS, evaluation.style_tag),
         summary=evaluation.summary,
         strengths=list(evaluation.strengths or []),
         concerns=list(evaluation.concerns or []),
@@ -86,6 +101,47 @@ def to_evaluation(evaluation: Optional[AdEvaluation]) -> Optional[EvaluationResp
         model=evaluation.model,
         evaluated_at=evaluation.evaluated_at,
     )
+
+
+def to_tracking(tracking: Optional[AdTracking]) -> Optional[TrackingResponse]:
+    if tracking is None:
+        return None
+    return TrackingResponse(**_tracking_fields(tracking))
+
+
+def to_tracking_detail(tracking: AdTracking) -> TrackingDetailResponse:
+    events = sorted(tracking.events, key=lambda event: (event.created_at, event.id or 0), reverse=True)
+    return TrackingDetailResponse(
+        **_tracking_fields(tracking),
+        ad_id=tracking.ad_id,
+        events=[
+            TrackingEventResponse(
+                id=event.id,
+                status=event.status,
+                comment=event.comment,
+                viewing_at=event.viewing_at,
+                rating=event.rating,
+                offer_amount=event.offer_amount,
+                author=event.author,
+                created_at=event.created_at,
+            )
+            for event in events
+        ],
+    )
+
+
+def _tracking_fields(tracking: AdTracking) -> dict:
+    return {
+        "status": tracking.status,
+        "viewing_at": tracking.viewing_at,
+        "rating": tracking.rating,
+        "offer_amount": tracking.offer_amount,
+        "price_at_save": tracking.price_at_save,
+        "last_comment": tracking.last_comment,
+        "created_at": tracking.created_at,
+        "updated_at": tracking.updated_at,
+        "updated_by": tracking.updated_by,
+    }
 
 
 def _common_fields(ad: Ad) -> dict:
@@ -101,9 +157,11 @@ def _common_fields(ad: Ad) -> dict:
         "rooms": ad.flat_number_of_rooms,
         "floor": ad.flat_floor,
         "building_year": ad.building_year,
-        "market": ad.market,
-        "advertiser_type": ad.advertiser_type,
-        "property_condition": ad.property_condition,
+        "offer_type": offer_type_of(ad),
+        "object_type": object_type_of(ad),
+        "market": display_label(MARKETS, ad.market),
+        "advertiser_type": display_label(ADVERTISER_TYPES, ad.advertiser_type),
+        "property_condition": display_label(PROPERTY_CONDITIONS, ad.property_condition),
         "city": ad.city.name if ad.city else None,
         "district": ad.district.name if ad.district else None,
         "street": ad.street,

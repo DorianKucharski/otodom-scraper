@@ -3,8 +3,9 @@ import { useState } from 'react'
 
 import { fetchAd } from '../api/client'
 import { RENOVATION_LABELS, SCORE_FIELDS, SCORE_LABELS } from '../api/types'
-import { formatArea, formatFloor, formatMoney } from './AdCard'
+import { formatArea, formatFloor, formatMoney, formatPrice } from './AdCard'
 import { ScoreBar } from './ScoreBadge'
+import { TrackingPanel } from './TrackingPanel'
 
 export type DetailVariant = 'panel' | 'full'
 
@@ -70,7 +71,7 @@ export function AdDetailPanel({ adId, variant, onClose, onToggleVariant }: AdDet
 
       <section className="detail-summary">
         <p className="detail-price">
-          <strong>{formatMoney(ad.price_value)}</strong>
+          <strong>{formatPrice(ad)}</strong>
           <span>{formatMoney(ad.price_per_m2, 'zł/m²')}</span>
           {ad.rent_value ? <span>czynsz {formatMoney(ad.rent_value)}</span> : null}
         </p>
@@ -85,6 +86,8 @@ export function AdDetailPanel({ adId, variant, onClose, onToggleVariant }: AdDet
         )}
         <a className="detail-link" href={ad.url} target="_blank" rel="noreferrer">Otwórz w otodom</a>
       </section>
+
+      <TrackingPanel ad={ad} />
 
       {evaluation && (
         <section className="detail-evaluation">

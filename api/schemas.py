@@ -6,7 +6,9 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from data.models import TrackingStatus
 from enricher.schema import SCORE_FIELD_NAMES
+from .auth import MAX_NAME_LENGTH
 
 _BASE_SORT_FIELDS = (
     "price_value",
@@ -102,6 +104,11 @@ class AdSearchQuery(BaseModel):
         description="Filtry po atrybutach AI w formacie klucz:wartość, na przykład kitchen_type:zamknięta.",
     )
 
+    tracking_statuses: list[TrackingStatus] = Field(
+        default_factory=list, description="Tylko ogłoszenia z jednym z tych statusów."
+    )
+    hide_dismissed: bool = Field(True, description="Ukrywa ogłoszenia odrzucone i niedostępne.")
+
     sort: SortField = SortField("created_at")
     direction: SortDirection = SortDirection.DESC
     limit: int = Field(50, ge=1, le=200)
@@ -146,6 +153,52 @@ class MarketStatsResponse(BaseModel):
     is_city_level: bool
 
 
+class TrackingResponse(BaseModel):
+    status: TrackingStatus
+    viewing_at: Optional[datetime]
+    rating: Optional[int]
+    offer_amount: Optional[int]
+    price_at_save: Optional[int]
+    last_comment: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    updated_by: Optional[str]
+
+
+class TrackingEventResponse(BaseModel):
+    id: int
+    status: Optional[TrackingStatus]
+    comment: Optional[str]
+    viewing_at: Optional[datetime]
+    rating: Optional[int]
+    offer_amount: Optional[int]
+    author: Optional[str]
+    created_at: datetime
+
+
+class TrackingDetailResponse(TrackingResponse):
+    ad_id: int
+    events: list[TrackingEventResponse]
+
+
+class TrackingEventRequest(BaseModel):
+    status: Optional[TrackingStatus] = Field(None, description="Brak = sama notatka, status bez zmian.")
+    comment: Optional[str] = Field(None, max_length=5000)
+    viewing_at: Optional[datetime] = Field(None, description="Lokalna data i godzina oglądania.")
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    offer_amount: Optional[int] = Field(None, ge=0)
+
+
+class LoginRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=MAX_NAME_LENGTH)
+    password: str = ""
+
+
+class SessionResponse(BaseModel):
+    name: Optional[str]
+    auth_enabled: bool
+
+
 class AdSummaryResponse(BaseModel):
     id: int
     url: str
@@ -158,6 +211,8 @@ class AdSummaryResponse(BaseModel):
     rooms: Optional[int]
     floor: Optional[str]
     building_year: Optional[int]
+    offer_type: str
+    object_type: Optional[str]
     market: Optional[str]
     advertiser_type: Optional[str]
     property_condition: Optional[str]
@@ -172,6 +227,7 @@ class AdSummaryResponse(BaseModel):
     modified_at: datetime
     thumbnail: Optional[str] = None
     evaluation: Optional[EvaluationResponse] = None
+    tracking: Optional[TrackingResponse] = None
 
 
 class AdDetailResponse(AdSummaryResponse):
@@ -202,6 +258,7 @@ class FacetValue(BaseModel):
     value: str
     label: str
     count: int
+    description: Optional[str] = None
 
 
 class RangeFacet(BaseModel):
@@ -210,6 +267,8 @@ class RangeFacet(BaseModel):
 
 
 class FacetsResponse(BaseModel):
+    offer_types: list[FacetValue]
+    object_types: list[FacetValue]
     voivodeships: list[FacetValue]
     cities: list[FacetValue]
     districts: list[FacetValue]

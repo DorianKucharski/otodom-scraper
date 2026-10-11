@@ -1,6 +1,7 @@
 import type { AdSummary } from '../api/types'
 import { RENOVATION_LABELS } from '../api/types'
 import { ScoreBadge } from './ScoreBadge'
+import { PriceChange, TrackingPill } from './TrackingPanel'
 
 interface AdCardProps {
   ad: AdSummary
@@ -11,6 +12,10 @@ interface AdCardProps {
 export function formatMoney(value: number | null | undefined, suffix = 'zł'): string {
   if (value === null || value === undefined) return '-'
   return `${value.toLocaleString('pl-PL')} ${suffix}`
+}
+
+export function formatPrice(ad: Pick<AdSummary, 'price_value' | 'offer_type'>): string {
+  return formatMoney(ad.price_value, ad.offer_type === 'RENT' ? 'zł/mies.' : 'zł')
 }
 
 export function formatArea(value: number | null): string {
@@ -38,6 +43,7 @@ export function AdCard({ ad, selected, onSelect }: AdCardProps) {
         {evaluation?.overall_score != null && (
           <ScoreBadge label="Ocena ogólna" value={evaluation.overall_score} compact />
         )}
+        {ad.tracking && <TrackingPill tracking={ad.tracking} />}
       </div>
 
       <div className="ad-card-body">
@@ -49,14 +55,22 @@ export function AdCard({ ad, selected, onSelect }: AdCardProps) {
         </p>
 
         <p className="ad-card-price">
-          <strong>{formatMoney(ad.price_value)}</strong>
+          <strong>{formatPrice(ad)}</strong>
           <span>{formatMoney(ad.price_per_m2, 'zł/m²')}</span>
+          {ad.tracking && <PriceChange saved={ad.tracking.price_at_save} current={ad.price_value} />}
         </p>
 
         <p className="ad-card-params">
           {formatArea(ad.area_value)} · {ad.rooms ?? '-'} pok. · {formatFloor(ad.floor)}
           {ad.building_year ? ` · ${ad.building_year}` : ''} · {ad.features_count} cech
         </p>
+
+        {ad.tracking?.last_comment && (
+          <p className="ad-card-note">
+            {ad.tracking.last_comment}
+            {ad.tracking.updated_by && <span> · {ad.tracking.updated_by}</span>}
+          </p>
+        )}
 
         {evaluation?.summary && <p className="ad-card-summary">{evaluation.summary}</p>}
 

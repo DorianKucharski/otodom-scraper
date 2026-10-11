@@ -34,6 +34,22 @@ class EvaluationStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class TrackingStatus(str, enum.Enum):
+    SHORTLISTED = "shortlisted"
+    TO_CALL = "to_call"
+    CONTACTED = "contacted"
+    VIEWING_SCHEDULED = "viewing_scheduled"
+    VIEWED = "viewed"
+    FAVOURITE = "favourite"
+    OFFER_MADE = "offer_made"
+    CHOSEN = "chosen"
+    REJECTED = "rejected"
+    UNAVAILABLE = "unavailable"
+
+
+DISMISSED_TRACKING_STATUSES = (TrackingStatus.REJECTED, TrackingStatus.UNAVAILABLE)
+
+
 class RenovationNeeded(str, enum.Enum):
     NONE = "none"
     COSMETIC = "cosmetic"
@@ -884,3 +900,61 @@ class SavedSearch(Base):
 
     def __repr__(self):
         return f"<SavedSearch(id={self.id}, name={self.name})>"
+
+
+class AdTracking(Base):
+    __tablename__ = 'ad_tracking'
+
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(enum_column_type(TrackingStatus, 30), nullable=False)
+    viewing_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    rating: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    offer_amount: Mapped[Optional[int]] = mapped_column(Integer)
+    price_at_save: Mapped[Optional[int]] = mapped_column(Integer)
+    last_comment: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(50))
+
+    ad: Mapped["Ad"] = relationship()
+    events: Mapped[List["AdTrackingEvent"]] = relationship(
+        back_populates="tracking",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="AdTrackingEvent.created_at.desc()",
+    )
+
+    __table_args__ = (
+        Index('idx_ad_tracking_status', 'status'),
+        Index('idx_ad_tracking_viewing_at', 'viewing_at'),
+    )
+
+    def __repr__(self):
+        return f"<AdTracking(ad_id={self.ad_id}, status={self.status})>"
+
+
+class AdTrackingEvent(Base):
+    __tablename__ = 'ad_tracking_events'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ad_tracking.ad_id', ondelete='CASCADE'), nullable=False
+    )
+    status: Mapped[Optional[str]] = mapped_column(enum_column_type(TrackingStatus, 30))
+    comment: Mapped[Optional[str]] = mapped_column(Text)
+    viewing_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    rating: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    offer_amount: Mapped[Optional[int]] = mapped_column(Integer)
+    author: Mapped[Optional[str]] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    tracking: Mapped["AdTracking"] = relationship(back_populates="events")
+
+    __table_args__ = (
+        Index('idx_ad_tracking_events_ad_id_created_at', 'ad_id', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<AdTrackingEvent(ad_id={self.ad_id}, status={self.status})>"

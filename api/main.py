@@ -8,7 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routers import ads, facets, saved_searches, services, stats
+from .auth import AuthSettings, install_auth
+from .routers import ads, auth, facets, saved_searches, services, stats, tracking
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +24,7 @@ _DEFAULT_ALLOWED_ORIGINS = "http://localhost:5173"
 def create_app() -> FastAPI:
     app = FastAPI(title="Otodom search API", version="1.0.0")
 
+    install_auth(app, AuthSettings.from_env())
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_allowed_origins(),
@@ -31,11 +33,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(auth.router)
     app.include_router(ads.router)
     app.include_router(facets.router)
     app.include_router(saved_searches.router)
     app.include_router(services.router)
     app.include_router(stats.router)
+    app.include_router(tracking.router)
 
     @app.get("/api/health")
     def health() -> dict:

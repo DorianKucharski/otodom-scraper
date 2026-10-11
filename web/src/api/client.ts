@@ -7,6 +7,11 @@ import type {
   SavedSearch,
   ServiceLogs,
   ServiceStatus,
+  Session,
+  TrackingDetail,
+  TrackingEventInput,
+  TrackingStatus,
+  AdSummary,
 } from './types'
 
 const API_BASE = '/api'
@@ -34,6 +39,8 @@ export const DEFAULT_QUERY: AdSearchQuery = {
   renovation_needed: [],
   style_tags: [],
   attributes: [],
+  tracking_statuses: [],
+  hide_dismissed: true,
   sort: 'created_at',
   direction: 'desc',
   limit: 50,
@@ -108,16 +115,39 @@ export function fromSearchParams(params: URLSearchParams): AdSearchQuery {
   return query as unknown as AdSearchQuery
 }
 
+export const UNAUTHORIZED_EVENT = 'otodom:unauthorized'
+
+export class ApiError extends Error {
+  readonly status: number
+  readonly detail: string
+
+  constructor(status: number, detail: string) {
+    super(`${status}: ${detail}`)
+    this.status = status
+    this.detail = detail
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     ...init,
   })
 
   if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(`${response.status} ${response.statusText}: ${detail}`)
+    const body = await response.text()
+    let detail = body
+    try {
+      const parsed = JSON.parse(body)
+      if (typeof parsed.detail === 'string') detail = parsed.detail
+    } catch {
+      detail = body || response.statusText
+    }
+    if (response.status === 401 && !path.startsWith('/auth/')) {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+    }
+    throw new ApiError(response.status, detail)
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
@@ -169,4 +199,41 @@ export function fetchServiceLogs(
   if (minLevel) params.set('min_level', minLevel)
   if (search) params.set('search', search)
   return request<ServiceLogs>(`/services/${service}/logs?${params}`)
+}
+
+export function fetchSession(): Promise<Session> {
+  return request<Session>('/auth/me')
+}
+
+export function login(name: string, password: string): Promise<Session> {
+  return request<Session>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ name, password }),
+  })
+}
+
+export function logout(): Promise<void> {
+  return request<void>('/auth/logout', { method: 'POST' })
+}
+
+export function fetchTrackedAds(statuses: TrackingStatus[] = []): Promise<AdSummary[]> {
+  const params = new URLSearchParams()
+  statuses.forEach((status) => params.append('statuses', status))
+  const suffix = statuses.length > 0 ? `?${params}` : ''
+  return request<AdSummary[]>(`/tracking${suffix}`)
+}
+
+export function fetchTracking(adId: number): Promise<TrackingDetail | null> {
+  return request<TrackingDetail | null>(`/tracking/${adId}`)
+}
+
+export function addTrackingEvent(adId: number, event: TrackingEventInput): Promise<TrackingDetail> {
+  return request<TrackingDetail>(`/tracking/${adId}/events`, {
+    method: 'POST',
+    body: JSON.stringify(event),
+  })
+}
+
+export function deleteTracking(adId: number): Promise<void> {
+  return request<void>(`/tracking/${adId}`, { method: 'DELETE' })
 }

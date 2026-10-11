@@ -6,13 +6,21 @@ import type { AdSearchQuery } from './api/types'
 import { SCORE_FIELDS, SCORE_LABELS } from './api/types'
 import { AdCard } from './components/AdCard'
 import { AdDetailPanel } from './components/AdDetailPanel'
+import { SessionBadge } from './components/AuthGate'
 import type { DetailVariant } from './components/AdDetailPanel'
 import { FilterPanel } from './components/FilterPanel'
 import { MapView } from './components/MapView'
 import { SavedSearches } from './components/SavedSearches'
 import { StatusView } from './components/StatusView'
+import { TrackedView } from './components/TrackedView'
 
-type AppTab = 'search' | 'status'
+type AppTab = 'search' | 'tracked' | 'status'
+
+const APP_TABS: Array<{ value: AppTab; label: string }> = [
+  { value: 'search', label: 'Wyszukiwarka' },
+  { value: 'tracked', label: 'Moje mieszkania' },
+  { value: 'status', label: 'Status' },
+]
 type ResultsView = 'grid' | 'map'
 type GridDensity = 'large' | 'medium' | 'small'
 
@@ -59,7 +67,10 @@ export function App() {
   const [detailVariant, setDetailVariant] = useState<DetailVariant>(
     () => (initialParams.get('detail') === 'full' ? 'full' : 'panel'),
   )
-  const [tab, setTab] = useState<AppTab>(() => (initialParams.get('tab') === 'status' ? 'status' : 'search'))
+  const [tab, setTab] = useState<AppTab>(
+    () => APP_TABS.find((option) => option.value === initialParams.get('tab'))?.value ?? 'search',
+  )
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
     window.localStorage.setItem(DENSITY_STORAGE_KEY, density)
@@ -94,17 +105,34 @@ export function App() {
     [data, query.limit],
   )
 
-  const showFullDetail = tab === 'search' && detailVariant === 'full' && selectedAdId !== null
+  const showFullDetail = tab !== 'status' && detailVariant === 'full' && selectedAdId !== null
 
   const tabs = (
     <nav className="app-tabs">
-      <button type="button" className={tab === 'search' ? 'active' : ''} onClick={() => setTab('search')}>
-        Wyszukiwarka
-      </button>
-      <button type="button" className={tab === 'status' ? 'active' : ''} onClick={() => setTab('status')}>
-        Status
-      </button>
+      {APP_TABS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={tab === option.value ? 'active' : ''}
+          onClick={() => setTab(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+      <SessionBadge />
     </nav>
+  )
+
+  const detailPanel = selectedAdId !== null && (
+    <AdDetailPanel
+      adId={selectedAdId}
+      variant={detailVariant}
+      onClose={() => {
+        setSelectedAdId(null)
+        setDetailVariant('panel')
+      }}
+      onToggleVariant={() => setDetailVariant(detailVariant === 'full' ? 'panel' : 'full')}
+    />
   )
 
   if (tab === 'status') {
@@ -121,14 +149,31 @@ export function App() {
     )
   }
 
+  if (tab === 'tracked') {
+    return (
+      <div className={`app app-tracked${showFullDetail ? ' app-full-detail' : ''}`}>
+        {!showFullDetail && (
+          <main className="results">
+            <header className="results-toolbar">
+              {tabs}
+            </header>
+            <TrackedView selectedAdId={selectedAdId} onSelect={setSelectedAdId} />
+          </main>
+        )}
+        {detailPanel}
+      </div>
+    )
+  }
+
   return (
-    <div className={`app${showFullDetail ? ' app-full-detail' : ''}`}>
+    <div className={`app${showFullDetail ? ' app-full-detail' : ''}${filtersOpen ? ' app-filters-open' : ''}`}>
       {!showFullDetail && (
       <FilterPanel
         query={query}
         facets={facets}
         onChange={patchQuery}
         onReset={() => setQuery({ ...DEFAULT_QUERY })}
+        onClose={() => setFiltersOpen(false)}
       />
       )}
 
@@ -136,6 +181,7 @@ export function App() {
       <main className="results">
         <header className="results-toolbar">
           {tabs}
+          <button type="button" className="mobile-only" onClick={() => setFiltersOpen(true)}>Filtry</button>
           <div className="results-count">
             {isFetching ? 'Szukam...' : `${data?.total ?? 0} ogłoszeń`}
           </div>
@@ -224,17 +270,7 @@ export function App() {
       </main>
       )}
 
-      {selectedAdId !== null && (
-        <AdDetailPanel
-          adId={selectedAdId}
-          variant={detailVariant}
-          onClose={() => {
-            setSelectedAdId(null)
-            setDetailVariant('panel')
-          }}
-          onToggleVariant={() => setDetailVariant(detailVariant === 'full' ? 'panel' : 'full')}
-        />
-      )}
+      {detailPanel}
     </div>
   )
 }

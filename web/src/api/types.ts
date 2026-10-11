@@ -36,6 +36,90 @@ export const RENOVATION_LABELS: Record<string, string> = {
   full: 'Remont generalny',
 }
 
+export const TRACKING_STATUSES = [
+  'shortlisted',
+  'to_call',
+  'contacted',
+  'viewing_scheduled',
+  'viewed',
+  'favourite',
+  'offer_made',
+  'chosen',
+  'rejected',
+  'unavailable',
+] as const
+
+export type TrackingStatus = (typeof TRACKING_STATUSES)[number]
+
+export const TRACKING_LABELS: Record<TrackingStatus, string> = {
+  shortlisted: 'Do sprawdzenia',
+  to_call: 'Do zadzwonienia',
+  contacted: 'Po kontakcie',
+  viewing_scheduled: 'Umówione oglądanie',
+  viewed: 'Obejrzane',
+  favourite: 'Faworyt',
+  offer_made: 'Negocjacje / oferta',
+  chosen: 'Wybrane',
+  rejected: 'Odrzucone',
+  unavailable: 'Niedostępne',
+}
+
+export const TRACKING_HINTS: Record<TrackingStatus, string> = {
+  shortlisted: 'Wpadło w oko, trzeba się przyjrzeć',
+  to_call: 'Warte kontaktu, o co zapytać?',
+  contacted: 'Czekam: oddzwonią, wyślą zdjęcia, nie odebrał',
+  viewing_scheduled: 'Jest termin oglądania',
+  viewed: 'Po wizycie, pierwsze wrażenia',
+  favourite: 'Poważny kandydat po obejrzeniu',
+  offer_made: 'Złożona propozycja lub trwają rozmowy',
+  chosen: 'Koniec poszukiwań',
+  rejected: 'Rezygnuję, dlaczego?',
+  unavailable: 'Sprzedane, wynajęte albo wycofane',
+}
+
+export const DISMISSED_TRACKING_STATUSES: TrackingStatus[] = ['rejected', 'unavailable']
+
+export interface Tracking {
+  status: TrackingStatus
+  viewing_at: string | null
+  rating: number | null
+  offer_amount: number | null
+  price_at_save: number | null
+  last_comment: string | null
+  created_at: string
+  updated_at: string
+  updated_by: string | null
+}
+
+export interface TrackingEvent {
+  id: number
+  status: TrackingStatus | null
+  comment: string | null
+  viewing_at: string | null
+  rating: number | null
+  offer_amount: number | null
+  author: string | null
+  created_at: string
+}
+
+export interface TrackingDetail extends Tracking {
+  ad_id: number
+  events: TrackingEvent[]
+}
+
+export interface TrackingEventInput {
+  status?: TrackingStatus
+  comment?: string
+  viewing_at?: string
+  rating?: number
+  offer_amount?: number
+}
+
+export interface Session {
+  name: string | null
+  auth_enabled: boolean
+}
+
 export interface AdSearchQuery {
   text?: string
   voivodeships: string[]
@@ -79,6 +163,8 @@ export interface AdSearchQuery {
   renovation_needed: string[]
   style_tags: string[]
   attributes: string[]
+  tracking_statuses: TrackingStatus[]
+  hide_dismissed: boolean
   sort: string
   direction: SortDirection
   limit: number
@@ -130,6 +216,8 @@ export interface AdSummary {
   rooms: number | null
   floor: string | null
   building_year: number | null
+  offer_type: 'SALE' | 'RENT'
+  object_type: 'APARTMENT' | 'HOUSE' | null
   market: string | null
   advertiser_type: string | null
   property_condition: string | null
@@ -144,6 +232,7 @@ export interface AdSummary {
   modified_at: string
   thumbnail: string | null
   evaluation: Evaluation | null
+  tracking: Tracking | null
 }
 
 export interface AdImage {
@@ -189,6 +278,7 @@ export interface FacetValue {
   value: string
   label: string
   count: number
+  description?: string | null
 }
 
 export interface RangeFacet {
@@ -197,6 +287,8 @@ export interface RangeFacet {
 }
 
 export interface Facets {
+  offer_types: FacetValue[]
+  object_types: FacetValue[]
   voivodeships: FacetValue[]
   cities: FacetValue[]
   districts: FacetValue[]

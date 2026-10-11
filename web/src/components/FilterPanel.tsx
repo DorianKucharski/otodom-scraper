@@ -1,13 +1,14 @@
 import { useState } from 'react'
 
 import type { AdSearchQuery, Facets, FacetValue } from '../api/types'
-import { RENOVATION_LABELS, SCORE_FIELDS, SCORE_LABELS } from '../api/types'
+import { SCORE_FIELDS, SCORE_LABELS, TRACKING_LABELS, TRACKING_STATUSES } from '../api/types'
 
 interface FilterPanelProps {
   query: AdSearchQuery
   facets?: Facets
   onChange: (patch: Partial<AdSearchQuery>) => void
   onReset: () => void
+  onClose: () => void
 }
 
 interface SectionProps {
@@ -69,23 +70,92 @@ interface MultiSelectProps {
   size?: number
 }
 
+const SEARCHABLE_FROM = 12
+const ROW_HEIGHT_PX = 30
+
 function MultiSelect({ label, options, selected, onChange, size = 6 }: MultiSelectProps) {
+  const [search, setSearch] = useState('')
+  const needle = search.trim().toLowerCase()
+  const known = new Set(options.map((option) => option.value))
+  const orphans: FacetValue[] = selected
+    .filter((value) => !known.has(value))
+    .map((value) => ({ value, label: value, count: 0 }))
+  const visible = [...orphans, ...options].filter(
+    (option) => !needle || option.label.toLowerCase().includes(needle) || selected.includes(option.value),
+  )
+  const hasDescriptions = options.some((option) => option.description)
+
+  const toggle = (value: string, checked: boolean) =>
+    onChange(checked ? [...selected, value] : selected.filter((item) => item !== value))
+
   return (
-    <label className="filter-field">
-      <span>{label}</span>
-      <select
-        multiple
-        size={size}
-        value={selected}
-        onChange={(event) => onChange(Array.from(event.target.selectedOptions, (option) => option.value))}
+    <div className="filter-field">
+      <span className="filter-multi-header">
+        {label}
+        {selected.length > 0 && (
+          <button type="button" className="filter-multi-clear" onClick={() => onChange([])}>
+            wyczyść ({selected.length})
+          </button>
+        )}
+      </span>
+      {options.length >= SEARCHABLE_FROM && (
+        <input type="search" value={search} placeholder="szukaj..." onChange={(event) => setSearch(event.target.value)} />
+      )}
+      <div
+        className="filter-multi"
+        style={hasDescriptions ? undefined : { maxHeight: `${Math.max(size, 3) * ROW_HEIGHT_PX}px` }}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label} ({option.count})
-          </option>
+        {visible.map((option) => (
+          <label key={option.value} className="filter-multi-option">
+            <input
+              type="checkbox"
+              checked={selected.includes(option.value)}
+              onChange={(event) => toggle(option.value, event.target.checked)}
+            />
+            <span className="filter-multi-text">
+              <span className="filter-multi-label">
+                {option.label}
+                {option.count > 0 && <span className="filter-multi-count">{option.count.toLocaleString('pl-PL')}</span>}
+              </span>
+              {option.description && <span className="filter-multi-description">{option.description}</span>}
+            </span>
+          </label>
         ))}
-      </select>
-    </label>
+        {visible.length === 0 && <span className="filter-multi-empty">brak</span>}
+      </div>
+    </div>
+  )
+}
+
+interface ChoiceSwitchProps {
+  label: string
+  options: FacetValue[]
+  order: string[]
+  selected: string[]
+  onChange: (values: string[]) => void
+}
+
+function ChoiceSwitch({ label, options, order, selected, onChange }: ChoiceSwitchProps) {
+  const sorted = [...options].sort((left, right) => order.indexOf(left.value) - order.indexOf(right.value))
+  const choices: Array<{ value: string; label: string; count?: number }> = [{ value: '', label: 'Wszystkie' }, ...sorted]
+
+  return (
+    <div className="filter-offer-switch" role="group" aria-label={label}>
+      {choices.map((choice) => {
+        const active = choice.value === '' ? selected.length === 0 : selected.length === 1 && selected[0] === choice.value
+        return (
+          <button
+            key={choice.value || 'all'}
+            type="button"
+            className={active ? 'active' : ''}
+            onClick={() => onChange(choice.value ? [choice.value] : [])}
+          >
+            {choice.label}
+            {choice.count !== undefined && <span>{choice.count.toLocaleString('pl-PL')}</span>}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -117,20 +187,35 @@ function ScoreSlider({ label, value, onChange }: ScoreSliderProps) {
   )
 }
 
-export function FilterPanel({ query, facets, onChange, onReset }: FilterPanelProps) {
+export function FilterPanel({ query, facets, onChange, onReset, onClose }: FilterPanelProps) {
   const [attributeDraft, setAttributeDraft] = useState('')
 
-  const renovationOptions: FacetValue[] = (facets?.renovation_needed ?? []).map((option) => ({
-    ...option,
-    label: RENOVATION_LABELS[option.value] ?? option.label,
-  }))
 
   return (
     <aside className="filter-panel">
       <div className="filter-panel-header">
         <h2>Filtry</h2>
         <button type="button" onClick={onReset}>Wyczyść</button>
+        <button type="button" className="mobile-only primary" onClick={onClose}>Pokaż wyniki</button>
       </div>
+
+      <ChoiceSwitch
+        label="Typ oferty"
+        options={facets?.offer_types ?? []}
+        order={['SALE', 'RENT']}
+        selected={query.offer_types}
+        onChange={(offer_types) => onChange({ offer_types })}
+      />
+      <ChoiceSwitch
+        label="Rodzaj nieruchomości"
+        options={facets?.object_types ?? []}
+        order={['APARTMENT', 'HOUSE']}
+        selected={query.object_types}
+        onChange={(object_types) => onChange({ object_types })}
+      />
+      {query.offer_types.includes('RENT') && (
+        <p className="filter-caption">Przy wynajmie cena to miesięczny czynsz.</p>
+      )}
 
       <label className="filter-field">
         <span>Szukaj w tytule i opisie</span>
@@ -141,6 +226,32 @@ export function FilterPanel({ query, facets, onChange, onReset }: FilterPanelPro
           onChange={(event) => onChange({ text: event.target.value || undefined })}
         />
       </label>
+
+      <Section title="Moje statusy">
+        <label className="filter-checkbox">
+          <input
+            type="checkbox"
+            checked={query.hide_dismissed}
+            onChange={(event) => onChange({ hide_dismissed: event.target.checked })}
+          />
+          <span>Ukryj odrzucone i niedostępne</span>
+        </label>
+        <span className="filter-caption">Tylko ze statusem</span>
+        {TRACKING_STATUSES.map((status) => (
+          <label key={status} className="filter-checkbox">
+            <input
+              type="checkbox"
+              checked={query.tracking_statuses.includes(status)}
+              onChange={(event) => onChange({
+                tracking_statuses: event.target.checked
+                  ? [...query.tracking_statuses, status]
+                  : query.tracking_statuses.filter((item) => item !== status),
+              })}
+            />
+            <span>{TRACKING_LABELS[status]}</span>
+          </label>
+        ))}
+      </Section>
 
       <Section title="Lokalizacja" defaultOpen>
         <MultiSelect
@@ -369,7 +480,7 @@ export function FilterPanel({ query, facets, onChange, onReset }: FilterPanelPro
 
         <MultiSelect
           label="Zakres prac"
-          options={renovationOptions}
+          options={facets?.renovation_needed ?? []}
           selected={query.renovation_needed}
           onChange={(renovation_needed) => onChange({ renovation_needed })}
           size={4}
