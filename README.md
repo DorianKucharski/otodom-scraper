@@ -294,6 +294,7 @@ uv run python main.py --no-scrape --update --only-missing-locations --max-price 
 ```
 
 - `--only-missing-locations` bierze **wszystkie** aktywne ogłoszenia bez miasta, bez względu na `--max-age-days` i `--city`, bo bez miasta nie da się ich przypisać do żadnego. `--max-price 0` wyłącza filtr ceny (domyślnie 1 mln zł).
+- W tym trybie kolejność jest odwrócona: najpierw ogłoszenia, które scraper widział ostatnio w wynikach wyszukiwania. To głównie wciąż aktywne oferty. Te niewidziane od tygodni, prawie zawsze już zdjęte z otodom, idą na koniec i dostają wtedy status zdjętego.
 - `--shard 1/2` bierze ogłoszenia o parzystym ID, `--shard 2/2` o nieparzystym. Bez podziału dwa procesy pobierałyby w większości te same ogłoszenia, bo każdy na starcie bierze tę samą listę w tej samej kolejności. Działa dla dowolnej liczby procesów (`1/3`, `2/3`, `3/3`), byle każdy dostał tę samą liczbę po ukośniku.
 - Proces nie kończy się sam (jak każdy przebieg `main.py`), tylko co minutę sprawdza kolejkę od nowa. Zatrzymaj go (`docker stop otodom-location-repair` albo Ctrl+C), gdy w logu pojawi się `Found 0 ads in DB to verify`.
 - Dwa procesy z jednego IP to dwa razy więcej zapytań do otodom i większe ryzyko blokady. Scraper je przeczeka (pauza od 1 do 30 minut), ale jeśli w logach jest dużo `Blocked by otodom`, zwiększ `--request-delay`.

@@ -290,8 +290,10 @@ class ScrapingContext:
             if self.__update_if_older_than_days and not only_missing_locations:
                 threshold = datetime.now() - timedelta(days=self.__update_if_older_than_days)
                 query = query.filter(or_(Ad.scraped_at.is_(None), Ad.scraped_at < threshold))
-            # Start from the stalest ads first
-            query = query.order_by(Ad.scraped_at.asc())
+            if only_missing_locations:
+                query = query.order_by(Ad.scraped_at.desc().nulls_last())
+            else:
+                query = query.order_by(Ad.scraped_at.asc())
             ad_ids = [row.id for row in query.all()]
 
         logger.info(f"Found {len(ad_ids)} ads in DB to verify")
