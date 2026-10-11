@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from collections import defaultdict
+from typing import Optional
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import Select, case, func, select
+from fastapi import APIRouter
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from data.models import Ad, AdEvaluation, AdStatus, City, District, Province
 from data.read_models import ad_all_features
-from ..dependencies import get_session
+from ..cache import RefreshingCache
+from ..dependencies import get_database_manager
 from ..labels import (
-    ADVERTISER_TYPES, BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, FEATURE_LABEL_BY_VALUE, MARKETS,
-    OBJECT_TYPES, OFFER_TYPES, PROPERTY_CONDITIONS, RENOVATION_NEEDED, STYLE_TAGS, ValueLabel, humanize, label_of,
+    ADVERTISER_TYPES, BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS,
+    OBJECT_TYPES, OFFER_TYPES, PROPERTY_CONDITIONS, RENOVATION_NEEDED, STYLE_TAGS, ValueLabel, feature_label, humanize, label_of,
 )
 from ..query import OBJECT_TYPE, OFFER_TYPE
 from ..schemas import FacetValue, FacetsResponse, RangeFacet
@@ -20,12 +22,23 @@ router = APIRouter(prefix="/api/facets", tags=["facets"])
 
 _ACTIVE_ADS = Ad.status == AdStatus.ACTIVE
 _MAX_FEATURE_FACETS = 200
+_FACETS_MAX_AGE_SECONDS = 10 * 60
 
-_FEATURE_LABEL = case(FEATURE_LABEL_BY_VALUE, value=ad_all_features.c.value, else_=ad_all_features.c.value)
+
+def _load_facets() -> FacetsResponse:
+    with get_database_manager().get_session() as session:
+        return compute_facets(session)
+
+
+facets_cache: RefreshingCache[FacetsResponse] = RefreshingCache(_load_facets, _FACETS_MAX_AGE_SECONDS)
 
 
 @router.get("", response_model=FacetsResponse)
-def get_facets(session: Annotated[Session, Depends(get_session)]) -> FacetsResponse:
+def get_facets() -> FacetsResponse:
+    return facets_cache.get()
+
+
+def compute_facets(session: Session) -> FacetsResponse:
     return FacetsResponse(
         offer_types=_column_facets(session, OFFER_TYPE, OFFER_TYPES),
         object_types=_column_facets(session, OBJECT_TYPE, OBJECT_TYPES),
@@ -82,18 +95,23 @@ def _evaluation_facets(session: Session, column, labels: dict[str, ValueLabel]) 
 
 def _feature_facets(session: Session) -> list[FacetValue]:
     statement = (
-        select(_FEATURE_LABEL, func.count(func.distinct(ad_all_features.c.ad_id)))
+        select(ad_all_features.c.value, func.count())
         .join(Ad, Ad.id == ad_all_features.c.ad_id)
         .where(_ACTIVE_ADS)
-        .group_by(_FEATURE_LABEL)
-        .order_by(func.count(func.distinct(ad_all_features.c.ad_id)).desc())
-        .limit(_MAX_FEATURE_FACETS)
+        .group_by(ad_all_features.c.value)
     )
-    return [
-        FacetValue(value=str(value), label=str(value)[:1].upper() + str(value)[1:], count=count)
-        for value, count in session.execute(statement).all()
-        if value is not None
-    ]
+    return merge_feature_counts(session.execute(statement).all())
+
+
+def merge_feature_counts(rows) -> list[FacetValue]:
+    counts: dict[str, int] = defaultdict(int)
+    for value, count in rows:
+        if value is not None:
+            label = feature_label(str(value))
+            counts[label] = max(counts[label], count)
+
+    ranked = sorted(counts.items(), key=lambda item: item[1], reverse=True)[:_MAX_FEATURE_FACETS]
+    return [FacetValue(value=label, label=label[:1].upper() + label[1:], count=count) for label, count in ranked]
 
 
 def _range_facet(session: Session, column) -> RangeFacet:

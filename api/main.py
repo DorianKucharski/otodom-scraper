@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .auth import AuthSettings, install_auth
 from .https import install_https_redirect, public_url_from_env
 from .routers import ads, auth, facets, saved_searches, services, stats, tracking
+from .routers.facets import facets_cache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,8 +25,14 @@ _FRONTEND_DIRECTORY = Path(__file__).parent.parent / "web" / "dist"
 _DEFAULT_ALLOWED_ORIGINS = "http://localhost:5173"
 
 
+@asynccontextmanager
+async def _warm_caches(_: FastAPI) -> AsyncIterator[None]:
+    facets_cache.refresh_in_background()
+    yield
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Otodom search API", version="1.0.0")
+    app = FastAPI(title="Otodom search API", version="1.0.0", lifespan=_warm_caches)
 
     install_auth(app, AuthSettings.from_env())
     app.add_middleware(

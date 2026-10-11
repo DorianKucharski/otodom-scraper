@@ -71,6 +71,7 @@ interface MultiSelectProps {
 }
 
 const SEARCHABLE_FROM = 12
+const MAX_VISIBLE_OPTIONS = 100
 const ROW_HEIGHT_PX = 30
 
 function MultiSelect({ label, options, selected, onChange, size = 6 }: MultiSelectProps) {
@@ -80,9 +81,12 @@ function MultiSelect({ label, options, selected, onChange, size = 6 }: MultiSele
   const orphans: FacetValue[] = selected
     .filter((value) => !known.has(value))
     .map((value) => ({ value, label: value, count: 0 }))
-  const visible = [...orphans, ...options].filter(
-    (option) => !needle || option.label.toLowerCase().includes(needle) || selected.includes(option.value),
+  const chosen = [...orphans, ...options.filter((option) => selected.includes(option.value))]
+  const matching = options.filter(
+    (option) => !selected.includes(option.value) && (!needle || option.label.toLowerCase().includes(needle)),
   )
+  const visible = [...chosen, ...matching.slice(0, MAX_VISIBLE_OPTIONS)]
+  const hidden = matching.length - Math.min(matching.length, MAX_VISIBLE_OPTIONS)
   const hasDescriptions = options.some((option) => option.description)
 
   const toggle = (value: string, checked: boolean) =>
@@ -122,6 +126,11 @@ function MultiSelect({ label, options, selected, onChange, size = 6 }: MultiSele
           </label>
         ))}
         {visible.length === 0 && <span className="filter-multi-empty">brak</span>}
+        {hidden > 0 && (
+          <span className="filter-multi-empty">
+            i {hidden.toLocaleString('pl-PL')} więcej, wpisz nazwę w wyszukiwarce
+          </span>
+        )}
       </div>
     </div>
   )
