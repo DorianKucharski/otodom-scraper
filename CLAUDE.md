@@ -129,7 +129,7 @@ Every successful ad scrape keeps the latest zlib-compressed `{ad, adTrackingData
 
 Two stages, both writing one row per ad into tables the scraper never touches (`Ad` has **no** relationship to them on purpose - a relationship would let `session.merge(ad)` in the scraper cascade into and wipe them):
 
-1. **Screening** (`ad_screenings`, default `claude-haiku-4-5`, text only) - drops ads that are not a real single flat to live in (whole investments, shares, bailiff auctions, commercial units) and pulls facts out of the free-text description that the portal's own feature list omits.
+1. **Screening** (`ad_screenings`, default `claude-haiku-4-5`, text only) - drops ads that are not one dwelling (whole investments with no single unit's price and area, several units sold together, shares, bailiff auctions, commercial units) and pulls facts out of the free-text description that the portal's own feature list omits. Houses, flats under construction and developer cessions pass on purpose: until October 2026 the prompt rejected them, which hid ~6000 active offers, nearly all of Kraków's primary market and its detached houses. The evaluation stage handles renders through `photo_trust_score`.
 2. **Evaluation** (`ad_evaluations`, default `claude-sonnet-5`, up to 8 photos) - ten 1-10 scores, `renovation_needed`, `style_tag`, a Polish summary, strengths, concerns, and a free-form `attributes` JSONB bag.
 
 - **Prompts live in `enricher/prompts/*.md` and `*.jinja2`, never in Python.** `prompt_version` is a hash of the template pair, so editing a prompt automatically invalidates every stored result - there is no version constant to bump.
