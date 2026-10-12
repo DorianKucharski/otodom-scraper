@@ -17,6 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BLOCKED_STATUS_CODES = (403, 429)
+GONE_STATUS_CODES = (404, 410)
 
 
 class OtodomBlockedError(Exception):
@@ -57,11 +58,12 @@ class OtodomScraper:
             response = self.__scraper.get(url)
             if response.status_code in BLOCKED_STATUS_CODES:
                 raise OtodomBlockedError(f"Blocked by otodom: {response.status_code} - {url}")
-            if response.status_code not in [200, 410]:
-                raise Exception(f"Error getting page: {response.status_code} - {response.text} - {url}")
-            text = response.text
-            soup = BeautifulSoup(text, 'html.parser')
+            if response.status_code != 200 and response.status_code not in GONE_STATUS_CODES:
+                raise Exception(f"Error getting page: {response.status_code} - {url}")
+            soup = BeautifulSoup(response.text, 'html.parser')
             ad_json_text = soup.find(name='script', attrs={'type': 'application/json'})
+            if ad_json_text is None and response.status_code in GONE_STATUS_CODES:
+                return {}
             return json.loads(ad_json_text.text)
         except OtodomBlockedError:
             raise
