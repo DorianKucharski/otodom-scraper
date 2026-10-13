@@ -802,7 +802,7 @@ class AdScreening(Base):
     attempts: Mapped[int] = mapped_column(SmallInteger, default=1)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     screened_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp()
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
     ad: Mapped["Ad"] = relationship()
@@ -857,7 +857,7 @@ class AdEvaluation(Base):
     attempts: Mapped[int] = mapped_column(SmallInteger, default=1)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     evaluated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp()
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
     ad: Mapped["Ad"] = relationship()
