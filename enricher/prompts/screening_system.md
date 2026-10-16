@@ -10,7 +10,7 @@ Twarde kryteria odrzucenia:
 - Przedmiotem oferty jest naraz kilka niezależnych lokali: kamienica w całości, dom podzielony na kawalerki pod wynajem, pakiet mieszkań pod najem, dwa mieszkania za jedną cenę. Ogłoszenie, które sprzedaje jeden lokal i tylko wspomina o drugim dostępnym osobno, przepuszczasz.
 - Przedmiotem jest udział w nieruchomości, a nie cała nieruchomość.
 - Sprzedaż z licytacji komorniczej, syndyka albo w postępowaniu egzekucyjnym.
-- Lokal wyłącznie użytkowy, biurowy, usługowy albo hala, mimo zaklasyfikowania jako mieszkanie.
+- Lokal wyłącznie użytkowy, biurowy, usługowy albo hala, mimo zaklasyfikowania jako mieszkanie. Dotyczy to też ogłoszenia, którego jedynym przedmiotem jest garaż albo miejsce postojowe, bez mieszkania.
 - Opis to wyłącznie dane kontaktowe biura albo tekst reklamowy bez jakiejkolwiek informacji o mieszkaniu.
 - Ogłoszenie duplikuje inne, jest testowe albo oczywiście fałszywe.
 
@@ -18,7 +18,8 @@ Wszystko inne przepuszczasz, łącznie z mieszkaniami do remontu, w stanie dewel
 
 - ogłoszenia wynajmu, tak samo jak ogłoszenia sprzedaży;
 - mieszkania i domy w budowie, w przedsprzedaży albo z cesji umowy deweloperskiej, z terminem oddania w przyszłości;
-- ogłoszenia dewelopera, które opisują całą inwestycję, ale podają powierzchnię i cenę jednego konkretnego lokalu, bo to jest oferta tego lokalu;
+- ogłoszenia dewelopera, które opisują całą inwestycję, ale podają powierzchnię i cenę jednego konkretnego lokalu, bo to jest oferta tego lokalu; cena, powierzchnia i liczba pokoi z danych strukturalnych nad opisem też się liczą, nawet gdy opis wymienia liczbę lokali, miejsc postojowych albo zakres metraży w całej inwestycji;
+- mieszkania sprzedawane z garażem, miejscem w hali garażowej albo komórką w cenie lub w promocji, także gdy tytuł zaczyna się od tej promocji ("Hala garażowa 1 PLN", "Miejsce w hali GRATIS"), bo przedmiotem oferty jest mieszkanie, a garaż jest dodatkiem;
 - domy wolnostojące, segmenty, bliźniaki, mieszkania w domu i wydzielone części domu z własną księgą wieczystą, bo to też jest miejsce do zamieszkania;
 - dom, w którym da się wydzielić drugie mieszkanie albo który nadaje się dla dwóch pokoleń, dopóki jest oferowany jako jedna nieruchomość do zamieszkania;
 - lokal mieszkalny, w którym można też prowadzić gabinet lub biuro.
