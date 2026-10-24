@@ -6,12 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from data.models import Ad, AdEvaluation, AdScreening, AdTracking
+from data.models import Ad, AdEvaluation, AdMarketSignals, AdPriceObservation, AdScreening, AdTracking, Owner
 from data.read_models import ad_all_features, district_price_stats
 from ..dependencies import get_session
-from ..mappers import to_ad_detail, to_ad_summary
+from ..mappers import to_ad_detail, to_ad_summary, to_market_signals
 from ..query import build_search_statements
-from ..schemas import AdDetailResponse, AdSearchQuery, AdSearchResponse, MarketStatsResponse
+from ..labels import ADVERTISER_TYPES, display_label
+from ..schemas import (
+    AdDetailResponse, AdSearchQuery, AdSearchResponse, ListingHistoryEntry, ListingHistoryResponse, MarketStatsResponse,
+    PriceObservationResponse,
+)
 
 router = APIRouter(prefix="/api/ads", tags=["ads"])
 
@@ -50,8 +54,8 @@ def search_ads(
         limit=query.limit,
         offset=query.offset,
         items=[
-            to_ad_summary(ad, evaluation, tracking, features_count, distance_m)
-            for ad, evaluation, tracking, features_count, distance_m in rows
+            to_ad_summary(ad, evaluation, tracking, features_count, distance_m, signals)
+            for ad, evaluation, tracking, features_count, distance_m, signals in rows
         ],
     )
 
@@ -75,6 +79,66 @@ def get_ad(
         tracking=session.get(AdTracking, ad_id),
         features_count=_features_count(session, ad_id),
         market_stats=_market_stats(session, ad),
+        signals=session.get(AdMarketSignals, ad_id),
+    )
+
+
+@router.get("/{ad_id}/history", response_model=ListingHistoryResponse)
+def get_ad_history(
+        ad_id: int,
+        session: Annotated[Session, Depends(get_session)],
+) -> ListingHistoryResponse:
+    if session.get(Ad, ad_id) is None:
+        raise HTTPException(status_code=404, detail=f"Ad {ad_id} not found")
+
+    signals = session.get(AdMarketSignals, ad_id)
+    member_ids = [ad_id] if signals is None else list(session.execute(
+        select(AdMarketSignals.ad_id).where(AdMarketSignals.listing_group_id == signals.listing_group_id)
+    ).scalars())
+
+    listings = session.execute(
+        select(Ad, Owner.name)
+        .outerjoin(Owner, Owner.id == Ad.owner_id)
+        .options(selectinload(Ad.city), selectinload(Ad.district))
+        .where(Ad.id.in_(member_ids))
+        .order_by(Ad.created_at, Ad.id)
+    ).all()
+    prices = session.execute(
+        select(AdPriceObservation)
+        .where(AdPriceObservation.ad_id.in_(member_ids))
+        .order_by(AdPriceObservation.observed_at, AdPriceObservation.id)
+    ).scalars().all()
+
+    return ListingHistoryResponse(
+        ad_id=ad_id,
+        signals=to_market_signals(signals),
+        listings=[
+            ListingHistoryEntry(
+                id=ad.id,
+                url=ad.url,
+                title=ad.title,
+                status=ad.status.value if hasattr(ad.status, "value") else str(ad.status),
+                advertiser_type=display_label(ADVERTISER_TYPES, ad.advertiser_type),
+                advertiser_name=owner_name if owner_name and owner_name.strip() != "***" else None,
+                created_at=ad.created_at,
+                last_seen_at=ad.scraped_at,
+                price_value=ad.price_value,
+                area_value=float(ad.area_value) if ad.area_value is not None else None,
+                city=ad.city.name if ad.city else None,
+                district=ad.district.name if ad.district else None,
+                street=ad.street,
+            )
+            for ad, owner_name in listings
+        ],
+        prices=[
+            PriceObservationResponse(
+                ad_id=price.ad_id,
+                observed_at=price.observed_at,
+                price_value=price.price_value,
+                status=price.status,
+            )
+            for price in prices
+        ],
     )
 
 

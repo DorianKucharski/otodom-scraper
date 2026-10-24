@@ -34,6 +34,9 @@ Budynek: {{ card.building }}
 Rynek: {{ card.market or 'brak danych' }}, stan: {{ card.condition or 'brak danych' }}
 Cechy: {{ card.features }}
 Fakty z opisu: {{ card.screening_attributes }}
+{% if card.market_history %}
+Historia i rynek: {{ card.market_history }}
+{% endif %}
 {% if card.evaluation %}
 Ocena AI ze zdjęć:
 {{ card.evaluation }}

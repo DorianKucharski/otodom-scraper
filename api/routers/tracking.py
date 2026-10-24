@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from data.models import Ad, AdEvaluation, AdTracking, TrackingStatus
+from data.models import Ad, AdEvaluation, AdMarketSignals, AdTracking, TrackingStatus
 from ..dependencies import get_session, get_user_name
 from ..mappers import to_ad_summary, to_tracking_detail
 from ..query import FEATURES_COUNT
@@ -23,9 +23,10 @@ def list_tracked_ads(
         statuses: Annotated[list[TrackingStatus], Query()] = [],
 ) -> list[AdSummaryResponse]:
     statement = (
-        select(Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"))
+        select(Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"), AdMarketSignals)
         .join(AdTracking, AdTracking.ad_id == Ad.id)
         .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
+        .outerjoin(AdMarketSignals, AdMarketSignals.ad_id == Ad.id)
         .options(selectinload(Ad.images), selectinload(Ad.city), selectinload(Ad.district))
         .order_by(AdTracking.updated_at.desc())
     )
@@ -33,8 +34,8 @@ def list_tracked_ads(
         statement = statement.where(AdTracking.status.in_(statuses))
 
     return [
-        to_ad_summary(ad, evaluation, tracking, features_count, None)
-        for ad, evaluation, tracking, features_count in session.execute(statement).all()
+        to_ad_summary(ad, evaluation, tracking, features_count, None, signals)
+        for ad, evaluation, tracking, features_count, signals in session.execute(statement).all()
     ]
 
 

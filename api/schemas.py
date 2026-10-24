@@ -20,6 +20,9 @@ _BASE_SORT_FIELDS = (
     "modified_at",
     "features_count",
     "distance",
+    "days_on_market",
+    "price_vs_comparables_pct",
+    "price_change_pct",
 )
 
 SortField = Enum(
@@ -104,6 +107,18 @@ class AdSearchQuery(BaseModel):
         description="Filtry po atrybutach AI w formacie klucz:wartość, na przykład kitchen_type:zamknięta.",
     )
 
+    min_days_on_market: Optional[int] = Field(None, description="Ten sam lokal ogłaszany co najmniej tyle dni, licząc wszystkie jego ogłoszenia.")
+    max_days_on_market: Optional[int] = None
+    min_listings_count: Optional[int] = Field(None, description="2 = tylko lokale wystawiane ponownie albo przez kilku ogłoszeniodawców.")
+    price_trends: list[str] = Field(default_factory=list, description="dropped, raised albo unchanged względem pierwszej znanej ceny lokalu.")
+    max_price_vs_comparables_pct: Optional[float] = Field(
+        None, description="Cena za metr względem mediany porównywalnych ofert w okolicy, -10 = co najmniej 10% taniej."
+    )
+    min_price_vs_comparables_pct: Optional[float] = None
+    excluded_location_flags: list[str] = Field(
+        default_factory=list, description="Ukrywa ogłoszenia z którąś z tych flag lokalizacji."
+    )
+
     tracking_statuses: list[TrackingStatus] = Field(
         default_factory=list, description="Tylko ogłoszenia z jednym z tych statusów."
     )
@@ -151,6 +166,60 @@ class MarketStatsResponse(BaseModel):
     p25_price_per_m2: Optional[int]
     p75_price_per_m2: Optional[int]
     is_city_level: bool
+
+
+class MarketSignalsResponse(BaseModel):
+    listing_group_id: int
+    listings_count: int
+    advertisers_count: int
+    first_listed_at: datetime
+    days_on_market: int
+    first_price: Optional[int]
+    lowest_price: Optional[int]
+    highest_price: Optional[int]
+    price_change_pct: Optional[float]
+    comparables_count: int
+    comparables_radius_m: Optional[int]
+    comparables_median_price_per_m2: Optional[int]
+    comparables_p25_price_per_m2: Optional[int]
+    comparables_p75_price_per_m2: Optional[int]
+    price_vs_comparables_pct: Optional[float]
+    pin_city_name: Optional[str]
+    pin_gmina_name: Optional[str]
+    city_border_distance_m: Optional[int]
+    location_flags: list[str] = Field(default_factory=list)
+    location_notes: list[str] = Field(default_factory=list)
+    computed_at: datetime
+
+
+class ListingHistoryEntry(BaseModel):
+    id: int
+    url: str
+    title: str
+    status: str
+    advertiser_type: Optional[str]
+    advertiser_name: Optional[str]
+    created_at: datetime
+    last_seen_at: Optional[datetime]
+    price_value: int
+    area_value: Optional[float]
+    city: Optional[str]
+    district: Optional[str]
+    street: Optional[str]
+
+
+class PriceObservationResponse(BaseModel):
+    ad_id: int
+    observed_at: datetime
+    price_value: int
+    status: Optional[str]
+
+
+class ListingHistoryResponse(BaseModel):
+    ad_id: int
+    signals: Optional[MarketSignalsResponse]
+    listings: list[ListingHistoryEntry]
+    prices: list[PriceObservationResponse]
 
 
 class TrackingResponse(BaseModel):
@@ -228,6 +297,7 @@ class AdSummaryResponse(BaseModel):
     thumbnail: Optional[str] = None
     evaluation: Optional[EvaluationResponse] = None
     tracking: Optional[TrackingResponse] = None
+    market_signals: Optional[MarketSignalsResponse] = None
 
 
 class AdDetailResponse(AdSummaryResponse):

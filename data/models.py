@@ -79,6 +79,19 @@ def enum_column_type(enum_cls: type[enum.Enum], length: int = 50) -> Enum:
     )
 
 
+MASKED_VALUE = "***"
+
+
+def is_masked(value: Optional[str]) -> bool:
+    return value is not None and value.strip() == MASKED_VALUE
+
+
+def _unmasked(new_value: Optional[str], current_value: Optional[str]) -> Optional[str]:
+    if is_masked(new_value) and current_value:
+        return current_value
+    return new_value
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -366,9 +379,9 @@ class Ad(Base):
     )
 
     def update(self, ad_data: AdDto, offer_type: Optional[str] = None, object_type: Optional[str] = None):
-        self.title = ad_data.title
+        self.title = _unmasked(ad_data.title, self.title)
         self.url = ad_data.url
-        self.description = ad_data.description
+        self.description = _unmasked(ad_data.description, self.description)
         self.status = ad_data.status
         self.offer_type = offer_type
         self.object_type = object_type
@@ -394,7 +407,7 @@ class Ad(Base):
                 self.city_id = address.city.id
             if address.district:
                 self.district_id = address.district.id
-            if address.street:
+            if address.street and not is_masked(address.street.name):
                 self.street = address.street.name
             if address.postal_code:
                 self.postal_code = address.postal_code
@@ -1052,3 +1065,121 @@ class AssistantCall(Base):
 
     def __repr__(self):
         return f"<AssistantCall(id={self.id}, kind={self.kind})>"
+
+
+class AdPriceObservation(Base):
+    __tablename__ = 'ad_price_observations'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), nullable=False
+    )
+    observed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    price_value: Mapped[int] = mapped_column(Integer, nullable=False)
+    area_value: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    status: Mapped[Optional[str]] = mapped_column(String(50))
+
+    __table_args__ = (
+        Index('idx_ad_price_observations_ad_id_observed_at', 'ad_id', 'observed_at'),
+    )
+
+    def __repr__(self):
+        return f"<AdPriceObservation(ad_id={self.ad_id}, price={self.price_value})>"
+
+
+class AdminArea(Base):
+    __tablename__ = 'admin_areas'
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    level: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    city_name: Mapped[Optional[str]] = mapped_column(String(200))
+    province_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    geom = mapped_column(Geometry('MULTIPOLYGON', srid=4326), nullable=False)
+
+    __table_args__ = (
+        Index('idx_admin_areas_level_city_name', 'level', 'city_name'),
+    )
+
+    def __repr__(self):
+        return f"<AdminArea(code={self.code}, name={self.name})>"
+
+
+class AdMarketSignals(Base):
+    __tablename__ = 'ad_market_signals'
+
+    ad_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey('ads.id', ondelete='CASCADE'), primary_key=True
+    )
+    listing_group_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    listings_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    advertisers_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    first_listed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    days_on_market: Mapped[int] = mapped_column(Integer, nullable=False)
+    first_price: Mapped[Optional[int]] = mapped_column(Integer)
+    lowest_price: Mapped[Optional[int]] = mapped_column(Integer)
+    highest_price: Mapped[Optional[int]] = mapped_column(Integer)
+    price_change_pct: Mapped[Optional[float]] = mapped_column(Numeric(6, 1))
+
+    comparables_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    comparables_radius_m: Mapped[Optional[int]] = mapped_column(Integer)
+    comparables_median_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    comparables_p25_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    comparables_p75_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    price_vs_comparables_pct: Mapped[Optional[float]] = mapped_column(Numeric(6, 1))
+
+    transactions_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    transactions_radius_m: Mapped[Optional[int]] = mapped_column(Integer)
+    transactions_median_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    transactions_p25_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    transactions_p75_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    price_vs_transactions_pct: Mapped[Optional[float]] = mapped_column(Numeric(6, 1))
+
+    pin_city_name: Mapped[Optional[str]] = mapped_column(String(200))
+    pin_gmina_name: Mapped[Optional[str]] = mapped_column(String(200))
+    city_border_distance_m: Mapped[Optional[int]] = mapped_column(Integer)
+    location_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    location_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+    computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('idx_ad_market_signals_group', 'listing_group_id'),
+        Index('idx_ad_market_signals_days_on_market', 'days_on_market'),
+        Index('idx_ad_market_signals_price_vs_comparables', 'price_vs_comparables_pct'),
+        Index('idx_ad_market_signals_location_flags', 'location_flags', postgresql_using='gin'),
+    )
+
+    def __repr__(self):
+        return f"<AdMarketSignals(ad_id={self.ad_id}, days_on_market={self.days_on_market})>"
+
+
+class RcnTransaction(Base):
+    __tablename__ = 'rcn_transactions'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    teryt: Mapped[Optional[str]] = mapped_column(String(10))
+    transaction_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    document: Mapped[Optional[str]] = mapped_column(Text)
+    transaction_key: Mapped[Optional[str]] = mapped_column(Text)
+    market: Mapped[Optional[str]] = mapped_column(String(50))
+    transaction_kind: Mapped[Optional[str]] = mapped_column(String(100))
+    function: Mapped[Optional[str]] = mapped_column(String(100))
+    share: Mapped[Optional[str]] = mapped_column(String(50))
+    transaction_price: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    unit_price: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    area_value: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    appurtenant_area: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    rooms: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    floor: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    address: Mapped[Optional[str]] = mapped_column(Text)
+    location_point = mapped_column(Geometry('POINT', srid=4326), nullable=False)
+    loaded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('idx_rcn_transactions_date', 'transaction_date'),
+        Index('idx_rcn_transactions_key', 'transaction_key'),
+    )
+
+    def __repr__(self):
+        return f"<RcnTransaction(id={self.id}, price={self.transaction_price})>"

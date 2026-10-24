@@ -6,9 +6,10 @@ from functools import reduce
 from typing import Optional
 
 from geoalchemy2 import Geography
-from sqlalchemy import Integer, Select, and_, case, cast, exists, func, or_, select
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Integer, Select, Text, and_, case, cast, exists, func, or_, select
 
-from data.models import DISMISSED_TRACKING_STATUSES, Ad, AdEvaluation, AdTracking, City, District, Province
+from data.models import DISMISSED_TRACKING_STATUSES, Ad, AdEvaluation, AdMarketSignals, AdTracking, City, District, Province
 from data.read_models import ad_all_features, ad_inferred_types
 from enricher.schema import SCORE_FIELD_NAMES
 from .labels import feature_values_for
@@ -17,6 +18,8 @@ from .schemas import AdSearchQuery, FeatureMatchMode, SortDirection
 TOP_FLOOR_CODE = "GARRET"
 FLOOR_ABOVE_TEN = 11
 
+_TEXT_ARRAY = ARRAY(Text)
+
 FLOOR_NUMBER = case(
     (Ad.flat_floor == "GROUND_FLOOR", 0),
     (Ad.flat_floor == "CELLAR", -1),
@@ -24,6 +27,9 @@ FLOOR_NUMBER = case(
     (Ad.flat_floor.regexp_match("^FLOOR_[0-9]+$"), cast(func.substring(Ad.flat_floor, 7), Integer)),
     else_=None,
 )
+
+SIGNAL_SORT_FIELDS = ("days_on_market", "price_vs_comparables_pct", "price_change_pct")
+PRICE_TRENDS = ("dropped", "raised", "unchanged")
 
 OFFER_TYPE = func.coalesce(ad_inferred_types.c.offer_type, Ad.offer_type)
 OBJECT_TYPE = func.coalesce(ad_inferred_types.c.object_type, Ad.object_type)
@@ -50,9 +56,13 @@ class SearchStatements:
 
     def rows_for(self, ad_ids: list[int]) -> Select:
         return (
-            select(Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"), _distance_column(self.distance))
+            select(
+                Ad, AdEvaluation, AdTracking, FEATURES_COUNT.label("features_count"), _distance_column(self.distance),
+                AdMarketSignals,
+            )
             .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
             .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+            .outerjoin(AdMarketSignals, AdMarketSignals.ad_id == Ad.id)
             .where(Ad.id.in_(ad_ids))
         )
 
@@ -71,6 +81,7 @@ def build_search_statements(query: AdSearchQuery, relevance=None, relevance_firs
             select(Ad.id)
             .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
             .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+            .outerjoin(AdMarketSignals, AdMarketSignals.ad_id == Ad.id)
         )
         .where(*conditions)
         .order_by(*order)
@@ -84,6 +95,7 @@ def build_search_statements(query: AdSearchQuery, relevance=None, relevance_firs
             .select_from(Ad)
             .outerjoin(AdEvaluation, AdEvaluation.ad_id == Ad.id)
             .outerjoin(AdTracking, AdTracking.ad_id == Ad.id)
+            .outerjoin(AdMarketSignals, AdMarketSignals.ad_id == Ad.id)
         )
         .where(*conditions)
     )
@@ -107,6 +119,7 @@ def _conditions_of(query: AdSearchQuery) -> list:
     conditions.extend(_feature_conditions(query))
     conditions.extend(_freshness_conditions(query))
     conditions.extend(_evaluation_conditions(query))
+    conditions.extend(_market_signal_conditions(query))
     conditions.extend(_tracking_conditions(query))
 
     return conditions
@@ -256,6 +269,41 @@ def _evaluation_conditions(query: AdSearchQuery) -> list:
     return conditions
 
 
+def _market_signal_conditions(query: AdSearchQuery) -> list:
+    conditions = []
+
+    if query.min_days_on_market is not None:
+        conditions.append(AdMarketSignals.days_on_market >= query.min_days_on_market)
+    if query.max_days_on_market is not None:
+        conditions.append(AdMarketSignals.days_on_market <= query.max_days_on_market)
+    if query.min_listings_count is not None:
+        conditions.append(AdMarketSignals.listings_count >= query.min_listings_count)
+    if query.max_price_vs_comparables_pct is not None:
+        conditions.append(AdMarketSignals.price_vs_comparables_pct <= query.max_price_vs_comparables_pct)
+    if query.min_price_vs_comparables_pct is not None:
+        conditions.append(AdMarketSignals.price_vs_comparables_pct >= query.min_price_vs_comparables_pct)
+
+    trends = [trend for trend in query.price_trends if trend in PRICE_TRENDS]
+    if trends:
+        conditions.append(or_(*(_price_trend(trend) for trend in trends)))
+
+    if query.excluded_location_flags:
+        conditions.append(or_(
+            AdMarketSignals.ad_id.is_(None),
+            ~AdMarketSignals.location_flags.op("?|")(cast(query.excluded_location_flags, _TEXT_ARRAY)),
+        ))
+
+    return conditions
+
+
+def _price_trend(trend: str):
+    if trend == "dropped":
+        return AdMarketSignals.price_change_pct < 0
+    if trend == "raised":
+        return AdMarketSignals.price_change_pct > 0
+    return AdMarketSignals.price_change_pct == 0
+
+
 def _tracking_conditions(query: AdSearchQuery) -> list:
     conditions = []
 
@@ -316,6 +364,8 @@ def _order_by(query: AdSearchQuery, distance) -> list:
         expression = FEATURES_COUNT
     elif sort_field in SCORE_FIELD_NAMES:
         expression = getattr(AdEvaluation, sort_field)
+    elif sort_field in SIGNAL_SORT_FIELDS:
+        expression = getattr(AdMarketSignals, sort_field)
     else:
         expression = getattr(Ad, sort_field)
 

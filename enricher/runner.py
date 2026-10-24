@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional
 
 from sqlalchemy.orm import Session, selectinload
 
-from data.models import Ad, AdEvaluation, AdScreening, EvaluationStatus, ScreeningStatus
+from data.models import Ad, AdEvaluation, AdMarketSignals, AdScreening, EvaluationStatus, ScreeningStatus
 from database import DatabaseManager
 from llm.client import LlmAccountError, LlmClient, LlmImage, LlmRequest, LlmResponse
 from llm.pricing import cost_usd_for
@@ -337,6 +337,7 @@ class EnrichmentRunner:
                 screening_attributes=screening.extracted_attributes if screening else None,
                 images_evaluated=len(images),
                 max_description_characters=self.__config.max_description_characters,
+                signals=session.get(AdMarketSignals, ad_id),
             )
             return _prepared_ad(ad, fingerprint, context, images)
 

@@ -1,7 +1,10 @@
 import { useState } from 'react'
 
 import type { AdSearchQuery, Facets, FacetValue } from '../api/types'
-import { SCORE_FIELDS, SCORE_LABELS, TRACKING_LABELS, TRACKING_STATUSES } from '../api/types'
+import {
+  LOCATION_FLAG_LABELS, PRICE_TREND_LABELS, SCORE_FIELDS, SCORE_LABELS, SUSPICIOUS_LOCATION_FLAGS, TRACKING_LABELS,
+  TRACKING_STATUSES,
+} from '../api/types'
 
 interface FilterPanelProps {
   query: AdSearchQuery
@@ -339,6 +342,73 @@ export function FilterPanel({ query, facets, onChange, onReset, onClose }: Filte
             onChange={(event) => onChange({ max_rent: event.target.value ? Number(event.target.value) : undefined })}
           />
         </label>
+      </Section>
+
+      <Section title="Historia i rynek" defaultOpen>
+        <NumberRange
+          label="Na rynku (łącznie z poprzednimi ogłoszeniami)"
+          unit="dni"
+          minValue={query.min_days_on_market}
+          maxValue={query.max_days_on_market}
+          onChangeMin={(min_days_on_market) => onChange({ min_days_on_market })}
+          onChangeMax={(max_days_on_market) => onChange({ max_days_on_market })}
+        />
+        <label className="filter-checkbox">
+          <input
+            type="checkbox"
+            checked={(query.min_listings_count ?? 0) >= 2}
+            onChange={(event) => onChange({ min_listings_count: event.target.checked ? 2 : undefined })}
+          />
+          <span>Tylko wystawiane ponownie albo przez kilku ogłoszeniodawców</span>
+        </label>
+        <span className="filter-caption">Cena względem pierwszej znanej</span>
+        {Object.entries(PRICE_TREND_LABELS).map(([trend, label]) => (
+          <label key={trend} className="filter-checkbox">
+            <input
+              type="checkbox"
+              checked={query.price_trends.includes(trend)}
+              onChange={(event) => onChange({
+                price_trends: event.target.checked
+                  ? [...query.price_trends, trend]
+                  : query.price_trends.filter((item) => item !== trend),
+              })}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+        <NumberRange
+          label="Cena za metr wobec podobnych w okolicy"
+          unit="%"
+          minValue={query.min_price_vs_comparables_pct}
+          maxValue={query.max_price_vs_comparables_pct}
+          onChangeMin={(min_price_vs_comparables_pct) => onChange({ min_price_vs_comparables_pct })}
+          onChangeMax={(max_price_vs_comparables_pct) => onChange({ max_price_vs_comparables_pct })}
+        />
+        <span className="filter-caption">Np. „do −10” to oferty co najmniej 10% tańsze niż podobne w promieniu.</span>
+        <span className="filter-multi-header">
+          Ukryj podejrzane lokalizacje
+          <button
+            type="button"
+            className="filter-multi-clear"
+            onClick={() => onChange({ excluded_location_flags: SUSPICIOUS_LOCATION_FLAGS })}
+          >
+            zalecane
+          </button>
+        </span>
+        {Object.entries(LOCATION_FLAG_LABELS).map(([flag, label]) => (
+          <label key={flag} className="filter-checkbox">
+            <input
+              type="checkbox"
+              checked={query.excluded_location_flags.includes(flag)}
+              onChange={(event) => onChange({
+                excluded_location_flags: event.target.checked
+                  ? [...query.excluded_location_flags, flag]
+                  : query.excluded_location_flags.filter((item) => item !== flag),
+              })}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
       </Section>
 
       <Section title="Parametry" defaultOpen>

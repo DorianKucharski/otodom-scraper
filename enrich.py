@@ -7,6 +7,7 @@ from typing import Optional
 
 import typer
 
+from data.market_signals import market_signals_due, refresh_market_signals
 from data.models import ServiceStatus
 from data.search_url import ObjectType, OfferType
 from database import DatabaseManager
@@ -163,6 +164,8 @@ def main(
         heartbeat.report(ServiceStatus.RUNNING, phase="odświeżanie statystyk dzielnic")
         database_manager.refresh_district_price_stats()
         database_manager.refresh_inferred_types()
+        if not dry_run:
+            _refresh_market_signals_if_due(database_manager, config, heartbeat)
 
         if screen_enabled:
             heartbeat.report(ServiceStatus.RUNNING, phase="przesiew opisów")
@@ -187,6 +190,15 @@ def main(
         logger.info("Cycle complete. Restarting in %s seconds...", config.cycle_pause_seconds)
         heartbeat.report(ServiceStatus.IDLE, phase="przerwa między cyklami", detail=_budget_detail(budget))
         sleep(config.cycle_pause_seconds)
+
+
+def _refresh_market_signals_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
+    try:
+        if market_signals_due(database_manager.engine, config.market_signals_interval_hours):
+            heartbeat.report(ServiceStatus.RUNNING, phase="historia ogłoszeń, ceny w okolicy, lokalizacja")
+            refresh_market_signals(database_manager.engine)
+    except Exception as error:
+        logger.exception("Market signals refresh failed, keeping the previous ones: %s", error)
 
 
 if __name__ == '__main__':

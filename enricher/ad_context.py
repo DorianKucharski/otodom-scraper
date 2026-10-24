@@ -5,7 +5,8 @@ from typing import Mapping, Optional
 
 from data.description import plain_description
 from data.feature_groups import labelled_feature_groups
-from data.models import Ad
+from data.models import Ad, AdMarketSignals
+from data.signal_phrases import comparables_phrase, listing_history_phrase, location_warnings_phrase
 from .market_context import MarketContext
 
 
@@ -56,12 +57,13 @@ def build_ad_context(
         screening_attributes: Optional[Mapping[str, str]] = None,
         images_evaluated: int = 0,
         max_description_characters: Optional[int] = None,
+        signals: Optional[AdMarketSignals] = None,
 ) -> AdContext:
     return AdContext(
         id=ad.id,
         url=ad.url,
         title=ad.title,
-        address=_address_of(ad),
+        address=_with_location_warnings(_address_of(ad), signals),
         description=plain_description(ad.description, max_description_characters),
         price_label=_money_label(ad.price_value, ad.price_currency),
         price_per_m2_label=_money_label(ad.price_per_m2, ad.price_currency, suffix=" za metr"),
@@ -79,11 +81,11 @@ def build_ad_context(
         building_type=ad.building_type,
         building_material=ad.building_material,
         building_heating=ad.building_heating,
-        created_at_label=ad.created_at.strftime("%Y-%m-%d") if ad.created_at else "brak danych",
+        created_at_label=_listing_history_label(ad, signals),
         images_count=len(ad.images),
         images_evaluated=images_evaluated,
         feature_groups=labelled_feature_groups(ad),
-        market_stats=_market_stats_view(ad, market_context),
+        market_stats=_market_stats_view(ad, market_context, signals),
         screening_attributes=tuple((screening_attributes or {}).items()),
         distance_to_center_label=None,
     )
@@ -101,22 +103,45 @@ def _address_of(ad: Ad) -> str:
 
 
 
+def _with_location_warnings(address: str, signals: Optional[AdMarketSignals]) -> str:
+    warnings = location_warnings_phrase(signals)
+    return f"{address} (uwaga: {warnings})" if warnings else address
+
+
+def _listing_history_label(ad: Ad, signals: Optional[AdMarketSignals]) -> str:
+    created = ad.created_at.strftime("%Y-%m-%d") if ad.created_at else "brak danych"
+    history = listing_history_phrase(signals, ad.price_value)
+    return f"{created} ({history})" if history else created
+
+
 def _money_label(value: Optional[int], currency: Optional[str], suffix: str = "") -> str:
     if not value:
         return "brak danych"
     return f"{value:,}".replace(",", " ") + f" {currency or 'PLN'}{suffix}"
 
 
-def _market_stats_view(ad: Ad, market_context: Optional[MarketContext]) -> Optional[MarketStatsView]:
-    if market_context is None:
-        return None
-    stats = market_context.stats_for(ad)
-    if stats is None:
+def _market_stats_view(
+        ad: Ad,
+        market_context: Optional[MarketContext],
+        signals: Optional[AdMarketSignals] = None,
+) -> Optional[MarketStatsView]:
+    comparables = comparables_phrase(signals)
+    stats = market_context.stats_for(ad) if market_context is not None else None
+    if stats is not None:
+        label = stats.position_label(ad.price_per_m2)
+        return MarketStatsView(
+            ad_count=stats.ad_count,
+            median_price_per_m2=stats.median_price_per_m2,
+            p25_price_per_m2=stats.p25_price_per_m2,
+            p75_price_per_m2=stats.p75_price_per_m2,
+            position_label=f"{label}; {comparables}" if comparables else label,
+        )
+    if comparables is None:
         return None
     return MarketStatsView(
-        ad_count=stats.ad_count,
-        median_price_per_m2=stats.median_price_per_m2,
-        p25_price_per_m2=stats.p25_price_per_m2,
-        p75_price_per_m2=stats.p75_price_per_m2,
-        position_label=stats.position_label(ad.price_per_m2),
+        ad_count=signals.comparables_count,
+        median_price_per_m2=signals.comparables_median_price_per_m2,
+        p25_price_per_m2=signals.comparables_p25_price_per_m2,
+        p75_price_per_m2=signals.comparables_p75_price_per_m2,
+        position_label=comparables,
     )

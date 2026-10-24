@@ -9,6 +9,7 @@ import type {
   AdSearchResponse,
   DistrictStats,
   Facets,
+  ListingHistory,
   SavedSearch,
   ServiceLogs,
   ServiceStatus,
@@ -44,6 +45,8 @@ export const DEFAULT_QUERY: AdSearchQuery = {
   renovation_needed: [],
   style_tags: [],
   attributes: [],
+  price_trends: [],
+  excluded_location_flags: [],
   tracking_statuses: [],
   hide_dismissed: true,
   sort: 'created_at',
@@ -80,6 +83,11 @@ const NUMERIC_FIELDS = new Set([
   'min_location_score',
   'min_value_for_money_score',
   'min_photo_trust_score',
+  'min_days_on_market',
+  'max_days_on_market',
+  'min_listings_count',
+  'max_price_vs_comparables_pct',
+  'min_price_vs_comparables_pct',
 ])
 
 export function toSearchParams(query: AdSearchQuery): URLSearchParams {
@@ -164,6 +172,10 @@ export function searchAds(query: AdSearchQuery): Promise<AdSearchResponse> {
 
 export function fetchAd(adId: number): Promise<AdDetail> {
   return request<AdDetail>(`/ads/${adId}`)
+}
+
+export function fetchAdHistory(adId: number): Promise<ListingHistory> {
+  return request<ListingHistory>(`/ads/${adId}/history`)
 }
 
 export function fetchFacets(): Promise<Facets> {

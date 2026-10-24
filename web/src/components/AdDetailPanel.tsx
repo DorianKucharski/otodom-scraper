@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { fetchAd } from '../api/client'
 import { RENOVATION_LABELS, SCORE_FIELDS, SCORE_LABELS } from '../api/types'
 import { INVESTMENT_NOTE, formatArea, formatFloor, formatMoney, formatPrice } from './AdCard'
+import { MarketHistory, SignalChips } from './MarketSignals'
 import { ScoreBar } from './ScoreBadge'
 import { TrackingPanel } from './TrackingPanel'
 
@@ -84,8 +85,11 @@ export function AdDetailPanel({ adId, variant, onClose, onToggleVariant }: AdDet
             {formatMoney(ad.market_stats.median_price_per_m2, 'zł/m²')} ({ad.market_stats.ad_count} ogłoszeń)
           </p>
         )}
+        <SignalChips ad={ad} />
         <a className="detail-link" href={ad.url} target="_blank" rel="noreferrer">Otwórz w otodom</a>
       </section>
+
+      <MarketHistory adId={ad.id} signals={ad.market_signals} />
 
       {ad.object_type === 'INVESTMENT' && <p className="investment-note">{INVESTMENT_NOTE}</p>}
 

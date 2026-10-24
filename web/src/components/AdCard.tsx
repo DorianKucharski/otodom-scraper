@@ -1,5 +1,6 @@
 import type { AdSummary } from '../api/types'
 import { RENOVATION_LABELS } from '../api/types'
+import { SignalChips } from './MarketSignals'
 import { ScoreBadge } from './ScoreBadge'
 import { PriceChange, TrackingPill } from './TrackingPanel'
 
@@ -70,6 +71,8 @@ export function AdCard({ ad, selected, onSelect }: AdCardProps) {
           {formatArea(ad.area_value)} · {ad.rooms ?? '-'} pok. · {formatFloor(ad.floor)}
           {ad.building_year ? ` · ${ad.building_year}` : ''} · {ad.features_count} cech
         </p>
+
+        <SignalChips ad={ad} />
 
         {ad.tracking?.last_comment && (
           <p className="ad-card-note">

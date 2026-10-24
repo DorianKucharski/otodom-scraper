@@ -10,14 +10,14 @@ from tests.enricher.ad_builder import AdBuilder
 _SOURCE_MODIFIED_AT = datetime(2026, 7, 1, 12, 0)
 
 
-def _dto(price: int = 750_000, modified_at: datetime = _SOURCE_MODIFIED_AT) -> AdDto:
+def _dto(price: int = 750_000, modified_at: datetime = _SOURCE_MODIFIED_AT, description: str = "<p>Opis</p>") -> AdDto:
     return AdDto(
         id=1,
         public_id="ABC123",
         slug="mieszkanie",
         url="https://www.otodom.pl/pl/oferta/test",
         title="Mieszkanie 3 pokoje",
-        description="<p>Opis</p>",
+        description=description,
         created_at=datetime(2026, 6, 1),
         modified_at=modified_at,
         status="active",
@@ -76,6 +76,23 @@ class TestAdUpdate(unittest.TestCase):
 
         self.assertEqual(AdStatus.OUTDATED, ad.status)
         self.assertEqual(_SOURCE_MODIFIED_AT, ad.modified_at)
+
+
+class TestMaskedRemovedAd(unittest.TestCase):
+
+    def test_a_removed_ad_does_not_wipe_the_stored_description(self):
+        ad = AdBuilder().with_description("<p>Dwupoziomowe mieszkanie z ogrodem</p>").build()
+
+        ad.update(_dto(description="***"))
+
+        self.assertEqual("<p>Dwupoziomowe mieszkanie z ogrodem</p>", ad.description)
+
+    def test_a_real_description_still_replaces_the_old_one(self):
+        ad = AdBuilder().with_description("<p>Stary opis</p>").build()
+
+        ad.update(_dto(description="<p>Nowy opis</p>"))
+
+        self.assertEqual("<p>Nowy opis</p>", ad.description)
 
 
 class TestShouldUpdate(unittest.TestCase):

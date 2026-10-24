@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import unittest
 
+from datetime import datetime
+
+from data.models import AdMarketSignals
 from enricher.ad_context import build_ad_context
 from enricher.market_context import DistrictPriceStats, MarketContext
 from tests.enricher.ad_builder import AdBuilder
@@ -97,6 +100,67 @@ class TestMarketStatsView(unittest.TestCase):
         context = build_ad_context(ad, market_context=MarketContext(_stats_by_key={}))
 
         self.assertIsNone(context.market_stats)
+
+
+def _signals(**overrides) -> AdMarketSignals:
+    values = dict(
+        ad_id=1,
+        listing_group_id=1,
+        listings_count=5,
+        advertisers_count=2,
+        first_listed_at=datetime(2025, 12, 2),
+        days_on_market=326,
+        first_price=1_029_000,
+        lowest_price=1_029_000,
+        highest_price=1_099_000,
+        price_change_pct=6.8,
+        comparables_count=24,
+        comparables_radius_m=1500,
+        comparables_median_price_per_m2=11_400,
+        comparables_p25_price_per_m2=10_500,
+        comparables_p75_price_per_m2=12_500,
+        price_vs_comparables_pct=-19.7,
+        location_flags=["near_city_border"],
+        location_notes=["Pinezka jest 835 m od granicy miasta Kraków."],
+        computed_at=datetime(2026, 10, 24),
+    )
+    values.update(overrides)
+    return AdMarketSignals(**values)
+
+
+class TestMarketSignalsInContext(unittest.TestCase):
+
+    def test_the_listing_history_follows_the_creation_date(self):
+        ad = AdBuilder().with_price(1_099_000, 9_158).build()
+
+        context = build_ad_context(ad, signals=_signals())
+
+        self.assertIn("ogłaszany od 2025-12-02", context.created_at_label)
+        self.assertIn("326 dni", context.created_at_label)
+        self.assertIn("5 ogłoszeń od 2 ogłoszeniodawców", context.created_at_label)
+        self.assertIn("1 029 000 zł", context.created_at_label)
+
+    def test_a_fresh_single_listing_keeps_the_plain_date(self):
+        ad = AdBuilder().build()
+
+        context = build_ad_context(ad, signals=_signals(listings_count=1, days_on_market=5))
+
+        self.assertEqual("2026-08-01", context.created_at_label)
+
+    def test_location_warnings_follow_the_address(self):
+        ad = AdBuilder().with_location().build()
+
+        context = build_ad_context(ad, signals=_signals())
+
+        self.assertIn("835 m od granicy", context.address)
+
+    def test_comparables_stand_in_when_district_stats_are_missing(self):
+        ad = AdBuilder().with_price(1_099_000, 9_158).build()
+
+        context = build_ad_context(ad, market_context=MarketContext(_stats_by_key={}), signals=_signals())
+
+        self.assertEqual(11_400, context.market_stats.median_price_per_m2)
+        self.assertIn("20% poniżej", context.market_stats.position_label)
 
 
 if __name__ == "__main__":

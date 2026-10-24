@@ -163,6 +163,13 @@ export interface AdSearchQuery {
   renovation_needed: string[]
   style_tags: string[]
   attributes: string[]
+  min_days_on_market?: number
+  max_days_on_market?: number
+  min_listings_count?: number
+  price_trends: string[]
+  max_price_vs_comparables_pct?: number
+  min_price_vs_comparables_pct?: number
+  excluded_location_flags: string[]
   tracking_statuses: TrackingStatus[]
   hide_dismissed: boolean
   sort: string
@@ -233,6 +240,81 @@ export interface AdSummary {
   thumbnail: string | null
   evaluation: Evaluation | null
   tracking: Tracking | null
+  market_signals: MarketSignals | null
+}
+
+export interface MarketSignals {
+  listing_group_id: number
+  listings_count: number
+  advertisers_count: number
+  first_listed_at: string
+  days_on_market: number
+  first_price: number | null
+  lowest_price: number | null
+  highest_price: number | null
+  price_change_pct: number | null
+  comparables_count: number
+  comparables_radius_m: number | null
+  comparables_median_price_per_m2: number | null
+  comparables_p25_price_per_m2: number | null
+  comparables_p75_price_per_m2: number | null
+  price_vs_comparables_pct: number | null
+  pin_city_name: string | null
+  pin_gmina_name: string | null
+  city_border_distance_m: number | null
+  location_flags: string[]
+  location_notes: string[]
+  computed_at: string
+}
+
+export interface ListingHistoryEntry {
+  id: number
+  url: string
+  title: string
+  status: string
+  advertiser_type: string | null
+  advertiser_name: string | null
+  created_at: string
+  last_seen_at: string | null
+  price_value: number
+  area_value: number | null
+  city: string | null
+  district: string | null
+  street: string | null
+}
+
+export interface PriceObservation {
+  ad_id: number
+  observed_at: string
+  price_value: number
+  status: string | null
+}
+
+export interface ListingHistory {
+  ad_id: number
+  signals: MarketSignals | null
+  listings: ListingHistoryEntry[]
+  prices: PriceObservation[]
+}
+
+export const LOCATION_FLAG_LABELS: Record<string, string> = {
+  pin_outside_city: 'Pinezka poza podanym miastem',
+  near_city_border: 'Pinezka przy granicy miasta',
+  other_place_in_text: 'Opis wymienia sąsiednią miejscowość',
+  border_in_text: 'Opis wspomina granicę albo gminę',
+  lineage_city_mismatch: 'Inne ogłoszenia lokalu podają inną miejscowość',
+}
+
+export const SUSPICIOUS_LOCATION_FLAGS = [
+  'pin_outside_city',
+  'other_place_in_text',
+  'lineage_city_mismatch',
+]
+
+export const PRICE_TREND_LABELS: Record<string, string> = {
+  dropped: 'Cena spadła',
+  raised: 'Cena wzrosła',
+  unchanged: 'Bez zmian',
 }
 
 export interface AdImage {

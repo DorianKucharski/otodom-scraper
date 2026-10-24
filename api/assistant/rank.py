@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session, selectinload
 from data.description import plain_description
 from data.feature_groups import labelled_feature_groups
 from data.inferred_types import object_type_of, offer_type_of
-from data.models import Ad, AdEvaluation, AdScreening
+from data.models import Ad, AdEvaluation, AdMarketSignals, AdScreening
+from data.signal_phrases import comparables_phrase, listing_history_phrase, location_warnings_phrase
 from ..labels import (
     BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS, OBJECT_TYPES, OFFER_TYPES, PROPERTY_CONDITIONS,
     RENOVATION_NEEDED, display_label, feature_label,
@@ -62,6 +63,7 @@ class AdCard:
     screening_attributes: str
     evaluation: Optional[str]
     description: Optional[str]
+    market_history: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -106,10 +108,10 @@ def load_candidates(session: Session, plan: SearchPlan, limit: int, description_
     position = {ad_id: index for index, ad_id in enumerate(ad_ids)}
 
     candidates = []
-    for ad, evaluation, tracking, features_count, distance_m in sorted(rows, key=lambda row: position[row[0].id]):
+    for ad, evaluation, tracking, features_count, distance_m, signals in sorted(rows, key=lambda row: position[row[0].id]):
         candidates.append(Candidate(
-            summary=to_ad_summary(ad, evaluation, tracking, features_count, distance_m),
-            card=ad_card(ad, evaluation, screenings.get(ad.id), description_characters),
+            summary=to_ad_summary(ad, evaluation, tracking, features_count, distance_m, signals),
+            card=ad_card(ad, evaluation, screenings.get(ad.id), description_characters, signals),
             evaluated=_is_evaluated(evaluation),
         ))
     return CandidatePool(total_matching=total, candidates=tuple(candidates))
@@ -157,6 +159,7 @@ def ad_card(
         evaluation: Optional[AdEvaluation],
         screening: Optional[AdScreening],
         description_characters: int,
+        signals: Optional[AdMarketSignals] = None,
 ) -> AdCard:
     return AdCard(
         id=ad.id,
@@ -188,7 +191,18 @@ def ad_card(
         screening_attributes=_pairs((screening.extracted_attributes or {}) if screening else {}),
         evaluation=_evaluation_text(evaluation) if _is_evaluated(evaluation) else None,
         description=plain_description(ad.description, description_characters),
+        market_history=_market_history(ad, signals),
     )
+
+
+def _market_history(ad: Ad, signals: Optional[AdMarketSignals]) -> Optional[str]:
+    warnings = location_warnings_phrase(signals)
+    parts = [
+        listing_history_phrase(signals, ad.price_value),
+        comparables_phrase(signals),
+        f"uwaga na lokalizację: {warnings}" if warnings else None,
+    ]
+    return "; ".join(part for part in parts if part) or None
 
 
 def _evaluation_text(evaluation: AdEvaluation) -> str:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from data.feature_groups import labelled_feature_groups
-from data.models import Ad, AdEvaluation, AdScreening, AdTracking
+from data.models import Ad, AdEvaluation, AdMarketSignals, AdScreening, AdTracking
 from data.description import plain_description
 from .labels import (
     ADVERTISER_TYPES, BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS, PROPERTY_CONDITIONS,
@@ -11,7 +11,7 @@ from .labels import (
 )
 from data.inferred_types import object_type_of, offer_type_of
 from .schemas import (
-    AdDetailResponse, AdSummaryResponse, EvaluationResponse, ImageResponse, MarketStatsResponse,
+    AdDetailResponse, AdSummaryResponse, EvaluationResponse, ImageResponse, MarketSignalsResponse, MarketStatsResponse,
     TrackingDetailResponse, TrackingEventResponse, TrackingResponse,
 )
 
@@ -22,6 +22,7 @@ def to_ad_summary(
         tracking: Optional[AdTracking],
         features_count: int,
         distance_m: Optional[float],
+        signals: Optional[AdMarketSignals] = None,
 ) -> AdSummaryResponse:
     return AdSummaryResponse(
         **_common_fields(ad),
@@ -30,6 +31,7 @@ def to_ad_summary(
         thumbnail=_thumbnail_of(ad),
         evaluation=to_evaluation(evaluation),
         tracking=to_tracking(tracking),
+        market_signals=to_market_signals(signals),
     )
 
 
@@ -40,6 +42,7 @@ def to_ad_detail(
         tracking: Optional[AdTracking],
         features_count: int,
         market_stats: Optional[MarketStatsResponse],
+        signals: Optional[AdMarketSignals] = None,
 ) -> AdDetailResponse:
     return AdDetailResponse(
         **_common_fields(ad),
@@ -47,6 +50,7 @@ def to_ad_detail(
         thumbnail=_thumbnail_of(ad),
         evaluation=to_evaluation(evaluation),
         tracking=to_tracking(tracking),
+        market_signals=to_market_signals(signals),
         description=plain_description(ad.description),
         province=ad.province.name if ad.province else None,
         county=ad.county.name if ad.county else None,
@@ -100,6 +104,34 @@ def to_evaluation(evaluation: Optional[AdEvaluation]) -> Optional[EvaluationResp
         images_evaluated=evaluation.images_evaluated or 0,
         model=evaluation.model,
         evaluated_at=evaluation.evaluated_at,
+    )
+
+
+def to_market_signals(signals: Optional[AdMarketSignals]) -> Optional[MarketSignalsResponse]:
+    if signals is None:
+        return None
+    return MarketSignalsResponse(
+        listing_group_id=signals.listing_group_id,
+        listings_count=signals.listings_count,
+        advertisers_count=signals.advertisers_count,
+        first_listed_at=signals.first_listed_at,
+        days_on_market=signals.days_on_market,
+        first_price=signals.first_price,
+        lowest_price=signals.lowest_price,
+        highest_price=signals.highest_price,
+        price_change_pct=_float(signals.price_change_pct),
+        comparables_count=signals.comparables_count,
+        comparables_radius_m=signals.comparables_radius_m,
+        comparables_median_price_per_m2=signals.comparables_median_price_per_m2,
+        comparables_p25_price_per_m2=signals.comparables_p25_price_per_m2,
+        comparables_p75_price_per_m2=signals.comparables_p75_price_per_m2,
+        price_vs_comparables_pct=_float(signals.price_vs_comparables_pct),
+        pin_city_name=signals.pin_city_name,
+        pin_gmina_name=signals.pin_gmina_name,
+        city_border_distance_m=signals.city_border_distance_m,
+        location_flags=list(signals.location_flags or []),
+        location_notes=list(signals.location_notes or []),
+        computed_at=signals.computed_at,
     )
 
 
@@ -175,6 +207,10 @@ def _common_fields(ad: Ad) -> dict:
 def _thumbnail_of(ad: Ad) -> Optional[str]:
     images = sorted(ad.images, key=lambda image: image.position)
     return images[0].medium if images else None
+
+
+def _float(value) -> Optional[float]:
+    return float(value) if value is not None else None
 
 
 def _status_value(status) -> Optional[str]:

@@ -301,6 +301,27 @@ LLM_DOWNLOAD_IMAGES=true
 
 Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli trochę ruchu i czasu, ale zero dodatkowych tokenów.
 
+## Historia ogłoszeń, ceny w okolicy i podejrzane lokalizacje
+
+Każde ogłoszenie dostaje w tabeli `ad_market_signals` zestaw sygnałów liczonych bez LLM. Wyszukiwarka pokazuje je jako znaczniki na kartach (najechanie myszką pokazuje szczegóły), w sekcji „Historia ogłoszenia i rynek” w szczegółach i w filtrach „Historia i rynek”.
+
+- **Ten sam lokal w kolejnych ogłoszeniach.** Agencje zdejmują ogłoszenie i wystawiają je od nowa co kilka tygodni, żeby wyglądało na świeże. Właściciel najpierw sprzedaje sam, potem oddaje lokal agencji, która podnosi cenę. Scraper łączy takie ogłoszenia w jeden „rodowód” po metrażu (z dokładnością do 0,5%), pokojach, piętrze, roku budowy, odległości (do 3 km, bo agencje przesuwają pinezki) i podobieństwie tytułu lub opisu. Dwa ogłoszenia wiszące jednocześnie łączy tylko wtedy, gdy to ten sam ogłoszeniodawca, ta sama cena i prawie ten sam tekst, więc identyczne lokale z jednej inwestycji zostają osobno. Z rodowodu wychodzi **czas na rynku** liczony od pierwszego ogłoszenia, liczba ogłoszeń i ogłoszeniodawców oraz pierwsza, najniższa i najwyższa znana cena.
+- **Historia cen.** Od tej wersji scraper zapisuje w `ad_price_observations` każdą zmianę ceny, metrażu i statusu. Starsze ogłoszenia mają jedną obserwację z ostatniego pobrania, więc pełna historia cen narasta od teraz.
+- **Podobne oferty w okolicy.** Zamiast mediany całej dzielnicy: mediana ceny za metr z co najmniej 10 podobnych ofert (ten sam typ, metraż ±35%, aktywne albo zdjęte w ostatnim półroczu, każdy lokal raz) w promieniu od 750 m do 10 km od pinezki. Mediana dzielnicy myliła, bo duży metraż ma niższą cenę za metr, a pinezka mogła wskazywać inną dzielnicę niż faktyczne położenie.
+- **Ceny transakcyjne z RCN.** `load_transactions.py` ściąga z Rejestru Cen Nieruchomości (otwarty WFS GUGiK) sprzedaże lokali wokół wskazanych miast. Sygnały porównują cenę za metr z medianą prawdziwych transakcji z ostatnich 2 lat (ten sam rynek, gdy jest ich dość, metraż ±35%, cały lokal, wolny rynek). To jedyne porównanie, w którym nie ma cen ofertowych.
+- **Lokalizacja.** `load_boundaries.py` wczytuje granice miast i gmin z PRG (GUGiK). Dla miast sprawdzamy, czy pinezka leży w mieście, które podaje ogłoszenie, i jak daleko jest od granicy. Flagi: `pin_outside_city` (pinezka poza miastem), `near_city_border` (bliżej niż 1 km od granicy, ogłoszeniodawcy przypinają oferty spod miasta do ostatniej ulicy po jego stronie), `other_place_in_text` (opis wymienia miejscowość z okolicy spoza miasta, sprawdzane tylko do 2,5 km od granicy), `border_in_text` („1 km od granicy Krakowa”, „gmina Zielonki”), `lineage_city_mismatch` (inne ogłoszenie tego samego lokalu podaje inną miejscowość). Filtr „Ukryj podejrzane lokalizacje → zalecane” chowa trzy najmocniejsze.
+
+```bash
+uv run python load_boundaries.py                    # granice z PRG, raz (i po zmianach granic)
+uv run python load_transactions.py --city Kraków    # transakcje RCN, np. raz w miesiącu
+uv run python load_transactions.py --city Warszawa --city Wrocław --margin-km 10
+uv run python signals.py                            # przelicza sygnały od razu
+```
+
+Enricher przelicza sygnały sam co `MARKET_SIGNALS_INTERVAL_HOURS` (domyślnie 6 h, 0 wyłącza), na początku cyklu. Całość dla ~275 tys. ogłoszeń trwa kilka minut. Sygnały trafiają też do promptu oceny AI i kart asystenta, ale do istniejących pól szablonu (`Adres`, `Data wystawienia`, `Dane rynkowe`), więc zapisane oceny nie unieważniają się. Dostaną je dopiero nowe oceny i te, które się przeliczą z innego powodu.
+
+Przy okazji: otodom zastępuje opis i ulicę zdjętego ogłoszenia gwiazdkami (`***`). Wcześniej scraper nadpisywał tym zapisane dane i ok. 21 tys. ogłoszeń straciło opis. Teraz zamaskowane wartości nie nadpisują zapisanych, a zamaskowany JSON nie nadpisuje zapisanego surowego JSON-a.
+
 ## Tymczasowo: naprawa ogłoszeń bez lokalizacji
 
 > **Tymczasowe.** Do usunięcia, gdy w bazie nie będzie już aktywnych ogłoszeń bez miasta (`select count(*) from ads where status='active' and city_id is null`).

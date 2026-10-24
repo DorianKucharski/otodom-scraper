@@ -9,9 +9,10 @@ from sqlalchemy import func, or_
 
 from data.ad_dto import AdDto
 from data.location_resolver import LocationIndex, complete_location
+from data.price_history import PriceState, price_observation, price_state_of
 from data.raw_payload import raw_payload_row
 from data.search_dto import SearchResultDto
-from data.models import Ad, AdStatus, County, Province, City, District, Owner, ServiceStatus
+from data.models import Ad, AdRawPayload, AdStatus, County, Province, City, District, Owner, ServiceStatus, is_masked
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
 from database import DatabaseManager
 from monitoring.heartbeat import ServiceHeartbeatWriter
@@ -159,9 +160,29 @@ class ScrapingContext:
     def _store_raw_payload(self, session, ad: AdDto):
         if not self.__store_raw_payloads:
             return
+        if is_masked(ad.description) and session.get(AdRawPayload, ad.id) is not None:
+            return
         row = raw_payload_row(ad.id, ad.raw_payload, datetime.now())
         if row is not None:
             session.merge(row)
+
+    @staticmethod
+    def _record_price(session, ad: Ad, previous: Optional[PriceState]):
+        observation = price_observation(ad, previous, datetime.now())
+        if observation is not None:
+            session.add(observation)
+
+    def _refresh(self, session, saved_ad: Ad, ad_dto: AdDto, offer_type: Optional[str], object_type: Optional[str]):
+        previous = price_state_of(saved_ad)
+        self._store_dimensions(session, ad_dto)
+        saved_ad.update(ad_dto, offer_type, object_type)
+        self._store_raw_payload(session, ad_dto)
+        self._record_price(session, saved_ad, previous)
+
+    def _outdate(self, session, saved_ad: Ad):
+        previous = price_state_of(saved_ad)
+        saved_ad.outdate()
+        self._record_price(session, saved_ad, previous)
 
     @staticmethod
     def _ensure_entity(session, cache: set, entity_id, factory):
@@ -204,11 +225,9 @@ class ScrapingContext:
                         logger.info(f"Updating ad with url: {url} - last update was at - {saved_ad.modified_at}")
                         ad_dto: AdDto | None = self._fetch_ad(url)
                         if ad_dto:
-                            self._store_dimensions(session, ad_dto)
-                            saved_ad.update(ad_dto, offer_type, object_type)
-                            self._store_raw_payload(session, ad_dto)
+                            self._refresh(session, saved_ad, ad_dto, offer_type, object_type)
                         else:
-                            saved_ad.outdate()
+                            self._outdate(session, saved_ad)
                             logger.warning(f"Marking as outdated - {saved_ad.id} - {url}")
                     else:
                         logger.info(f"Skipping update of url: {url} - last update was at - {saved_ad.modified_at}")
@@ -223,9 +242,7 @@ class ScrapingContext:
                     saved_ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()
 
                     if saved_ad is not None:
-                        self._store_dimensions(session, ad_dto)
-                        saved_ad.update(ad_dto, offer_type, object_type)
-                        self._store_raw_payload(session, ad_dto)
+                        self._refresh(session, saved_ad, ad_dto, offer_type, object_type)
                         self.existing_ad_urls.add(ad_dto.url)
                         logger.info(f"Updating ad - id: {ad_dto.id} - url: {ad_dto.url}")
                         return
@@ -247,9 +264,10 @@ class ScrapingContext:
         try:
             with self.__database_manager.get_session() as session:
                 self._store_dimensions(session, ad)
-                session.merge(Ad.from_dataclass(ad, offer_type, object_type))
+                saved_ad = session.merge(Ad.from_dataclass(ad, offer_type, object_type))
                 session.flush()
                 self._store_raw_payload(session, ad)
+                self._record_price(session, saved_ad, None)
         except Exception as e:
             logger.error(f"Error processing ad: {ad.url} - {e}")
             raise
@@ -315,14 +333,12 @@ class ScrapingContext:
             url = saved_ad.url
             ad_dto: AdDto | None = self._fetch_ad(url)
             if ad_dto is None:
-                saved_ad.outdate()
+                self._outdate(session, saved_ad)
                 logger.warning(f"Marking as outdated - {ad_id} - {url}")
                 return
 
             # Preserve offer_type/object_type - they are not part of the scraped JSON
-            self._store_dimensions(session, ad_dto)
-            saved_ad.update(ad_dto, saved_ad.offer_type, saved_ad.object_type)
-            self._store_raw_payload(session, ad_dto)
+            self._refresh(session, saved_ad, ad_dto, saved_ad.offer_type, saved_ad.object_type)
             logger.info(f"Updated ad {ad_id} - status: {ad_dto.status} - url: {url}")
 
 

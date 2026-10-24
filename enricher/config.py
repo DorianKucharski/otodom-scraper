@@ -34,6 +34,7 @@ class EnricherConfig:
     cycle_pause_seconds: int
     max_tries: int
     retry_pause_seconds: int
+    market_signals_interval_hours: float
 
     @classmethod
     def from_env(cls) -> "EnricherConfig":
@@ -66,6 +67,7 @@ class EnricherConfig:
             cycle_pause_seconds=_read_int("ENRICHER_CYCLE_PAUSE_SECONDS", 300),
             max_tries=_read_int("ENRICHER_MAX_TRIES", 3),
             retry_pause_seconds=_read_int("ENRICHER_RETRY_PAUSE_SECONDS", 10),
+            market_signals_interval_hours=_read_float("MARKET_SIGNALS_INTERVAL_HOURS", 6.0),
         )
 
 

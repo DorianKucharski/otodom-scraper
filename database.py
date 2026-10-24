@@ -6,9 +6,10 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from data.derived_tables import ensure_table
 from data.inferred_types import inferred_types_view_sql
 from data.models import (
-    Base
+    AdMarketSignals, Base, RcnTransaction
 )
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,8 @@ class DatabaseManager:
             logger.info("PostgreSQL extensions created")
 
         Base.metadata.create_all(self.engine)
+        for derived in (AdMarketSignals.__table__, RcnTransaction.__table__):
+            ensure_table(self.engine, derived)
         logger.info("All tables created successfully")
 
         with self.engine.begin() as conn:
