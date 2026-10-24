@@ -72,7 +72,7 @@ def _usable_area(content: str, area: Optional[float]) -> Optional[float]:
     candidates = []
     for pattern in (_USABLE_AFTER_NUMBER, _USABLE_BEFORE_NUMBER):
         for match in pattern.finditer(content):
-            if _PART_OF_FLAT.search(content[max(0, match.start() - 60):match.start()]):
+            if _PART_OF_FLAT.search(content[max(0, match.start() - 25):match.start()]):
                 continue
             value = float(match.group(1).replace(",", "."))
             if MIN_SHARE_OF_LISTED * area <= value < area * (1 - MIN_DIFFERENCE):
