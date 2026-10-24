@@ -39,6 +39,17 @@ class TestPinVerdict(unittest.TestCase):
         self.assertEqual([PIN_OUTSIDE_CITY], verdict.flags)
         self.assertIn("Wielka Wieś", verdict.notes[0])
 
+    def test_a_pin_in_another_part_of_the_country_is_called_a_mistake(self):
+        verdict = LocationVerdict()
+        check = PinCheck(ad_id=1, claimed_is_town=True, claimed_area_km2=293, inside_claimed=False, border_m=227_324,
+                         pin_city_name="Kraków", pin_gmina_name="Kraków")
+
+        pin_verdict("Wrocław", check, verdict)
+
+        self.assertEqual([PIN_OUTSIDE_CITY], verdict.flags)
+        self.assertIn("227 km", verdict.notes[0])
+        self.assertIn("błąd w ogłoszeniu", verdict.notes[0])
+
     def test_the_border_of_a_small_town_is_not_worth_a_flag(self):
         verdict = LocationVerdict()
 

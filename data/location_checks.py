@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection
 NEAR_BORDER_M = 1000
 NEAR_BORDER_MIN_CITY_KM2 = 80
 OUTSIDE_TOLERANCE_M = 100
+MISPLACED_PIN_M = 20000
 TEXT_CHECK_BORDER_M = 1500
 NEARBY_PLACE_RADIUS_M = 6000
 MIN_ADS_FOR_PLACE_CENTRE = 3
@@ -182,6 +183,14 @@ def load_district_names(connection: Connection) -> dict[str, set[str]]:
 def pin_verdict(claimed_city: Optional[str], check: Optional[PinCheck], verdict: LocationVerdict) -> bool:
     if check is None or not check.claimed_is_town:
         return False
+    if not check.inside_claimed and (check.border_m or 0) > MISPLACED_PIN_M:
+        actual = check.pin_city_name or (f"gmina {check.pin_gmina_name}" if check.pin_gmina_name else "poza Polską")
+        verdict.add(
+            PIN_OUTSIDE_CITY,
+            f"Pinezka jest {round(check.border_m / 1000)} km od miasta {claimed_city}, w: {actual}. To błąd w ogłoszeniu, "
+            f"prawdziwe położenie trzeba ustalić z opisu albo u ogłoszeniodawcy.",
+        )
+        return True
     if not check.inside_claimed and (check.border_m or 0) > OUTSIDE_TOLERANCE_M:
         actual = check.pin_city_name or (f"gmina {check.pin_gmina_name}" if check.pin_gmina_name else "poza miastem")
         verdict.add(
