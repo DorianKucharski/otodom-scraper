@@ -171,6 +171,7 @@ export interface AdSearchQuery {
   min_price_vs_comparables_pct?: number
   max_price_vs_transactions_pct?: number
   excluded_location_flags: string[]
+  hide_unchecked: boolean
   tracking_statuses: TrackingStatus[]
   hide_dismissed: boolean
   sort: string

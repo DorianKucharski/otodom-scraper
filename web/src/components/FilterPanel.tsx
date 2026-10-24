@@ -345,6 +345,14 @@ export function FilterPanel({ query, facets, onChange, onReset, onClose }: Filte
       </Section>
 
       <Section title="Historia i rynek" defaultOpen>
+        <label className="filter-checkbox">
+          <input
+            type="checkbox"
+            checked={query.hide_unchecked}
+            onChange={(event) => onChange({ hide_unchecked: event.target.checked })}
+          />
+          <span>Ukryj niesprawdzane od ponad 45 dni (mogły już zniknąć z otodom)</span>
+        </label>
         <NumberRange
           label="Na rynku (łącznie z poprzednimi ogłoszeniami)"
           unit="dni"

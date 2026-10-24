@@ -318,6 +318,8 @@ uv run python load_transactions.py --city Warszawa --city Wrocław --margin-km 1
 uv run python signals.py                            # przelicza sygnały od razu
 ```
 
+- **Niesprawdzane ogłoszenia.** Scraper na produkcji odświeża tylko obszar z `docker-compose.yaml` (dziś `--city=Kraków`), więc ogłoszenia spoza niego zostają „aktywne” na zawsze. W październiku 2026 było takich 195 tys., a sześć „najtańszych” z okolic Krakowa okazało się zdjętych od marca–czerwca. Wyszukiwarka domyślnie ukrywa aktywne ogłoszenia niesprawdzane od ponad 45 dni (`hide_unchecked`, w filtrach „Historia i rynek”), karta pokazuje „niesprawdzane od …”, a sygnały traktują je jak zakończone przy ostatnim sprawdzeniu. Żeby szukać poza Krakowem, trzeba uruchomić dodatkowy scraper dla tego obszaru.
+
 Enricher przelicza sygnały sam co `MARKET_SIGNALS_INTERVAL_HOURS` (domyślnie 6 h, 0 wyłącza), na początku cyklu. Całość dla ~275 tys. ogłoszeń trwa kilka minut. Sygnały trafiają też do promptu oceny AI i kart asystenta, ale do istniejących pól szablonu (`Adres`, `Data wystawienia`, `Dane rynkowe`), więc zapisane oceny nie unieważniają się. Dostaną je dopiero nowe oceny i te, które się przeliczą z innego powodu.
 
 Przy okazji: otodom zastępuje opis i ulicę zdjętego ogłoszenia gwiazdkami (`***`). Wcześniej scraper nadpisywał tym zapisane dane i ok. 21 tys. ogłoszeń straciło opis. Teraz zamaskowane wartości nie nadpisują zapisanych, a zamaskowany JSON nie nadpisuje zapisanego surowego JSON-a.

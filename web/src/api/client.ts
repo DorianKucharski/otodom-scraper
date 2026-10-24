@@ -47,6 +47,7 @@ export const DEFAULT_QUERY: AdSearchQuery = {
   attributes: [],
   price_trends: [],
   excluded_location_flags: [],
+  hide_unchecked: true,
   tracking_statuses: [],
   hide_dismissed: true,
   sort: 'created_at',

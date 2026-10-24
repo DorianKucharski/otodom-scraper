@@ -119,6 +119,9 @@ class AdSearchQuery(BaseModel):
     max_price_vs_transactions_pct: Optional[float] = Field(
         None, description="Cena za metr względem mediany transakcji z RCN w okolicy z ostatnich 2 lat."
     )
+    hide_unchecked: bool = Field(
+        True, description="Ukrywa aktywne ogłoszenia, których scraper nie sprawdzał dłużej niż UNCHECKED_AFTER_DAYS dni."
+    )
     excluded_location_flags: list[str] = Field(
         default_factory=list, description="Ukrywa ogłoszenia z którąś z tych flag lokalizacji."
     )

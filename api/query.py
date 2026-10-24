@@ -30,6 +30,7 @@ FLOOR_NUMBER = case(
 
 SIGNAL_SORT_FIELDS = ("days_on_market", "price_vs_comparables_pct", "price_change_pct", "price_vs_transactions_pct")
 PRICE_TRENDS = ("dropped", "raised", "unchanged")
+UNCHECKED_AFTER_DAYS = 45
 
 OFFER_TYPE = func.coalesce(ad_inferred_types.c.offer_type, Ad.offer_type)
 OBJECT_TYPE = func.coalesce(ad_inferred_types.c.object_type, Ad.object_type)
@@ -288,6 +289,12 @@ def _market_signal_conditions(query: AdSearchQuery) -> list:
     trends = [trend for trend in query.price_trends if trend in PRICE_TRENDS]
     if trends:
         conditions.append(or_(*(_price_trend(trend) for trend in trends)))
+
+    if query.hide_unchecked:
+        conditions.append(or_(
+            Ad.status != "active",
+            Ad.scraped_at >= func.now() - func.make_interval(0, 0, 0, UNCHECKED_AFTER_DAYS),
+        ))
 
     if query.excluded_location_flags:
         conditions.append(or_(
