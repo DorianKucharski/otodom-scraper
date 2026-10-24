@@ -1218,3 +1218,20 @@ class NuisanceFeature(Base):
 
     def __repr__(self):
         return f"<NuisanceFeature(osm_id={self.osm_id}, kind={self.kind}, label={self.label})>"
+
+
+class OsmStreet(Base):
+    __tablename__ = 'osm_streets'
+
+    osm_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    key: Mapped[str] = mapped_column(String(100), nullable=False)
+    geom = mapped_column(Geometry('LINESTRING', srid=4326), nullable=False)
+    loaded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('idx_osm_streets_key', 'key'),
+    )
+
+    def __repr__(self):
+        return f"<OsmStreet(osm_id={self.osm_id}, name={self.name})>"

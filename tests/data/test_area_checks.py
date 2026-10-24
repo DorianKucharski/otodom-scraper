@@ -20,6 +20,18 @@ class TestAreaVerdict(unittest.TestCase):
         self.assertEqual([USABLE_AREA_SMALLER], verdict.flags)
         self.assertIn("96,73 m²", verdict.notes[0])
 
+    def test_the_usable_area_from_the_land_register_is_found_further_away(self):
+        verdict = area_verdict(79.61, "Mieszkanie", "Powierzchnia użytkowa mieszkania jaka widnieje w księdze "
+                                                                  "wieczystej to 53,39m2 natomiast po podłodze 62,48m2.")
+
+        self.assertIn(USABLE_AREA_SMALLER, verdict.flags)
+        self.assertIn("53,39 m²", verdict.notes[0])
+
+    def test_a_deed_mentioned_in_another_sentence_does_not_count(self):
+        verdict = area_verdict(80.0, "Mieszkanie", "Powierzchnia użytkowa zgodna. Księga wieczysta założona, piwnica 6 m2.")
+
+        self.assertNotIn(USABLE_AREA_SMALLER, verdict.flags)
+
     def test_the_usable_area_of_one_level_is_not_the_whole_flat(self):
         verdict = area_verdict(60.22, "Mieszkanie", "Poziom dolny (powierzchnia użytkowa 28,86 m²): salon z aneksem.")
 

@@ -20,6 +20,8 @@ _UNIT = r"(?:m2|m²|mkw\.?|m\.\s?kw\.?|metr\w*)"
 _USABLE = r"(?:powierzchni\w*\s+użytkow\w*|pow\.\s*użytk\w*|użytkow\w*|po\s+podłodze)"
 _USABLE_AFTER_NUMBER = re.compile(rf"{_NUMBER}\s*{_UNIT}\s*[(,–-]?\s*{_USABLE}", re.IGNORECASE)
 _USABLE_BEFORE_NUMBER = re.compile(rf"{_USABLE}[^0-9]{{0,25}}{_NUMBER}\s*{_UNIT}", re.IGNORECASE)
+_DEED = r"(?:księdz\w*\s+wieczyst\w*|\bKW\b|akci\w*\s+notarialn\w*|dokumentach)"
+_USABLE_IN_DEED = re.compile(rf"{_USABLE}[^0-9.!?]{{0,40}}{_DEED}[^0-9.!?]{{0,20}}{_NUMBER}\s*{_UNIT}", re.IGNORECASE)
 _PART_OF_FLAT = re.compile(
     r"(poziom|parter|piętr|pokój|pokoj|kuchni|salon|sypialn|łazienk|antresol|strych|piwnic|garaż|działk|ogród|ogrod|taras)\w*[^.]{0,40}$",
     re.IGNORECASE,
@@ -72,7 +74,7 @@ def _usable_area(content: str, area: Optional[float]) -> Optional[float]:
     if not area:
         return None
     candidates = []
-    for pattern in (_USABLE_AFTER_NUMBER, _USABLE_BEFORE_NUMBER):
+    for pattern in (_USABLE_AFTER_NUMBER, _USABLE_BEFORE_NUMBER, _USABLE_IN_DEED):
         for match in pattern.finditer(content):
             if _PART_OF_FLAT.search(content[max(0, match.start() - 25):match.start()]):
                 continue

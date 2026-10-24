@@ -3,10 +3,9 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Iterable, Optional
 
-import requests
 from psycopg2.extras import execute_values
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
@@ -16,9 +15,6 @@ from .geo import METRES_PER_DEGREE
 from .models import NuisanceFeature
 
 logger = logging.getLogger(__name__)
-
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-OVERPASS_TIMEOUT_SECONDS = 300
 
 EXPRESSWAY = "expressway"
 RAILWAY = "railway"
@@ -38,14 +34,6 @@ APPROACH_WIDENING = 0.05
 _UNPAVED = {"grass", "dirt", "ground", "gravel", "sand", "earth", "unpaved"}
 _EXPRESSWAY_HIGHWAYS = {"motorway", "trunk", "motorway_link", "trunk_link"}
 
-_AREA_BOUNDS = text("""
-SELECT ST_YMin(b), ST_XMin(b), ST_YMax(b), ST_XMax(b)
-FROM (
-    SELECT ST_Extent(ST_Buffer(geom::geography, :margin)::geometry) AS b
-    FROM admin_areas
-    WHERE level = 'city' AND city_name = ANY(:cities)
-) bounds
-""")
 
 _INSERT = """
 INSERT INTO nuisance_features (osm_id, kind, label, geom, loaded_at)
@@ -168,22 +156,11 @@ def _metres(start: tuple[float, float], end: tuple[float, float]) -> float:
     return math.hypot((end[0] - start[0]) * METRES_PER_DEGREE, (end[1] - start[1]) * METRES_PER_DEGREE * cos_lat)
 
 
-def load_nuisances(engine: Engine, cities: list[str], margin_m: int, http: Optional[requests.Session] = None,
-                   now: Optional[datetime] = None) -> int:
-    now = now or datetime.now()
-    ensure_table(engine, NuisanceFeature.__table__)
-    with engine.connect() as connection:
-        bounds = connection.execute(_AREA_BOUNDS, {"cities": cities, "margin": margin_m}).one()
-    if bounds[0] is None:
-        raise ValueError(f"No boundaries loaded for {cities}, run load_boundaries.py first")
-    response = (http or requests.Session()).post(
-        OVERPASS_URL, data={"data": overpass_query(*bounds)}, timeout=OVERPASS_TIMEOUT_SECONDS,
-        headers={"User-Agent": "otodom-scraper"},
-    )
-    response.raise_for_status()
-    features = features_from_overpass(response.json())
+def store_nuisances(engine: Engine, features: list[Feature], now: Optional[datetime] = None) -> int:
     if not features:
         raise ValueError("Overpass returned no roads, railways or runways, keeping the previous ones")
+    now = now or datetime.now()
+    ensure_table(engine, NuisanceFeature.__table__)
     with engine.begin() as connection:
         connection.execute(text("DELETE FROM nuisance_features"))
         execute_values(
@@ -196,14 +173,6 @@ def load_nuisances(engine: Engine, cities: list[str], margin_m: int, http: Optio
 def _row(feature: Feature, now: datetime) -> tuple:
     line = ", ".join(f"{longitude} {latitude}" for latitude, longitude in feature.points)
     return feature.osm_id, feature.kind, feature.label, f"LINESTRING({line})", now
-
-
-def nuisances_due(connection: Connection, refresh_days: float, now: Optional[datetime] = None) -> bool:
-    exists = connection.execute(text("SELECT to_regclass('nuisance_features') IS NOT NULL")).scalar()
-    if not exists:
-        return True
-    last = connection.execute(text("SELECT max(loaded_at) FROM nuisance_features")).scalar()
-    return last is None or (now or datetime.now()) - last >= timedelta(days=refresh_days)
 
 
 class ApproachPaths:

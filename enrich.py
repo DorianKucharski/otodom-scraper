@@ -10,7 +10,7 @@ from typing import Optional
 import typer
 
 from data.market_signals import market_signals_due
-from data.nuisances import nuisances_due
+from data.overpass import osm_due
 from data.rcn import flat_sales_due
 from data.models import ServiceStatus
 from data.search_url import ObjectType, OfferType
@@ -86,8 +86,8 @@ def print_dry_run(summary: RunSummary) -> None:
 
 SIGNALS_SCRIPT = Path(__file__).with_name("signals.py")
 TRANSACTIONS_SCRIPT = Path(__file__).with_name("load_transactions.py")
-NUISANCES_SCRIPT = Path(__file__).with_name("load_nuisances.py")
-NUISANCES_TIMEOUT_SECONDS = 900
+OSM_SCRIPT = Path(__file__).with_name("load_osm.py")
+OSM_TIMEOUT_SECONDS = 1800
 MARKET_SIGNALS_TIMEOUT_SECONDS = 3600
 TRANSACTIONS_TIMEOUT_SECONDS = 4 * 3600
 _last_attempts: dict[str, float] = {}
@@ -186,7 +186,7 @@ def main(
         database_manager.refresh_inferred_types()
         if not dry_run:
             _refresh_transactions_if_due(database_manager, config, heartbeat)
-            _refresh_nuisances_if_due(database_manager, config, heartbeat)
+            _refresh_osm_if_due(database_manager, config, heartbeat)
             _refresh_market_signals_if_due(database_manager, config, heartbeat)
 
         if screen_enabled:
@@ -242,24 +242,24 @@ def _refresh_transactions_if_due(database_manager: DatabaseManager, config: Enri
         logger.exception("RCN refresh failed, keeping the previous transactions: %s", error)
 
 
-def _refresh_nuisances_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
+def _refresh_osm_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
     if not config.rcn_cities:
         return
     try:
         with database_manager.engine.connect() as connection:
-            if not nuisances_due(connection, config.rcn_refresh_days):
+            if not osm_due(connection, config.rcn_refresh_days):
                 return
-        if _attempted_recently("nuisances", config.rcn_refresh_days * 24):
+        if _attempted_recently("osm", config.rcn_refresh_days * 24):
             return
-        heartbeat.report(ServiceStatus.RUNNING, phase="drogi, kolej i lotniska z OpenStreetMap")
+        heartbeat.report(ServiceStatus.RUNNING, phase="ulice, drogi, kolej i lotniska z OpenStreetMap")
         arguments = [argument for city in config.rcn_cities for argument in ("--city", city)]
         result = subprocess.run(
-            [sys.executable, str(NUISANCES_SCRIPT), *arguments], timeout=NUISANCES_TIMEOUT_SECONDS, check=False,
+            [sys.executable, str(OSM_SCRIPT), *arguments], timeout=OSM_TIMEOUT_SECONDS, check=False,
         )
         if result.returncode != 0:
-            logger.error("Nuisance refresh exited with %s, keeping the previous roads and railways", result.returncode)
+            logger.error("OpenStreetMap refresh exited with %s, keeping the previous data", result.returncode)
     except Exception as error:
-        logger.exception("Nuisance refresh failed, keeping the previous roads and railways: %s", error)
+        logger.exception("OpenStreetMap refresh failed, keeping the previous data: %s", error)
 
 
 def _refresh_market_signals_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):

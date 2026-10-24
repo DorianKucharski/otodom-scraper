@@ -22,6 +22,7 @@ from .location_checks import (
 )
 from .inferred_types import HOUSE_BUILDING_TYPES, HOUSE_TITLE_PATTERN
 from .nuisances import load_nuisance_checks, nuisance_verdict
+from .street_checks import load_street_checks, street_verdict
 from .models import AdMarketSignals, is_masked, status_value
 from .price_history import BACKFILL_MISSING_OBSERVATIONS
 
@@ -173,8 +174,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
     with engine.begin() as connection:
         pin_checks = load_pin_checks(connection)
         nuisance_checks = load_nuisance_checks(connection)
-    logger.info("Checked %d pins against city boundaries, %d are near a road, railway or runway",
-                len(pin_checks), len(nuisance_checks))
+        street_checks = load_street_checks(connection)
+    logger.info("Checked %d pins against city boundaries, %d are near a road, railway or runway, %d against streets",
+                len(pin_checks), len(nuisance_checks), len(street_checks))
 
     texts_needed = [
         ad_id for ad_id, check in pin_checks.items()
@@ -213,6 +215,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         verdict = LocationVerdict()
         check = pin_checks.get(ad_id)
         pin_verdict(fact.city_name, check, verdict)
+        pin_misplaced = street_verdict(street_checks.get(ad_id), verdict)
         verdict.merge(text_verdicts.get(ad_id))
         lineage_verdict(fact.city_name, (facts[member].city_name for member in group.member_ids if member != ad_id), verdict)
         area = area_verdicts.get(ad_id)
@@ -223,7 +226,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
             fact.listing.created_at, fact.listing.price, floor_number(fact.listing.floor),
         ) if _is_flat_sale(fact.listing) else None
-        nuisance = nuisance_checks.get(ad_id)
+        nuisance = None if pin_misplaced else nuisance_checks.get(ad_id)
         nuisances = nuisance_verdict(nuisance)
         return (
             ad_id,

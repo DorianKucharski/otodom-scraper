@@ -326,6 +326,7 @@ export const LOCATION_FLAG_LABELS: Record<string, string> = {
   other_place_in_text: 'Opis wymienia sąsiednią miejscowość',
   border_in_text: 'Opis wspomina granicę albo gminę',
   lineage_city_mismatch: 'Inne ogłoszenia lokalu podają inną miejscowość',
+  pin_far_from_street: 'Pinezka ponad 1 km od podanej ulicy',
 }
 
 export const AREA_FLAG_LABELS: Record<string, string> = {
