@@ -78,6 +78,7 @@ const SORT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'days_on_market', label: 'Czas na rynku' },
   { value: 'price_vs_comparables_pct', label: 'Cena wobec okolicy' },
   { value: 'price_change_pct', label: 'Zmiana ceny' },
+  { value: 'price_vs_transactions_pct', label: 'Cena wobec transakcji' },
   ...SCORE_FIELDS.map((field) => ({ value: field, label: `AI: ${SCORE_LABELS[field]}` })),
 ]
 

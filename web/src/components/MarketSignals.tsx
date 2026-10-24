@@ -32,6 +32,15 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleDateString('pl-PL') : '-'
 }
 
+function transactionsTitle(signals: MarketSignals): string {
+  return (
+    `Mediana ${money(signals.transactions_median_price_per_m2, 'zł/m²')} z ${signals.transactions_count} sprzedaży lokali ` +
+    `z Rejestru Cen Nieruchomości z ostatnich 2 lat (metraż ±35%, do ` +
+    `${((signals.transactions_radius_m ?? 0) / 1000).toLocaleString('pl-PL')} km). To ceny transakcyjne, nie ofertowe. ` +
+    `Środkowa połowa: ${money(signals.transactions_p25_price_per_m2)} – ${money(signals.transactions_p75_price_per_m2, 'zł/m²')}.`
+  )
+}
+
 function comparablesTitle(signals: MarketSignals): string {
   return (
     `Mediana ${money(signals.comparables_median_price_per_m2, 'zł/m²')} z ${signals.comparables_count} podobnych ofert ` +
@@ -84,11 +93,24 @@ export function SignalChips({ ad }: SignalChipsProps) {
     })
   }
 
+  if (signals.price_vs_transactions_pct !== null) {
+    const value = signals.price_vs_transactions_pct
+    chips.push({
+      key: 'transactions',
+      label: `${percent(value)} vs transakcje`,
+      tone: value <= -NOTABLE_COMPARABLE_PCT ? 'good' : value >= NOTABLE_COMPARABLE_PCT ? 'bad' : 'neutral',
+      title: transactionsTitle(signals),
+    })
+  }
+
   for (const flag of signals.location_flags) {
+    const nearBorder = flag === 'near_city_border'
     chips.push({
       key: flag,
-      label: `⚠ ${LOCATION_FLAG_LABELS[flag] ?? flag}`,
-      tone: 'warn',
+      label: nearBorder
+        ? `${signals.city_border_distance_m} m od granicy miasta`
+        : `⚠ ${LOCATION_FLAG_LABELS[flag] ?? flag}`,
+      tone: nearBorder && signals.location_flags.length === 1 ? 'neutral' : 'warn',
       title: signals.location_notes.join('\n'),
     })
   }
@@ -159,6 +181,16 @@ export function MarketHistory({ adId, signals }: MarketHistoryProps) {
               mediana {money(signals.comparables_median_price_per_m2, 'zł/m²')}
               {signals.price_vs_comparables_pct !== null && `, ta oferta ${percent(signals.price_vs_comparables_pct)}`}
               {` (${signals.comparables_count} ofert do ${((signals.comparables_radius_m ?? 0) / 1000).toLocaleString('pl-PL')} km)`}
+            </dd>
+          </div>
+        )}
+        {signals.transactions_median_price_per_m2 !== null && (
+          <div>
+            <dt>Transakcje (RCN)</dt>
+            <dd title={transactionsTitle(signals)}>
+              mediana {money(signals.transactions_median_price_per_m2, 'zł/m²')}
+              {signals.price_vs_transactions_pct !== null && `, ta oferta ${percent(signals.price_vs_transactions_pct)}`}
+              {` (${signals.transactions_count} sprzedaży do ${((signals.transactions_radius_m ?? 0) / 1000).toLocaleString('pl-PL')} km)`}
             </dd>
           </div>
         )}

@@ -88,6 +88,7 @@ const NUMERIC_FIELDS = new Set([
   'min_listings_count',
   'max_price_vs_comparables_pct',
   'min_price_vs_comparables_pct',
+  'max_price_vs_transactions_pct',
 ])
 
 export function toSearchParams(query: AdSearchQuery): URLSearchParams {

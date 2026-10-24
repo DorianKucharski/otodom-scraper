@@ -6,7 +6,9 @@ from typing import Mapping, Optional
 from data.description import plain_description
 from data.feature_groups import labelled_feature_groups
 from data.models import Ad, AdMarketSignals
-from data.signal_phrases import comparables_phrase, listing_history_phrase, location_warnings_phrase
+from data.signal_phrases import (
+    comparables_phrase, listing_history_phrase, location_warnings_phrase, transactions_phrase,
+)
 from .market_context import MarketContext
 
 
@@ -125,7 +127,7 @@ def _market_stats_view(
         market_context: Optional[MarketContext],
         signals: Optional[AdMarketSignals] = None,
 ) -> Optional[MarketStatsView]:
-    comparables = comparables_phrase(signals)
+    comparables = "; ".join(filter(None, (comparables_phrase(signals), transactions_phrase(signals)))) or None
     stats = market_context.stats_for(ad) if market_context is not None else None
     if stats is not None:
         label = stats.position_label(ad.price_per_m2)

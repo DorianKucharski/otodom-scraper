@@ -11,6 +11,7 @@ MAX_PREDECESSOR_DISTANCE_M = 3000
 MAX_CROSS_CITY_DISTANCE_M = 2000
 MAX_ATTRIBUTE_MATCH_DISTANCE_M = 1000
 SIMULTANEOUS_GRACE = timedelta(days=3)
+SERIES_WINDOW = timedelta(days=10)
 MIN_TEXT_SIMILARITY = 0.35
 MIN_DUPLICATE_TEXT_SIMILARITY = 0.8
 ATTRIBUTE_MATCH_PRICE_TOLERANCE = 0.15
@@ -229,9 +230,11 @@ def _any_conflict(first: list[ListingRow], second: list[ListingRow], now: dateti
 
 
 def _live_together(first: ListingRow, second: ListingRow, now: datetime) -> bool:
-    if not (first.ended_at_known and second.ended_at_known):
-        return False
     if first.owner_id is not None and first.owner_id == second.owner_id and first.price == second.price:
+        return False
+    if abs(first.created_at - second.created_at) < SERIES_WINDOW:
+        return True
+    if not (first.ended_at_known and second.ended_at_known):
         return False
     first_end, second_end = first.ended_at or now, second.ended_at or now
     return (

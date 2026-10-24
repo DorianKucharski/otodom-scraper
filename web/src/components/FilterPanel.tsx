@@ -385,6 +385,16 @@ export function FilterPanel({ query, facets, onChange, onReset, onClose }: Filte
           onChangeMax={(max_price_vs_comparables_pct) => onChange({ max_price_vs_comparables_pct })}
         />
         <span className="filter-caption">Np. „do −10” to oferty co najmniej 10% tańsze niż podobne w promieniu.</span>
+        <label className="filter-field">
+          <span>Cena za metr wobec transakcji z RCN, najwyżej (%)</span>
+          <input
+            type="number"
+            value={query.max_price_vs_transactions_pct ?? ''}
+            onChange={(event) => onChange({
+              max_price_vs_transactions_pct: event.target.value ? Number(event.target.value) : undefined,
+            })}
+          />
+        </label>
         <span className="filter-multi-header">
           Ukryj podejrzane lokalizacje
           <button

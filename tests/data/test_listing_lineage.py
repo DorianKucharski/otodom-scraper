@@ -149,6 +149,19 @@ class TestListingLineage(unittest.TestCase):
         self.assertEqual([1], groups[1].member_ids)
 
 
+    def test_a_series_of_similar_units_posted_together_is_not_one_flat(self):
+        listings = [
+            _listing(index, market="PRIMARY", price=700_000 + index * 1_000, created_at=datetime(2026, 9, 10) + timedelta(days=index),
+                     ended_at=datetime(2026, 10, 11), ended_at_known=False)
+            for index in range(1, 6)
+        ]
+        texts = {index: ("3 pok balkon DNI OTWARTE", "Nowa inwestycja z halą garażową") for index in range(1, 6)}
+
+        groups = build_groups(listings, _texts(texts), _NOW)
+
+        self.assertEqual(5, len({group.group_id for group in groups.values()}))
+
+
 class TestWords(unittest.TestCase):
 
     def test_html_and_short_words_are_ignored(self):

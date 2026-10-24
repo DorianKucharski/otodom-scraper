@@ -140,6 +140,28 @@ class TestTextVerdict(unittest.TestCase):
         self.assertEqual([BORDER_IN_TEXT], verdict.flags)
 
 
+    def test_the_agency_address_in_the_footer_does_not_count(self):
+        verdict = LocationVerdict()
+
+        text_verdict("Kraków", *_GAIK, "Mieszkanie", "Biuro: ul. Liliowa 17A, 32-085 Modlnica, tel. 600.", _PLACES, verdict)
+
+        self.assertEqual([], verdict.flags)
+
+    def test_an_adjective_made_from_a_place_name_does_not_count(self):
+        verdict = LocationVerdict()
+
+        text_verdict("Kraków", *_GAIK, "Mieszkanie", "Widok na Modlnicką dolinę.", _PLACES, verdict)
+
+        self.assertEqual([], verdict.flags)
+
+    def test_a_distance_in_metres_does_not_count(self):
+        verdict = LocationVerdict()
+
+        text_verdict("Kraków", *_GAIK, "Mieszkanie", "Park 200m, Modlnica 300m, sklepy.", _PLACES, verdict)
+
+        self.assertEqual([], verdict.flags)
+
+
 class TestLineageVerdict(unittest.TestCase):
 
     def test_another_listing_of_the_flat_naming_a_different_place_is_flagged(self):

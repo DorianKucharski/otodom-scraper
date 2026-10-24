@@ -28,7 +28,7 @@ FLOOR_NUMBER = case(
     else_=None,
 )
 
-SIGNAL_SORT_FIELDS = ("days_on_market", "price_vs_comparables_pct", "price_change_pct")
+SIGNAL_SORT_FIELDS = ("days_on_market", "price_vs_comparables_pct", "price_change_pct", "price_vs_transactions_pct")
 PRICE_TRENDS = ("dropped", "raised", "unchanged")
 
 OFFER_TYPE = func.coalesce(ad_inferred_types.c.offer_type, Ad.offer_type)
@@ -282,6 +282,8 @@ def _market_signal_conditions(query: AdSearchQuery) -> list:
         conditions.append(AdMarketSignals.price_vs_comparables_pct <= query.max_price_vs_comparables_pct)
     if query.min_price_vs_comparables_pct is not None:
         conditions.append(AdMarketSignals.price_vs_comparables_pct >= query.min_price_vs_comparables_pct)
+    if query.max_price_vs_transactions_pct is not None:
+        conditions.append(AdMarketSignals.price_vs_transactions_pct <= query.max_price_vs_transactions_pct)
 
     trends = [trend for trend in query.price_trends if trend in PRICE_TRENDS]
     if trends:

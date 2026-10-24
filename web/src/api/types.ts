@@ -169,6 +169,7 @@ export interface AdSearchQuery {
   price_trends: string[]
   max_price_vs_comparables_pct?: number
   min_price_vs_comparables_pct?: number
+  max_price_vs_transactions_pct?: number
   excluded_location_flags: string[]
   tracking_statuses: TrackingStatus[]
   hide_dismissed: boolean
@@ -259,6 +260,12 @@ export interface MarketSignals {
   comparables_p25_price_per_m2: number | null
   comparables_p75_price_per_m2: number | null
   price_vs_comparables_pct: number | null
+  transactions_count: number
+  transactions_radius_m: number | null
+  transactions_median_price_per_m2: number | null
+  transactions_p25_price_per_m2: number | null
+  transactions_p75_price_per_m2: number | null
+  price_vs_transactions_pct: number | null
   pin_city_name: string | null
   pin_gmina_name: string | null
   city_border_distance_m: number | null

@@ -100,7 +100,10 @@ _TRAVEL_BEFORE = re.compile(
     r"(?:\bdo|\bod|\bkoło|\bpod|\bblisko|\bniedaleko|\bobok|\bCH|\bcentrum|\bstacj\w*|\bpętl\w*|\bwęz\w*|\bkierunku|\btrasie|\bdrodze|\bdojazd\w*|\bulic\w*|\bul\.)\s*$",
     re.IGNORECASE,
 )
-_TRAVEL_AFTER = re.compile(r"^[\s\w,()–-]{0,25}?\d+\s*(?:km|min)", re.IGNORECASE)
+_TRAVEL_AFTER = re.compile(r"^[\s\w,.:()–-]{0,25}?\d+(?:[.,]\d+)?\s*(?:km|min|m\b)", re.IGNORECASE)
+_POSTAL_ADDRESS = re.compile(r"(?:\bul\.|\b\d{2}-\d{3})[^.]{0,40}$", re.IGNORECASE)
+_ADJECTIVE_ENDINGS = ("k", "sk", "ck", "ńsk", "dzk")
+_NOT_A_PLACE = {"Miejsce", "Dom", "Działka", "Mieszkanie", "Oferta", "Nieruchomość", "Lokal", "Teren", "Cena", "Lokalizacja"}
 _TAG = re.compile(r"<[^>]+>")
 _METRES_PER_DEGREE = 111_320
 
@@ -235,8 +238,10 @@ class PlaceFinder:
                 continue
             if _distance_m(latitude, longitude, centre.latitude, centre.longitude) > self._radius_m:
                 continue
+            stem_length = len(_stem(centre.name.split()[-1]))
             for match in self._patterns[centre.name].finditer(content):
-                if _travel_mention(content, match.start(), match.end()):
+                ending = match.group(0)[len(match.group(0)) - (len(match.group(0).split()[-1]) - stem_length):]
+                if ending.startswith(_ADJECTIVE_ENDINGS) or _travel_mention(content, match.start(), match.end()):
                     continue
                 found[centre.name] = _excerpt(content, match.start(), match.end())
                 break
@@ -264,7 +269,7 @@ def _border_phrase(content: str, claimed_city: Optional[str], district_names: It
 
 
 def _is_irrelevant_border(phrase: str, name: str, claimed_city: Optional[str], districts: set[str]) -> bool:
-    if name.startswith(_FOREIGN_BORDERS) or name.lower().startswith("dzielnic"):
+    if name.startswith(_FOREIGN_BORDERS) or name.lower().startswith("dzielnic") or name.split()[0] in _NOT_A_PLACE:
         return True
     if _stem(name) in districts:
         return True
@@ -301,7 +306,10 @@ def _stem_pattern(name: str) -> re.Pattern:
 
 
 def _travel_mention(content: str, start: int, end: int) -> bool:
-    return bool(_TRAVEL_BEFORE.search(content[max(0, start - 25):start]) or _TRAVEL_AFTER.match(content[end:end + 40]))
+    before = content[max(0, start - 45):start]
+    return bool(
+        _TRAVEL_BEFORE.search(before[-25:]) or _POSTAL_ADDRESS.search(before) or _TRAVEL_AFTER.match(content[end:end + 40])
+    )
 
 
 def _plain(value: str) -> str:

@@ -23,6 +23,7 @@ _BASE_SORT_FIELDS = (
     "days_on_market",
     "price_vs_comparables_pct",
     "price_change_pct",
+    "price_vs_transactions_pct",
 )
 
 SortField = Enum(
@@ -115,6 +116,9 @@ class AdSearchQuery(BaseModel):
         None, description="Cena za metr względem mediany porównywalnych ofert w okolicy, -10 = co najmniej 10% taniej."
     )
     min_price_vs_comparables_pct: Optional[float] = None
+    max_price_vs_transactions_pct: Optional[float] = Field(
+        None, description="Cena za metr względem mediany transakcji z RCN w okolicy z ostatnich 2 lat."
+    )
     excluded_location_flags: list[str] = Field(
         default_factory=list, description="Ukrywa ogłoszenia z którąś z tych flag lokalizacji."
     )
@@ -184,6 +188,12 @@ class MarketSignalsResponse(BaseModel):
     comparables_p25_price_per_m2: Optional[int]
     comparables_p75_price_per_m2: Optional[int]
     price_vs_comparables_pct: Optional[float]
+    transactions_count: int = 0
+    transactions_radius_m: Optional[int] = None
+    transactions_median_price_per_m2: Optional[int] = None
+    transactions_p25_price_per_m2: Optional[int] = None
+    transactions_p75_price_per_m2: Optional[int] = None
+    price_vs_transactions_pct: Optional[float] = None
     pin_city_name: Optional[str]
     pin_gmina_name: Optional[str]
     city_border_distance_m: Optional[int]
