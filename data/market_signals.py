@@ -13,7 +13,7 @@ from sqlalchemy.engine import Engine
 
 from .derived_tables import ensure_table
 from .area_checks import AREA_TEXT_PATTERN, area_verdict
-from .previous_sales import FlatSale, PreviousSaleIndex
+from .previous_sales import FlatSale, PreviousSaleIndex, floor_number
 from .comparables import ComparableRow, ComparablesIndex
 from .listing_lineage import ListingGroup, ListingRow, ListingText, build_groups, words_of
 from .location_checks import (
@@ -70,6 +70,7 @@ _ALL_FLAT_SALES = text("""
 SELECT t.id,
        t.transaction_date,
        t.rooms,
+       t.floor,
        ST_Y(t.location_point) AS latitude,
        ST_X(t.location_point) AS longitude,
        t.area_value::float    AS area_value,
@@ -206,7 +207,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         sold = sales.stats_for(fact.listing)
         previous = previous_sales.match(
             fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
-            fact.listing.created_at, fact.listing.price,
+            fact.listing.created_at, fact.listing.price, floor_number(fact.listing.floor),
         ) if _is_flat_sale(fact.listing) else None
         rows.append((
             ad_id,
@@ -450,7 +451,7 @@ def _load_all_flat_sales(connection) -> list[FlatSale]:
     return [
         FlatSale(
             id=row.id, sold_at=row.transaction_date, price=row.price, area=row.area_value, rooms=row.rooms,
-            latitude=row.latitude, longitude=row.longitude,
+            latitude=row.latitude, longitude=row.longitude, floor=row.floor,
         )
         for row in connection.execute(_ALL_FLAT_SALES)
         if row.price and row.area_value and row.price / row.area_value >= MIN_TRANSACTION_PRICE_PER_M2

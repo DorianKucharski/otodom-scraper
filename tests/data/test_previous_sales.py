@@ -3,14 +3,15 @@ from __future__ import annotations
 import unittest
 from datetime import datetime
 
-from data.previous_sales import FlatSale, PreviousSaleIndex
+from data.previous_sales import FlatSale, PreviousSaleIndex, floor_number
 
 _LISTED = datetime(2026, 9, 29)
 
 
 def _sale(sale_id: int, area: float = 96.7, sold_at: datetime = datetime(2021, 9, 3), rooms=4,
-          latitude: float = 50.12439, longitude: float = 19.88228, price: float = 694_000) -> FlatSale:
-    return FlatSale(id=sale_id, sold_at=sold_at, price=price, area=area, rooms=rooms, latitude=latitude, longitude=longitude)
+          latitude: float = 50.12439, longitude: float = 19.88228, price: float = 694_000, floor=None) -> FlatSale:
+    return FlatSale(id=sale_id, sold_at=sold_at, price=price, area=area, rooms=rooms, latitude=latitude,
+                    longitude=longitude, floor=floor)
 
 
 class TestPreviousSales(unittest.TestCase):
@@ -53,6 +54,16 @@ class TestPreviousSales(unittest.TestCase):
         index = PreviousSaleIndex([_sale(1, price=1_081_094, area=33.07)])
 
         self.assertIsNone(index.match(50.12439, 19.88228, 33.07, 4, _LISTED, price=496_050))
+
+    def test_a_flat_on_another_floor_is_another_flat(self):
+        index = PreviousSaleIndex([_sale(1, floor=6), _sale(2, floor=2, price=739_000)])
+
+        self.assertEqual(739_000, index.match(50.12439, 19.88228, 96.7, 4, _LISTED, floor=2).price)
+
+    def test_floor_codes_become_numbers(self):
+        self.assertEqual(0, floor_number("GROUND_FLOOR"))
+        self.assertEqual(3, floor_number("FLOOR_3"))
+        self.assertIsNone(floor_number("GARRET"))
 
     def test_a_sale_far_from_the_pin_does_not_count(self):
         index = PreviousSaleIndex([_sale(1, latitude=50.1300)])

@@ -26,6 +26,7 @@ class FlatSale:
     rooms: Optional[int]
     latitude: float
     longitude: float
+    floor: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ class PreviousSaleIndex:
             rooms: Optional[int],
             listed_at: datetime,
             price: Optional[int] = None,
+            floor: Optional[int] = None,
     ) -> Optional[PreviousSale]:
         if not (latitude and longitude and area) or float(area).is_integer():
             return None
@@ -73,6 +75,8 @@ class PreviousSaleIndex:
                         continue
                     if price and not MIN_PRICE_RATIO <= sale.price / price <= MAX_PRICE_RATIO:
                         continue
+                    if floor is not None and sale.floor is not None and abs(floor - sale.floor) > 1:
+                        continue
                     distance = _distance_m(latitude, longitude, sale.latitude, sale.longitude)
                     if distance <= MATCH_RADIUS_M:
                         matches.append((sale, distance))
@@ -80,6 +84,14 @@ class PreviousSaleIndex:
             return None
         sale, distance = max(matches, key=lambda match: match[0].sold_at)
         return PreviousSale(sold_at=sale.sold_at, price=round(sale.price), area=sale.area, distance_m=round(distance))
+
+
+def floor_number(floor: Optional[str]) -> Optional[int]:
+    if floor == "GROUND_FLOOR":
+        return 0
+    if floor and floor.startswith("FLOOR_") and floor[6:].isdigit():
+        return int(floor[6:])
+    return None
 
 
 def _cell_of(latitude: float, longitude: float) -> tuple[int, int]:
