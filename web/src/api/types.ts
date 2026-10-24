@@ -238,6 +238,7 @@ export interface AdSummary {
   features_count: number
   created_at: string
   modified_at: string
+  last_checked_at: string | null
   thumbnail: string | null
   evaluation: Evaluation | null
   tracking: Tracking | null

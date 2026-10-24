@@ -207,6 +207,7 @@ def _common_fields(ad: Ad) -> dict:
         "longitude": float(ad.longitude) if ad.longitude is not None else None,
         "created_at": ad.created_at,
         "modified_at": ad.modified_at,
+        "last_checked_at": ad.scraped_at,
     }
 
 

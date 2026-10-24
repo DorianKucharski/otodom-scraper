@@ -304,6 +304,7 @@ class AdSummaryResponse(BaseModel):
     features_count: int = 0
     created_at: datetime
     modified_at: datetime
+    last_checked_at: Optional[datetime] = None
     thumbnail: Optional[str] = None
     evaluation: Optional[EvaluationResponse] = None
     tracking: Optional[TrackingResponse] = None

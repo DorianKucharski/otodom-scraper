@@ -7,6 +7,8 @@ import { LOCATION_FLAG_LABELS } from '../api/types'
 const LONG_ON_MARKET_DAYS = 90
 const NOTABLE_ON_MARKET_DAYS = 45
 const NOTABLE_COMPARABLE_PCT = 10
+const STALE_AFTER_DAYS = 45
+const DAY_MS = 24 * 60 * 60 * 1000
 
 function money(value: number | null | undefined, suffix = 'zł'): string {
   if (value === null || value === undefined) return '-'
@@ -51,14 +53,30 @@ function comparablesTitle(signals: MarketSignals): string {
 }
 
 interface SignalChipsProps {
-  ad: Pick<AdSummary, 'market_signals'>
+  ad: Pick<AdSummary, 'market_signals' | 'last_checked_at'>
 }
 
 export function SignalChips({ ad }: SignalChipsProps) {
   const signals = ad.market_signals
-  if (!signals) return null
-
   const chips: Array<{ key: string; label: string; tone: string; title: string }> = []
+
+  const uncheckedDays = ad.last_checked_at
+    ? Math.floor((Date.now() - new Date(ad.last_checked_at).getTime()) / DAY_MS)
+    : null
+  if (uncheckedDays !== null && uncheckedDays > STALE_AFTER_DAYS) {
+    chips.push({
+      key: 'stale',
+      label: `⚠ niesprawdzane od ${formatDuration(uncheckedDays)}`,
+      tone: 'warn',
+      title:
+        `Scraper ostatnio widział to ogłoszenie ${formatDate(ad.last_checked_at)}. ` +
+        'Odświeża tylko obszar ustawiony w docker-compose, więc ogłoszenie mogło już zniknąć z otodom.',
+    })
+  }
+
+  if (!signals) {
+    return chips.length ? <ChipList chips={chips} /> : null
+  }
 
   if (signals.days_on_market >= NOTABLE_ON_MARKET_DAYS || signals.listings_count > 1) {
     chips.push({
@@ -117,6 +135,10 @@ export function SignalChips({ ad }: SignalChipsProps) {
 
   if (chips.length === 0) return null
 
+  return <ChipList chips={chips} />
+}
+
+function ChipList({ chips }: { chips: Array<{ key: string; label: string; tone: string; title: string }> }) {
   return (
     <p className="signal-chips">
       {chips.map((chip) => (

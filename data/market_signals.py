@@ -25,6 +25,7 @@ from .price_history import BACKFILL_MISSING_OBSERVATIONS
 logger = logging.getLogger(__name__)
 
 COMPARABLE_RECENCY = timedelta(days=180)
+STALE_AFTER = timedelta(days=45)
 TRANSACTION_RECENCY = timedelta(days=730)
 MIN_TRANSACTIONS = 8
 MAX_FLAT_SALE_AREA = 180
@@ -128,7 +129,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
     logger.info("Backfilled %d missing price observations", backfilled)
 
     with engine.connect() as connection:
-        facts = _load_facts(connection)
+        facts = _load_facts(connection, now)
         logger.info("Loaded %d ads for market signals", len(facts))
         groups = build_groups(
             (fact.listing for fact in facts.values()),
@@ -253,9 +254,12 @@ def group_history(
     )
 
 
-def listing_from_row(row) -> ListingRow:
+def listing_from_row(row, now: datetime) -> ListingRow:
     status = _status_value(row.status)
-    if status == "active":
+    last_seen = row.scraped_at or row.modified_at
+    if status == "active" and last_seen is not None and now - last_seen > STALE_AFTER:
+        ended_at, known = last_seen, False
+    elif status == "active":
         ended_at, known = None, True
     elif status in _KNOWN_END_STATUSES and row.modified_at is not None:
         ended_at, known = min(row.modified_at, row.scraped_at or row.modified_at), True
@@ -283,10 +287,10 @@ def listing_from_row(row) -> ListingRow:
     )
 
 
-def _load_facts(connection) -> dict[int, AdFacts]:
+def _load_facts(connection, now: datetime) -> dict[int, AdFacts]:
     facts = {}
     for row in connection.execute(_LISTINGS):
-        listing = listing_from_row(row)
+        listing = listing_from_row(row, now)
         facts[row.id] = AdFacts(
             listing=listing,
             status=_status_value(row.status),
@@ -342,7 +346,7 @@ def _comparables(facts: Mapping[int, AdFacts], groups: Mapping[int, ListingGroup
     pool = [
         row for row in (
             comparable(fact) for fact in facts.values()
-            if fact.listing.active or (fact.listing.ended_at or fact.last_seen_at) >= pool_since
+            if fact.last_seen_at is not None and fact.last_seen_at >= pool_since
         )
         if row is not None
     ]

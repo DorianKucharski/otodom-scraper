@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+from types import SimpleNamespace
 
 from data.comparables import ComparableRow
 from data.listing_lineage import ListingGroup, ListingRow
-from data.market_signals import AdFacts, TransactionIndex, group_history
+from data.market_signals import AdFacts, TransactionIndex, group_history, listing_from_row
 
 _NOW = datetime(2026, 10, 24)
 
@@ -51,6 +52,29 @@ class TestGroupHistory(unittest.TestCase):
         history = group_history(group, {1: _facts(only)}, {}, _NOW)
 
         self.assertEqual(59, history.days_on_market)
+
+
+class TestListingFromRow(unittest.TestCase):
+
+    def __row(self, status: str, scraped_at: datetime) -> SimpleNamespace:
+        return SimpleNamespace(
+            id=1, owner_id=7, market="SECONDARY", offer_type="SALE", object_type="APARTMENT", status=status,
+            created_at=datetime(2026, 1, 1), modified_at=datetime(2026, 1, 1), scraped_at=scraped_at,
+            price_value=800_000, area_value=60.0, flat_number_of_rooms=3, flat_floor="FLOOR_1", building_year=2000,
+            latitude=50.0, longitude=19.9, city_id=38, title="Mieszkanie", building_type="BLOCK",
+        )
+
+    def test_a_recently_checked_active_listing_is_live(self):
+        listing = listing_from_row(self.__row("active", datetime(2026, 10, 20)), _NOW)
+
+        self.assertTrue(listing.active)
+
+    def test_an_active_listing_unchecked_for_months_ended_at_some_unknown_point(self):
+        listing = listing_from_row(self.__row("active", datetime(2026, 3, 2)), _NOW)
+
+        self.assertFalse(listing.active)
+        self.assertEqual(datetime(2026, 3, 2), listing.ended_at)
+        self.assertFalse(listing.ended_at_known)
 
 
 class TestTransactionIndex(unittest.TestCase):
