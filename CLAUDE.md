@@ -71,7 +71,7 @@ cd web && npm install && npm run dev      # http://localhost:5173, proxies /api 
 cd web && npm run build                   # writes web/dist, which the API serves at /
 ```
 
-Flag rules enforced in `main()`: `--district` requires `--city`; `--city` requires `--voivodeship`; at least one of `--scrape` / `--update` must stay enabled.
+Flag rules enforced in `main()`: `--district` requires `--city`; `--city` requires `--voivodeship`; `--radius-km` requires `--city` and must be one of otodom's radii (`data/area_scope.py`); at least one of `--scrape` / `--update` must stay enabled. With `--radius-km` the update pass and the enricher also take stored ads within that distance of the city's PRG boundary.
 
 ### Docker
 ```bash

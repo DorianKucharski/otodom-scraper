@@ -88,6 +88,10 @@ def main(
         voivodeship: Optional[str] = typer.Option(None, '--voivodeship'),
         city: Optional[str] = typer.Option(None, '--city'),
         district: Optional[str] = typer.Option(None, '--district'),
+        radius_km: int = typer.Option(
+            0, '--radius-km', min=0,
+            help="Also enrich ads up to this many km from the --city boundary (needs load_boundaries.py).",
+        ),
         min_price: Optional[int] = typer.Option(None, '--min-price'),
         max_price: Optional[int] = typer.Option(None, '--max-price'),
         ad_url: Optional[str] = typer.Option(None, '--ad-url', help="Enrich a single ad by its URL."),
@@ -108,6 +112,8 @@ def main(
         raise typer.BadParameter("--district requires --city")
     if city and not voivodeship:
         raise typer.BadParameter("--city requires --voivodeship")
+    if radius_km and not city:
+        raise typer.BadParameter("--radius-km requires --city")
     if not screen_enabled and not evaluate_enabled:
         raise typer.BadParameter("At least one of --screen / --evaluate must be enabled")
 
@@ -132,6 +138,7 @@ def main(
         object_types=build_object_types(houses, apartments),
         offer_types=build_offer_types(sale, rent),
         limit=limit,
+        radius_km=radius_km,
     )
 
     logger.info(

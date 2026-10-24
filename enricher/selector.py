@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from data.area_scope import within_city_radius
 from data.models import Ad, AdEvaluation, AdScreening, AdStatus, City, District, EvaluationStatus, Province, \
     ScreeningStatus
 from data.search_url import normalize_name
@@ -26,6 +27,7 @@ class AdFilter:
     object_types: tuple[str, ...] = ()
     offer_types: tuple[str, ...] = ()
     limit: Optional[int] = None
+    radius_km: int = 0
 
 
 MAX_ATTEMPTS = 3
@@ -123,7 +125,11 @@ def _filtered_query(session: Session, ad_filter: AdFilter):
         query = query.join(Province, Ad.province_id == Province.id).filter(
             _location_matches(Province, ad_filter.voivodeship)
         )
-    if ad_filter.city:
+    if ad_filter.city and ad_filter.radius_km:
+        query = query.outerjoin(City, Ad.city_id == City.id).filter(or_(
+            _location_matches(City, ad_filter.city), within_city_radius(ad_filter.city, ad_filter.radius_km),
+        ))
+    elif ad_filter.city:
         query = query.join(City, Ad.city_id == City.id).filter(
             _location_matches(City, ad_filter.city)
         )

@@ -87,5 +87,27 @@ class OnlyMissingLocationsFlagTest(unittest.TestCase):
         self.assertNotEqual(0, result.exit_code)
         self.assertIn("--only-missing-locations requires --update", re.sub(r"\x1b\[[0-9;]*m", "", result.output))
 
+
+
+class RadiusFlagTest(unittest.TestCase):
+    def __invoke(self, *arguments):
+        app = typer.Typer()
+        app.command()(main)
+        result = CliRunner().invoke(app, list(arguments))
+        return result.exit_code, re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+
+    def test_the_radius_needs_a_city(self):
+        exit_code, output = self.__invoke("--radius-km", "15")
+
+        self.assertNotEqual(0, exit_code)
+        self.assertIn("--radius-km requires --city", output)
+
+    def test_only_radii_otodom_offers_are_accepted(self):
+        exit_code, output = self.__invoke("--voivodeship", "malopolskie", "--city", "krakow", "--radius-km", "12")
+
+        self.assertNotEqual(0, exit_code)
+        self.assertIn("--radius-km must be one of", output)
+
+
 if __name__ == "__main__":
     unittest.main()

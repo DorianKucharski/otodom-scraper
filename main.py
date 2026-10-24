@@ -8,6 +8,7 @@ import typer
 from sqlalchemy import func, or_
 
 from data.ad_dto import AdDto
+from data.area_scope import OTODOM_RADII_KM, within_city_radius
 from data.location_resolver import LocationIndex, complete_location
 from data.price_history import PriceState, price_observation, price_state_of
 from data.raw_payload import raw_payload_row
@@ -281,6 +282,7 @@ class ScrapingContext:
             offer_types: Optional[list[str]] = None,
             only_missing_locations: bool = False,
             shard: Optional[tuple[int, int]] = None,
+            radius_km: int = 0,
     ):
         """Re-scrape ads already stored in the DB and refresh them (status, price, ...).
 
@@ -294,6 +296,10 @@ class ScrapingContext:
                 query = query.filter(Ad.id.op('%')(count) == index - 1)
             if only_missing_locations:
                 query = query.filter(Ad.city_id.is_(None))
+            elif city and radius_km:
+                query = query.outerjoin(Ad.city).filter(or_(
+                    City.name.ilike(city), Ad.city_id.is_(None), within_city_radius(city, radius_km),
+                ))
             elif city:
                 query = query.outerjoin(Ad.city).filter(or_(City.name.ilike(city), Ad.city_id.is_(None)))
             if min_price is not None:
@@ -377,6 +383,7 @@ def update_ads(
         store_raw_payloads: bool = True,
         only_missing_locations: bool = False,
         shard: Optional[tuple[int, int]] = None,
+        radius_km: int = 0,
 ):
     scraper = OtodomScraper(request_delay_seconds)
     db_manager = DatabaseManager()
@@ -391,6 +398,7 @@ def update_ads(
         offer_types=[o.name for o in offer_types] if offer_types else None,
         only_missing_locations=only_missing_locations,
         shard=shard,
+        radius_km=radius_km,
     )
 
 
@@ -464,6 +472,11 @@ def main(
         voivodeship: str = typer.Option(None, '--voivodeship'),
         city: str = typer.Option(None, '--city'),
         district: str = typer.Option(None, '--district'),
+        radius_km: int = typer.Option(
+            0, '--radius-km',
+            help="Also take ads up to this many km around --city (otodom allows 0, 5, 10, 15, 25, 50, 75). "
+                 "The update pass then refreshes stored ads within that distance of the city boundary.",
+        ),
         min_price: int = typer.Option(0, '--min-price'),
         max_price: int = typer.Option(1000000, '--max-price'),
         scrape_enabled: bool = typer.Option(
@@ -501,6 +514,10 @@ def main(
         raise typer.BadParameter("--district requires --city")
     if city and not voivodeship:
         raise typer.BadParameter("--city requires --voivodeship")
+    if radius_km and not city:
+        raise typer.BadParameter("--radius-km requires --city")
+    if radius_km not in OTODOM_RADII_KM:
+        raise typer.BadParameter(f"--radius-km must be one of {OTODOM_RADII_KM}")
     if not scrape_enabled and not update_enabled:
         raise typer.BadParameter("At least one of --scrape / --update must be enabled")
     if only_missing_locations and not update_enabled:
@@ -512,7 +529,8 @@ def main(
     location = Location(
         voivodeship=voivodeship,
         city=city,
-        district=district
+        district=district,
+        distance_radius=radius_km or None,
     ) if voivodeship else None
 
     urls = build_urls(
@@ -550,6 +568,7 @@ def main(
                 store_raw_payloads=store_raw_payloads,
                 only_missing_locations=only_missing_locations,
                 shard=parsed_shard,
+                radius_km=radius_km,
             )
             logger.info("All existing ads have been verified.")
 
