@@ -128,6 +128,9 @@ class AdSearchQuery(BaseModel):
     excluded_area_flags: list[str] = Field(
         default_factory=list, description="Ukrywa ogłoszenia z którąś z tych flag metrażu (usable_area_smaller, attic_slopes, appurtenant_included)."
     )
+    excluded_nuisance_flags: list[str] = Field(
+        default_factory=list, description="Ukrywa ogłoszenia z pinezką przy drodze szybkiego ruchu, kolei albo na przedłużeniu pasa lotniska (near_expressway, near_railway, under_approach)."
+    )
 
     tracking_statuses: list[TrackingStatus] = Field(
         default_factory=list, description="Tylko ogłoszenia z jednym z tych statusów."
@@ -211,6 +214,12 @@ class MarketSignalsResponse(BaseModel):
     previous_sale_at: Optional[datetime] = None
     previous_sale_price: Optional[int] = None
     previous_sale_distance_m: Optional[int] = None
+    expressway_distance_m: Optional[int] = None
+    expressway_label: Optional[str] = None
+    railway_distance_m: Optional[int] = None
+    runway_approach_m: Optional[int] = None
+    nuisance_flags: list[str] = Field(default_factory=list)
+    nuisance_notes: list[str] = Field(default_factory=list)
     computed_at: datetime
 
 

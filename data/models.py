@@ -1152,6 +1152,12 @@ class AdMarketSignals(Base):
     previous_sale_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     previous_sale_price: Mapped[Optional[int]] = mapped_column(Integer)
     previous_sale_distance_m: Mapped[Optional[int]] = mapped_column(Integer)
+    expressway_distance_m: Mapped[Optional[int]] = mapped_column(Integer)
+    expressway_label: Mapped[Optional[str]] = mapped_column(Text)
+    railway_distance_m: Mapped[Optional[int]] = mapped_column(Integer)
+    runway_approach_m: Mapped[Optional[int]] = mapped_column(Integer)
+    nuisance_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    nuisance_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
@@ -1195,3 +1201,20 @@ class RcnTransaction(Base):
 
     def __repr__(self):
         return f"<RcnTransaction(id={self.id}, price={self.transaction_price})>"
+
+
+class NuisanceFeature(Base):
+    __tablename__ = 'nuisance_features'
+
+    osm_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    label: Mapped[Optional[str]] = mapped_column(Text)
+    geom = mapped_column(Geometry('LINESTRING', srid=4326), nullable=False)
+    loaded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('idx_nuisance_features_kind', 'kind'),
+    )
+
+    def __repr__(self):
+        return f"<NuisanceFeature(osm_id={self.osm_id}, kind={self.kind}, label={self.label})>"

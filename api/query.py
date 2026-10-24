@@ -302,6 +302,12 @@ def _market_signal_conditions(query: AdSearchQuery) -> list:
             ~AdMarketSignals.area_flags.op("?|")(cast(query.excluded_area_flags, _TEXT_ARRAY)),
         ))
 
+    if query.excluded_nuisance_flags:
+        conditions.append(or_(
+            AdMarketSignals.ad_id.is_(None),
+            ~AdMarketSignals.nuisance_flags.op("?|")(cast(query.excluded_nuisance_flags, _TEXT_ARRAY)),
+        ))
+
     if query.excluded_location_flags:
         conditions.append(or_(
             AdMarketSignals.ad_id.is_(None),

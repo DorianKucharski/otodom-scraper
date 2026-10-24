@@ -168,6 +168,31 @@ export function SignalChips({ ad }: SignalChipsProps) {
     })
   })
 
+  if (signals.nuisance_flags.includes('near_expressway')) {
+    chips.push({
+      key: 'near_expressway',
+      label: `${signals.expressway_label ?? 'droga szybkiego ruchu'} ${signals.expressway_distance_m} m`,
+      tone: 'warn',
+      title: signals.nuisance_notes.join('\n'),
+    })
+  }
+  if (signals.nuisance_flags.includes('near_railway')) {
+    chips.push({
+      key: 'near_railway',
+      label: `kolej ${signals.railway_distance_m} m`,
+      tone: 'warn',
+      title: signals.nuisance_notes.join('\n'),
+    })
+  }
+  if (signals.nuisance_flags.includes('under_approach')) {
+    chips.push({
+      key: 'under_approach',
+      label: 'pod podejściem do lotniska',
+      tone: 'warn',
+      title: signals.nuisance_notes.join('\n'),
+    })
+  }
+
   for (const flag of signals.location_flags) {
     const nearBorder = flag === 'near_city_border'
     chips.push({
@@ -215,9 +240,9 @@ export function MarketHistory({ adId, signals }: MarketHistoryProps) {
     <section className="detail-parameters market-history">
       <h3>Historia ogłoszenia i rynek</h3>
 
-      {signals.location_notes.length + signals.area_notes.length > 0 && (
+      {signals.location_notes.length + signals.area_notes.length + signals.nuisance_notes.length > 0 && (
         <ul className="detail-list market-warnings">
-          {[...signals.area_notes, ...signals.location_notes].map((note) => <li key={note}>{note}</li>)}
+          {[...signals.area_notes, ...signals.location_notes, ...signals.nuisance_notes].map((note) => <li key={note}>{note}</li>)}
         </ul>
       )}
 

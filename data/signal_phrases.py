@@ -63,6 +63,12 @@ def area_warnings_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
     return " ".join(signals.area_notes)
 
 
+def nuisances_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
+    if signals is None or not signals.nuisance_notes:
+        return None
+    return "; ".join(signals.nuisance_notes)
+
+
 def location_warnings_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
     if signals is None or not signals.location_notes:
         return None

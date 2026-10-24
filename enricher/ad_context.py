@@ -7,8 +7,8 @@ from data.description import plain_description
 from data.feature_groups import labelled_feature_groups
 from data.models import Ad, AdMarketSignals
 from data.signal_phrases import (
-    area_warnings_phrase, comparables_phrase, listing_history_phrase, location_warnings_phrase, previous_sale_phrase,
-    transactions_phrase,
+    area_warnings_phrase, comparables_phrase, listing_history_phrase, location_warnings_phrase, nuisances_phrase,
+    previous_sale_phrase, transactions_phrase,
 )
 from .market_context import MarketContext
 
@@ -108,7 +108,9 @@ def _address_of(ad: Ad) -> str:
 
 def _with_location_warnings(address: str, signals: Optional[AdMarketSignals]) -> str:
     warnings = location_warnings_phrase(signals)
-    return f"{address} (uwaga: {warnings})" if warnings else address
+    nuisances = nuisances_phrase(signals)
+    address = f"{address} (uwaga: {warnings})" if warnings else address
+    return f"{address} (w pobliżu: {nuisances})" if nuisances else address
 
 
 def _with_area_warnings(label: str, signals: Optional[AdMarketSignals]) -> str:

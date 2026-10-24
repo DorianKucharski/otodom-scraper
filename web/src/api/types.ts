@@ -172,6 +172,7 @@ export interface AdSearchQuery {
   max_price_vs_transactions_pct?: number
   excluded_location_flags: string[]
   excluded_area_flags: string[]
+  excluded_nuisance_flags: string[]
   hide_unchecked: boolean
   tracking_statuses: TrackingStatus[]
   hide_dismissed: boolean
@@ -280,6 +281,12 @@ export interface MarketSignals {
   previous_sale_at: string | null
   previous_sale_price: number | null
   previous_sale_distance_m: number | null
+  expressway_distance_m: number | null
+  expressway_label: string | null
+  railway_distance_m: number | null
+  runway_approach_m: number | null
+  nuisance_flags: string[]
+  nuisance_notes: string[]
   computed_at: string
 }
 
@@ -325,6 +332,12 @@ export const AREA_FLAG_LABELS: Record<string, string> = {
   usable_area_smaller: 'Opis podaje mniejszą powierzchnię użytkową',
   attic_slopes: 'Skosy albo metraż po podłodze',
   appurtenant_included: 'W metrażu piwnica, komórka albo garaż',
+}
+
+export const NUISANCE_FLAG_LABELS: Record<string, string> = {
+  near_expressway: 'Do 300 m od autostrady albo drogi ekspresowej',
+  near_railway: 'Do 150 m od linii kolejowej',
+  under_approach: 'Na przedłużeniu pasa lotniska (do 8 km)',
 }
 
 export const SUSPICIOUS_LOCATION_FLAGS = [

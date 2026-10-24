@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import type { AdSearchQuery, Facets, FacetValue } from '../api/types'
 import {
-  AREA_FLAG_LABELS, LOCATION_FLAG_LABELS, PRICE_TREND_LABELS, SCORE_FIELDS, SCORE_LABELS, SUSPICIOUS_LOCATION_FLAGS, TRACKING_LABELS,
+  AREA_FLAG_LABELS, LOCATION_FLAG_LABELS, NUISANCE_FLAG_LABELS, PRICE_TREND_LABELS, SCORE_FIELDS, SCORE_LABELS, SUSPICIOUS_LOCATION_FLAGS, TRACKING_LABELS,
   TRACKING_STATUSES,
 } from '../api/types'
 
@@ -413,6 +413,21 @@ export function FilterPanel({ query, facets, onChange, onReset, onClose }: Filte
                 excluded_area_flags: event.target.checked
                   ? [...query.excluded_area_flags, flag]
                   : query.excluded_area_flags.filter((item) => item !== flag),
+              })}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+        <span className="filter-caption">Ukryj hałaśliwe okolice (odległość od pinezki)</span>
+        {Object.entries(NUISANCE_FLAG_LABELS).map(([flag, label]) => (
+          <label key={flag} className="filter-checkbox">
+            <input
+              type="checkbox"
+              checked={query.excluded_nuisance_flags.includes(flag)}
+              onChange={(event) => onChange({
+                excluded_nuisance_flags: event.target.checked
+                  ? [...query.excluded_nuisance_flags, flag]
+                  : query.excluded_nuisance_flags.filter((item) => item !== flag),
               })}
             />
             <span>{label}</span>

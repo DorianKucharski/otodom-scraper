@@ -48,6 +48,7 @@ export const DEFAULT_QUERY: AdSearchQuery = {
   price_trends: [],
   excluded_location_flags: [],
   excluded_area_flags: [],
+  excluded_nuisance_flags: [],
   hide_unchecked: true,
   tracking_statuses: [],
   hide_dismissed: true,

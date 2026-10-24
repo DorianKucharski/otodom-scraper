@@ -156,6 +156,13 @@ class TestMarketSignalsInContext(unittest.TestCase):
 
         self.assertIn("835 m od granicy", context.address)
 
+    def test_noisy_surroundings_follow_the_address(self):
+        ad = AdBuilder().with_location().build()
+
+        context = build_ad_context(ad, signals=_signals(nuisance_notes=["droga S52 ok. 180 m od pinezki"]))
+
+        self.assertIn("(w pobliżu: droga S52 ok. 180 m od pinezki)", context.address)
+
     def test_area_warnings_follow_the_area(self):
         ad = AdBuilder().build()
 

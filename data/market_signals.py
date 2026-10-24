@@ -21,6 +21,7 @@ from .location_checks import (
     load_place_centres, pin_verdict, text_verdict,
 )
 from .inferred_types import HOUSE_BUILDING_TYPES, HOUSE_TITLE_PATTERN
+from .nuisances import load_nuisance_checks, nuisance_verdict
 from .models import AdMarketSignals, is_masked, status_value
 from .price_history import BACKFILL_MISSING_OBSERVATIONS
 
@@ -102,7 +103,9 @@ INSERT INTO ad_market_signals (
     transactions_count, transactions_radius_m, transactions_median_price_per_m2,
     transactions_p25_price_per_m2, transactions_p75_price_per_m2, price_vs_transactions_pct,
     pin_city_name, pin_gmina_name, city_border_distance_m, location_flags, location_notes,
-    area_flags, area_notes, previous_sale_at, previous_sale_price, previous_sale_distance_m, computed_at
+    area_flags, area_notes, previous_sale_at, previous_sale_price, previous_sale_distance_m,
+    expressway_distance_m, expressway_label, railway_distance_m, runway_approach_m, nuisance_flags, nuisance_notes,
+    computed_at
 ) VALUES %s
 """
 
@@ -169,7 +172,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
 
     with engine.begin() as connection:
         pin_checks = load_pin_checks(connection)
-    logger.info("Checked %d pins against city boundaries", len(pin_checks))
+        nuisance_checks = load_nuisance_checks(connection)
+    logger.info("Checked %d pins against city boundaries, %d are near a road, railway or runway",
+                len(pin_checks), len(nuisance_checks))
 
     texts_needed = [
         ad_id for ad_id, check in pin_checks.items()
@@ -218,6 +223,8 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
             fact.listing.created_at, fact.listing.price, floor_number(fact.listing.floor),
         ) if _is_flat_sale(fact.listing) else None
+        nuisance = nuisance_checks.get(ad_id)
+        nuisances = nuisance_verdict(nuisance)
         return (
             ad_id,
             group.group_id,
@@ -252,6 +259,12 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             previous.sold_at if previous else None,
             previous.price if previous else None,
             previous.distance_m if previous else None,
+            nuisance.expressway_m if nuisance else None,
+            nuisance.expressway_label if nuisance else None,
+            nuisance.railway_m if nuisance else None,
+            nuisance.approach_m if nuisance else None,
+            Json(nuisances.flags),
+            Json(nuisances.notes),
             now,
         )
 

@@ -143,6 +143,12 @@ def to_market_signals(signals: Optional[AdMarketSignals]) -> Optional[MarketSign
         previous_sale_at=signals.previous_sale_at,
         previous_sale_price=signals.previous_sale_price,
         previous_sale_distance_m=signals.previous_sale_distance_m,
+        expressway_distance_m=signals.expressway_distance_m,
+        expressway_label=signals.expressway_label,
+        railway_distance_m=signals.railway_distance_m,
+        runway_approach_m=signals.runway_approach_m,
+        nuisance_flags=list(signals.nuisance_flags or []),
+        nuisance_notes=list(signals.nuisance_notes or []),
         computed_at=signals.computed_at,
     )
 
