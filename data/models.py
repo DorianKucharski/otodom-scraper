@@ -1142,6 +1142,9 @@ class AdMarketSignals(Base):
     location_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     area_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     area_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    previous_sale_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    previous_sale_price: Mapped[Optional[int]] = mapped_column(Integer)
+    previous_sale_distance_m: Mapped[Optional[int]] = mapped_column(Integer)
 
     computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

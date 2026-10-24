@@ -276,6 +276,9 @@ export interface MarketSignals {
   location_notes: string[]
   area_flags: string[]
   area_notes: string[]
+  previous_sale_at: string | null
+  previous_sale_price: number | null
+  previous_sale_distance_m: number | null
   computed_at: string
 }
 

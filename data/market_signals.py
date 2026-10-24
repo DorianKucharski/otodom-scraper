@@ -13,6 +13,7 @@ from sqlalchemy.engine import Engine
 
 from .derived_tables import ensure_table
 from .area_checks import AREA_TEXT_PATTERN, area_verdict
+from .previous_sales import FlatSale, PreviousSaleIndex
 from .comparables import ComparableRow, ComparablesIndex
 from .listing_lineage import ListingGroup, ListingRow, ListingText, build_groups, words_of
 from .location_checks import (
@@ -65,6 +66,22 @@ LEFT JOIN cities c ON c.id = a.city_id
 """)
 
 _TEXTS = text("SELECT id, title, description FROM ads WHERE id = ANY(:ids)")
+_ALL_FLAT_SALES = text("""
+SELECT t.id,
+       t.transaction_date,
+       t.rooms,
+       ST_Y(t.location_point) AS latitude,
+       ST_X(t.location_point) AS longitude,
+       t.area_value::float    AS area_value,
+       coalesce(t.unit_price, CASE WHEN k.lokale = 1 THEN t.transaction_price END)::float AS price
+FROM rcn_transactions t
+JOIN (SELECT transaction_key, count(*) AS lokale FROM rcn_transactions GROUP BY transaction_key) k
+  ON k.transaction_key = t.transaction_key
+WHERE t.function = 'mieszkalna'
+  AND (t.share IS NULL OR t.share = '1/1')
+  AND (t.transaction_kind IS NULL OR t.transaction_kind = 'wolnyRynek')
+  AND t.area_value BETWEEN 15 AND 400
+""")
 _AREA_TEXTS = text("SELECT id, title, description FROM ads WHERE description ~* :pattern AND description <> '***'")
 _FLAT_SALES = text("""
 SELECT t.id,
@@ -93,7 +110,7 @@ INSERT INTO ad_market_signals (
     transactions_count, transactions_radius_m, transactions_median_price_per_m2,
     transactions_p25_price_per_m2, transactions_p75_price_per_m2, price_vs_transactions_pct,
     pin_city_name, pin_gmina_name, city_border_distance_m, location_flags, location_notes,
-    area_flags, area_notes, computed_at
+    area_flags, area_notes, previous_sale_at, previous_sale_price, previous_sale_distance_m, computed_at
 ) VALUES %s
 """
 
@@ -143,6 +160,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         place_centres = load_place_centres(connection)
         district_names = load_district_names(connection)
         sales = TransactionIndex(_load_flat_sales(connection, now - TRANSACTION_RECENCY))
+        previous_sales = PreviousSaleIndex(_load_all_flat_sales(connection))
     logger.info("Loaded %d recent RCN flat sales", sales.size)
 
     linked = sum(1 for group in {id(group): group for group in groups.values()}.values() if len(group.member_ids) > 1)
@@ -186,6 +204,10 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         stats = comparables.get(ad_id)
         price_per_m2 = fact.listing.price / fact.listing.area if fact.listing.area else None
         sold = sales.stats_for(fact.listing)
+        previous = previous_sales.match(
+            fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
+            fact.listing.created_at, fact.listing.price,
+        ) if _is_flat_sale(fact.listing) else None
         rows.append((
             ad_id,
             group.group_id,
@@ -216,6 +238,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             Json(verdict.notes),
             Json(area.flags if area else []),
             Json(area.notes if area else []),
+            previous.sold_at if previous else None,
+            previous.price if previous else None,
+            previous.distance_m if previous else None,
             now,
         ))
 
@@ -417,6 +442,19 @@ def _load_flat_sales(connection, since: datetime) -> list[ComparableRow]:
             latitude=row.latitude, longitude=row.longitude, area=row.area_value, price_per_m2=price_per_m2,
         ))
     return rows
+
+
+def _load_all_flat_sales(connection) -> list[FlatSale]:
+    if not inspect(connection).has_table("rcn_transactions"):
+        return []
+    return [
+        FlatSale(
+            id=row.id, sold_at=row.transaction_date, price=row.price, area=row.area_value, rooms=row.rooms,
+            latitude=row.latitude, longitude=row.longitude,
+        )
+        for row in connection.execute(_ALL_FLAT_SALES)
+        if row.price and row.area_value and row.price / row.area_value >= MIN_TRANSACTION_PRICE_PER_M2
+    ]
 
 
 def _change_pct(price: Optional[int], first_price: Optional[int]) -> Optional[float]:

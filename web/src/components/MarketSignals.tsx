@@ -101,6 +101,18 @@ export function SignalChips({ ad }: SignalChipsProps) {
     })
   }
 
+  if (signals.previous_sale_price !== null && signals.previous_sale_at) {
+    chips.push({
+      key: 'previous-sale',
+      label: `sprzedane ${new Date(signals.previous_sale_at).getFullYear()} za ${Math.round(signals.previous_sale_price / 1000)} tys.`,
+      tone: 'neutral',
+      title:
+        `Rejestr Cen Nieruchomości: sprzedaż lokalu o tym samym metrażu ${signals.previous_sale_distance_m} m od pinezki, ` +
+        `${formatDate(signals.previous_sale_at)}, ${money(signals.previous_sale_price)}. Najpewniej to ten sam lokal, ` +
+        'czyli tyle zapłacił obecny właściciel.',
+    })
+  }
+
   if (signals.price_vs_comparables_pct !== null) {
     const value = signals.price_vs_comparables_pct
     chips.push({
@@ -212,6 +224,15 @@ export function MarketHistory({ adId, signals }: MarketHistoryProps) {
               mediana {money(signals.comparables_median_price_per_m2, 'zł/m²')}
               {signals.price_vs_comparables_pct !== null && `, ta oferta ${percent(signals.price_vs_comparables_pct)}`}
               {` (${signals.comparables_count} ofert do ${((signals.comparables_radius_m ?? 0) / 1000).toLocaleString('pl-PL')} km)`}
+            </dd>
+          </div>
+        )}
+        {signals.previous_sale_price !== null && (
+          <div>
+            <dt>Poprzednia sprzedaż (RCN)</dt>
+            <dd>
+              {formatDate(signals.previous_sale_at)}: {money(signals.previous_sale_price)}
+              {` (ten sam metraż, ${signals.previous_sale_distance_m} m od pinezki, najpewniej ten lokal)`}
             </dd>
           </div>
         )}

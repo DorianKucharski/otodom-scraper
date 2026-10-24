@@ -18,6 +18,15 @@ def listing_history_phrase(signals: Optional[AdMarketSignals], current_price: Op
     return ", ".join(parts)
 
 
+def previous_sale_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
+    if signals is None or not signals.previous_sale_price:
+        return None
+    return (
+        f"prawdopodobnie ten sam lokal sprzedano {signals.previous_sale_at:%Y-%m} za {_money(signals.previous_sale_price)} "
+        f"(RCN: ten sam metraż, {signals.previous_sale_distance_m} m od pinezki)"
+    )
+
+
 def comparables_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
     if signals is None or not signals.comparables_median_price_per_m2:
         return None

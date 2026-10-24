@@ -139,6 +139,9 @@ def to_market_signals(signals: Optional[AdMarketSignals]) -> Optional[MarketSign
         location_notes=list(signals.location_notes or []),
         area_flags=list(signals.area_flags or []),
         area_notes=list(signals.area_notes or []),
+        previous_sale_at=signals.previous_sale_at,
+        previous_sale_price=signals.previous_sale_price,
+        previous_sale_distance_m=signals.previous_sale_distance_m,
         computed_at=signals.computed_at,
     )
 

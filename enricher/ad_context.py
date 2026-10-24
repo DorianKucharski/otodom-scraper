@@ -7,7 +7,8 @@ from data.description import plain_description
 from data.feature_groups import labelled_feature_groups
 from data.models import Ad, AdMarketSignals
 from data.signal_phrases import (
-    area_warnings_phrase, comparables_phrase, listing_history_phrase, location_warnings_phrase, transactions_phrase,
+    area_warnings_phrase, comparables_phrase, listing_history_phrase, location_warnings_phrase, previous_sale_phrase,
+    transactions_phrase,
 )
 from .market_context import MarketContext
 
@@ -117,7 +118,7 @@ def _with_area_warnings(label: str, signals: Optional[AdMarketSignals]) -> str:
 
 def _listing_history_label(ad: Ad, signals: Optional[AdMarketSignals]) -> str:
     created = ad.created_at.strftime("%Y-%m-%d") if ad.created_at else "brak danych"
-    history = listing_history_phrase(signals, ad.price_value)
+    history = "; ".join(filter(None, (listing_history_phrase(signals, ad.price_value), previous_sale_phrase(signals))))
     return f"{created} ({history})" if history else created
 
 

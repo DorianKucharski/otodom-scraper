@@ -207,6 +207,9 @@ class MarketSignalsResponse(BaseModel):
     location_notes: list[str] = Field(default_factory=list)
     area_flags: list[str] = Field(default_factory=list)
     area_notes: list[str] = Field(default_factory=list)
+    previous_sale_at: Optional[datetime] = None
+    previous_sale_price: Optional[int] = None
+    previous_sale_distance_m: Optional[int] = None
     computed_at: datetime
 
 
