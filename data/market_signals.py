@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from .location_checks import (
     TEXT_CHECK_BORDER_M, LocationVerdict, PlaceFinder, lineage_verdict, load_district_names, load_pin_checks,
     load_place_centres, pin_verdict, text_verdict,
 )
+from .inferred_types import HOUSE_BUILDING_TYPES, HOUSE_TITLE_PATTERN
 from .models import AdMarketSignals, is_masked
 from .price_history import BACKFILL_MISSING_OBSERVATIONS
 
@@ -25,6 +27,8 @@ logger = logging.getLogger(__name__)
 COMPARABLE_RECENCY = timedelta(days=180)
 TRANSACTION_RECENCY = timedelta(days=730)
 MIN_TRANSACTIONS = 8
+MAX_FLAT_SALE_AREA = 180
+_HOUSE_TITLE = re.compile(HOUSE_TITLE_PATTERN, re.IGNORECASE)
 MIN_TRANSACTION_PRICE_PER_M2 = 2000
 MAX_TRANSACTION_PRICE_PER_M2 = 60000
 _RCN_MARKETS = {"rynekWtorny": "SECONDARY", "rynekPierwotny": "PRIMARY"}
@@ -51,7 +55,8 @@ SELECT a.id,
        a.longitude::float                     AS longitude,
        a.city_id,
        c.name                                 AS city_name,
-       a.title
+       a.title,
+       a.building_type
 FROM ads a
 LEFT JOIN ad_inferred_types t ON t.ad_id = a.id
 LEFT JOIN cities c ON c.id = a.city_id
@@ -274,6 +279,7 @@ def listing_from_row(row) -> ListingRow:
         longitude=row.longitude,
         city_id=row.city_id,
         title=row.title or "",
+        building_type=row.building_type,
     )
 
 
@@ -374,7 +380,14 @@ class TransactionIndex:
 
 
 def _is_flat_sale(listing: ListingRow) -> bool:
-    return listing.offer_type in (None, "SALE") and listing.object_type in (None, "APARTMENT") and listing.price > 0
+    return (
+        listing.offer_type in (None, "SALE")
+        and listing.object_type in (None, "APARTMENT")
+        and listing.price > 0
+        and (listing.area or 0) <= MAX_FLAT_SALE_AREA
+        and listing.building_type not in HOUSE_BUILDING_TYPES
+        and not _HOUSE_TITLE.search(listing.title)
+    )
 
 
 def _load_flat_sales(connection, since: datetime) -> list[ComparableRow]:

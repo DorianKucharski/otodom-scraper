@@ -87,14 +87,15 @@ CREATE TEMP TABLE admin_area_parts (
 
 _INSERT_PART = """
 INSERT INTO admin_area_parts (code, level, name, geom)
-VALUES (:code, :level, :name, ST_SimplifyPreserveTopology(ST_GeomFromGML(:gml), :tolerance))
+VALUES (:code, :level, :name, ST_GeomFromGML(:gml))
 """
 
 _REPLACE_AREAS = """
 DELETE FROM admin_areas;
 
 INSERT INTO admin_areas (code, level, name, city_name, province_code, geom)
-SELECT code, 'gmina', name, NULL, left(code, 2), ST_Multi(ST_Transform(ST_SetSRID(ST_Union(geom), 2180), 4326))
+SELECT code, 'gmina', name, NULL, left(code, 2), ST_Multi(ST_Transform(ST_SetSRID(
+    ST_SimplifyPreserveTopology(ST_Union(geom), :tolerance), 2180), 4326))
 FROM admin_area_parts
 WHERE level = 'gmina'
 GROUP BY code, name;
@@ -105,7 +106,7 @@ SELECT p.city_code,
        coalesce(g.name, min(p.city_name)),
        coalesce(g.name, min(p.city_name)),
        left(p.city_code, 2),
-       ST_Multi(ST_Transform(ST_SetSRID(ST_Union(p.geom), 2180), 4326))
+       ST_Multi(ST_Transform(ST_SetSRID(ST_SimplifyPreserveTopology(ST_Union(p.geom), :tolerance), 2180), 4326))
 FROM (
     SELECT CASE WHEN code LIKE '%\\_8' OR code LIKE '%\\_9' THEN left(code, 4) ELSE code END AS city_code,
            name AS city_name,
@@ -131,12 +132,11 @@ def load_admin_areas(connection: Connection, session: Optional[requests.Session]
                 "level": level,
                 "name": name,
                 "gml": part.gml,
-                "tolerance": SIMPLIFY_TOLERANCE_M,
             })
             count += 1
         counts[level] = count
         logger.info("Loaded %d %s boundary parts from PRG", count, level)
     for statement in _REPLACE_AREAS.split(";\n\n"):
         if statement.strip():
-            connection.execute(text(statement))
+            connection.execute(text(statement), {"tolerance": SIMPLIFY_TOLERANCE_M})
     return counts

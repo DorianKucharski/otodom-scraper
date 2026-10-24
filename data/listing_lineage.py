@@ -43,6 +43,7 @@ class ListingRow:
     longitude: Optional[float]
     city_id: Optional[int]
     title: str
+    building_type: Optional[str] = None
 
     @property
     def active(self) -> bool:
