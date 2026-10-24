@@ -188,7 +188,8 @@ def classify(
         return Link(earlier.id, later.id, "text", 1 + text_similarity - price_ratio - gap_penalty)
 
     if (
-        earlier.rooms and earlier.floor and earlier.building_year
+        _identifying_area(earlier)
+        and earlier.rooms and earlier.floor and earlier.building_year
         and later.rooms and later.floor and later.building_year
         and price_ratio <= ATTRIBUTE_MATCH_PRICE_TOLERANCE
         and distance is not None and distance <= MAX_ATTRIBUTE_MATCH_DISTANCE_M
@@ -273,11 +274,16 @@ def _parallel_offer(
 ) -> bool:
     return (
         not same_owner
+        and _identifying_area(earlier)
         and price_ratio <= PARALLEL_PRICE_TOLERANCE
         and earlier.rooms is not None and earlier.rooms == later.rooms
         and earlier.floor is not None and earlier.floor == later.floor
         and distance is not None and distance <= MAX_PARALLEL_DISTANCE_M
     )
+
+
+def _identifying_area(row: ListingRow) -> bool:
+    return row.area is not None and not float(row.area).is_integer()
 
 
 def _bucket_key(row: ListingRow) -> tuple:

@@ -187,6 +187,18 @@ class TestListingLineage(unittest.TestCase):
         self.assertEqual([2], groups[2].member_ids)
 
 
+    def test_a_round_area_alone_does_not_make_two_offers_one_flat(self):
+        listings = [
+            _listing(1, owner_id=1, price=3_200, area=40.0, rooms=2, floor="FLOOR_2", offer_type="RENT"),
+            _listing(2, owner_id=2, price=3_190, area=40.0, rooms=2, floor="FLOOR_2", offer_type="RENT",
+                     created_at=datetime(2026, 5, 20)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([2], groups[2].member_ids)
+
+
 class TestWords(unittest.TestCase):
 
     def test_short_texts_are_compared_exactly(self):
