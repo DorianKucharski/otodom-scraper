@@ -104,7 +104,7 @@ _OBSERVATIONS = text("SELECT ad_id, observed_at, price_value FROM ad_price_obser
 
 _INSERT = """
 INSERT INTO ad_market_signals (
-    ad_id, listing_group_id, listings_count, advertisers_count, first_listed_at, days_on_market,
+    ad_id, listing_group_id, listings_count, active_listings_count, advertisers_count, first_listed_at, days_on_market,
     first_price, lowest_price, highest_price, price_change_pct,
     comparables_count, comparables_radius_m, comparables_median_price_per_m2,
     comparables_p25_price_per_m2, comparables_p75_price_per_m2, price_vs_comparables_pct,
@@ -132,6 +132,7 @@ class GroupHistory:
     lowest_price: Optional[int]
     highest_price: Optional[int]
     advertisers_count: int
+    active_listings_count: int = 1
 
 
 def market_signals_due(engine: Engine, interval_hours: float, now: Optional[datetime] = None) -> bool:
@@ -226,6 +227,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             ad_id,
             group.group_id,
             len(group.member_ids),
+            history.active_listings_count,
             history.advertisers_count,
             history.first_listed_at,
             history.days_on_market,
@@ -301,14 +303,16 @@ def group_history(
         lowest_price=min(prices) if prices else None,
         highest_price=max(prices) if prices else None,
         advertisers_count=len(owners),
+        active_listings_count=sum(1 for member in members if member.listing.active),
     )
 
 
 def listing_from_row(row, now: datetime) -> ListingRow:
     status = _status_value(row.status)
     last_seen = row.scraped_at or row.modified_at
+    seen_alive_until = None
     if status == "active" and last_seen is not None and now - last_seen > STALE_AFTER:
-        ended_at, known = last_seen, False
+        ended_at, known, seen_alive_until = last_seen, False, last_seen
     elif status == "active":
         ended_at, known = None, True
     elif status in _KNOWN_END_STATUSES and row.modified_at is not None:
@@ -334,6 +338,7 @@ def listing_from_row(row, now: datetime) -> ListingRow:
         city_id=row.city_id,
         title=row.title or "",
         building_type=row.building_type,
+        seen_alive_until=seen_alive_until,
     )
 
 

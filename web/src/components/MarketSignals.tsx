@@ -92,6 +92,15 @@ export function SignalChips({ ad }: SignalChipsProps) {
     })
   }
 
+  if (signals.active_listings_count > 1) {
+    chips.push({
+      key: 'parallel',
+      label: `${signals.active_listings_count} aktywne ogłoszenia tego lokalu`,
+      tone: 'warn',
+      title: 'Ten sam lokal jest teraz wystawiony u kilku ogłoszeniodawców. Porównaj ceny w historii ogłoszeń, mogą się różnić.',
+    })
+  }
+
   if (signals.price_change_pct) {
     chips.push({
       key: 'trend',

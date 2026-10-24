@@ -1113,6 +1113,7 @@ class AdMarketSignals(Base):
     )
     listing_group_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     listings_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    active_listings_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
     advertisers_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     first_listed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     days_on_market: Mapped[int] = mapped_column(Integer, nullable=False)

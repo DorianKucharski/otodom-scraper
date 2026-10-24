@@ -13,6 +13,8 @@ def listing_history_phrase(signals: Optional[AdMarketSignals], current_price: Op
     parts = [f"ten sam lokal ogłaszany od {signals.first_listed_at:%Y-%m-%d}, {signals.days_on_market} dni na rynku"]
     if signals.listings_count > 1:
         parts.append(f"{signals.listings_count} ogłoszeń od {signals.advertisers_count} ogłoszeniodawców")
+    if (signals.active_listings_count or 1) > 1:
+        parts.append(f"teraz wystawiony równolegle w {signals.active_listings_count} ogłoszeniach")
     if signals.first_price and signals.first_price != current_price:
         parts.append(f"pierwsza znana cena {_money(signals.first_price)}")
     return ", ".join(parts)

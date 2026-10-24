@@ -44,6 +44,7 @@ class TestGroupHistory(unittest.TestCase):
         self.assertEqual(1_029_000, history.lowest_price)
         self.assertEqual(1_099_000, history.highest_price)
         self.assertEqual(2, history.advertisers_count)
+        self.assertEqual(1, history.active_listings_count)
 
     def test_a_removed_flat_stops_counting_when_it_was_last_seen(self):
         only = _listing(1, created_at=datetime(2026, 1, 1), ended_at=datetime(2026, 3, 1))

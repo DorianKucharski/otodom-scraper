@@ -113,6 +113,7 @@ def to_market_signals(signals: Optional[AdMarketSignals]) -> Optional[MarketSign
     return MarketSignalsResponse(
         listing_group_id=signals.listing_group_id,
         listings_count=signals.listings_count,
+        active_listings_count=signals.active_listings_count or 1,
         advertisers_count=signals.advertisers_count,
         first_listed_at=signals.first_listed_at,
         days_on_market=signals.days_on_market,

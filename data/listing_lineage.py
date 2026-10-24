@@ -11,6 +11,8 @@ from typing import Callable, Iterable, Mapping, Optional
 MAX_PREDECESSOR_DISTANCE_M = 3000
 MAX_CROSS_CITY_DISTANCE_M = 2000
 MAX_ATTRIBUTE_MATCH_DISTANCE_M = 1000
+MAX_PARALLEL_DISTANCE_M = 500
+PARALLEL_PRICE_TOLERANCE = 0.01
 SIMULTANEOUS_GRACE = timedelta(days=3)
 SERIES_WINDOW = timedelta(days=10)
 MIN_TEXT_SIMILARITY = 0.35
@@ -48,10 +50,18 @@ class ListingRow:
     city_id: Optional[int]
     title: str
     building_type: Optional[str] = None
+    seen_alive_until: Optional[datetime] = None
 
     @property
     def active(self) -> bool:
         return self.ended_at is None
+
+    def alive_until(self, now: datetime) -> datetime:
+        if self.ended_at is None:
+            return now
+        if self.ended_at_known:
+            return self.ended_at
+        return self.seen_alive_until or self.created_at
 
 
 @dataclass(frozen=True)
@@ -163,11 +173,11 @@ def classify(
     if primary and text_similarity < PRIMARY_MARKET_TEXT_SIMILARITY:
         return None
 
-    both_active = earlier.active and later.active
-    overlapping = earlier.ended_at_known and _simultaneous(earlier, later, now)
-    if both_active or overlapping:
+    if _overlap(earlier, later, now):
         if same_owner and price_ratio <= 0.01 and text_similarity >= MIN_DUPLICATE_TEXT_SIMILARITY:
             return Link(earlier.id, later.id, "duplicate", 3 + text_similarity)
+        if _parallel_offer(earlier, later, same_owner, price_ratio, distance):
+            return Link(earlier.id, later.id, "parallel", 2.5 - price_ratio)
         return None
 
     gap_penalty = (later.created_at - earlier.created_at).days / 1000
@@ -241,16 +251,32 @@ def _any_conflict(first: list[ListingRow], second: list[ListingRow], now: dateti
 
 
 def _live_together(first: ListingRow, second: ListingRow, now: datetime) -> bool:
-    if first.owner_id is not None and first.owner_id == second.owner_id and first.price == second.price:
+    if first.price == second.price:
+        return False
+    same_owner = first.owner_id is not None and first.owner_id == second.owner_id
+    if _parallel_offer(first, second, same_owner, _price_ratio(first, second), distance_m(first, second)):
         return False
     if abs(first.created_at - second.created_at) < SERIES_WINDOW:
         return True
-    if not (first.ended_at_known and second.ended_at_known):
-        return False
-    first_end, second_end = first.ended_at or now, second.ended_at or now
+    return _overlap(first, second, now)
+
+
+def _overlap(first: ListingRow, second: ListingRow, now: datetime) -> bool:
     return (
-        second.created_at < first_end - SIMULTANEOUS_GRACE
-        and first.created_at < second_end - SIMULTANEOUS_GRACE
+        second.created_at < first.alive_until(now) - SIMULTANEOUS_GRACE
+        and first.created_at < second.alive_until(now) - SIMULTANEOUS_GRACE
+    )
+
+
+def _parallel_offer(
+        earlier: ListingRow, later: ListingRow, same_owner: bool, price_ratio: float, distance: Optional[float],
+) -> bool:
+    return (
+        not same_owner
+        and price_ratio <= PARALLEL_PRICE_TOLERANCE
+        and earlier.rooms is not None and earlier.rooms == later.rooms
+        and earlier.floor is not None and earlier.floor == later.floor
+        and distance is not None and distance <= MAX_PARALLEL_DISTANCE_M
     )
 
 
@@ -278,11 +304,6 @@ def _neighbour_keys(key: tuple) -> Iterable[tuple]:
 
 def _ordered(earlier: ListingRow, later: ListingRow) -> bool:
     return (earlier.created_at, earlier.id) < (later.created_at, later.id)
-
-
-def _simultaneous(earlier: ListingRow, later: ListingRow, now: datetime) -> bool:
-    earlier_end = earlier.ended_at or now
-    return earlier_end - SIMULTANEOUS_GRACE > later.created_at
 
 
 def _price_ratio(earlier: ListingRow, later: ListingRow) -> float:

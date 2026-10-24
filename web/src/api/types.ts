@@ -250,6 +250,7 @@ export interface AdSummary {
 export interface MarketSignals {
   listing_group_id: number
   listings_count: number
+  active_listings_count: number
   advertisers_count: number
   first_listed_at: string
   days_on_market: number

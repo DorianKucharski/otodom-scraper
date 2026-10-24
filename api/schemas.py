@@ -181,6 +181,7 @@ class MarketStatsResponse(BaseModel):
 class MarketSignalsResponse(BaseModel):
     listing_group_id: int
     listings_count: int
+    active_listings_count: int = 1
     advertisers_count: int
     first_listed_at: datetime
     days_on_market: int

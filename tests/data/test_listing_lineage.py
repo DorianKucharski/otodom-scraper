@@ -90,7 +90,7 @@ class TestListingLineage(unittest.TestCase):
     def test_two_owners_listing_similar_flats_at_the_same_time_are_not_merged(self):
         listings = [
             _listing(1, owner_id=1),
-            _listing(2, owner_id=2, created_at=datetime(2026, 5, 1)),
+            _listing(2, owner_id=2, price=1_150_000, created_at=datetime(2026, 5, 1)),
         ]
 
         groups = build_groups(listings, _no_texts, _NOW)
@@ -160,6 +160,31 @@ class TestListingLineage(unittest.TestCase):
         groups = build_groups(listings, _texts(texts), _NOW)
 
         self.assertEqual(5, len({group.group_id for group in groups.values()}))
+
+
+    def test_two_agencies_offering_the_same_flat_at_once_are_one_flat(self):
+        listings = [
+            _listing(1, owner_id=1, price=184_999, area=24.4, rooms=1, floor="GROUND_FLOOR"),
+            _listing(2, owner_id=2, price=184_999, area=24.4, rooms=1, floor="GROUND_FLOOR",
+                     created_at=datetime(2026, 5, 20)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([1, 2], groups[2].member_ids)
+        self.assertIn("parallel", groups[2].link_kinds)
+
+    def test_a_listing_seen_alive_after_the_next_one_appeared_overlaps_it(self):
+        listings = [
+            _listing(1, owner_id=1, price=599_000, area=44.0, ended_at=datetime(2026, 3, 2), ended_at_known=False,
+                     seen_alive_until=datetime(2026, 3, 2), created_at=datetime(2025, 9, 30)),
+            _listing(2, owner_id=2, price=655_000, area=44.03, created_at=datetime(2026, 1, 15),
+                     ended_at=datetime(2026, 3, 2), ended_at_known=False, seen_alive_until=datetime(2026, 3, 2)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([2], groups[2].member_ids)
 
 
 class TestWords(unittest.TestCase):
