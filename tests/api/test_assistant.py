@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 import unittest
 
 from sqlalchemy.dialects import postgresql
@@ -7,7 +8,7 @@ from api.assistant.interpret import interpretation_schema, plan_from_payload
 from api.assistant.rank import Candidate, ad_card, ranked_from_payload, ranking_schema
 from api.query import build_search_statements, keyword_relevance
 from api.schemas import AdSearchQuery, FacetValue, FacetsResponse, RangeFacet
-from data.models import AdEvaluation, AdScreening
+from data.models import AdEvaluation, AdMarketSignals, AdScreening
 from tests.enricher.ad_builder import AdBuilder
 
 
@@ -162,6 +163,26 @@ class TestRanking(unittest.TestCase):
         self.assertIn("kitchen_type: otwarta", card.evaluation)
         self.assertEqual("orientation: południe", card.screening_attributes)
         self.assertEqual("2 z 4", card.floor)
+
+    def test_a_card_carries_the_market_history_and_warnings(self):
+        ad = AdBuilder().with_price(1_099_000).build()
+        signals = AdMarketSignals(
+            listings_count=5, active_listings_count=1, advertisers_count=1, first_listed_at=datetime(2026, 4, 27),
+            days_on_market=180, first_price=1_099_000, comparables_median_price_per_m2=11_766, comparables_count=34,
+            comparables_radius_m=1500, price_vs_comparables_pct=-22.2, transactions_median_price_per_m2=11_502,
+            transactions_count=10, transactions_radius_m=1500, price_vs_transactions_pct=-20.4,
+            location_notes=["Pinezka jest 834 m od granicy miasta Kraków."], area_notes=[], previous_sale_price=None,
+        )
+
+        card = ad_card(ad, None, None, 500, signals)
+
+        self.assertIn("180 dni na rynku", card.market_history)
+        self.assertIn("5 ogłoszeń", card.market_history)
+        self.assertIn("prawdziwych transakcji", card.market_history)
+        self.assertIn("834 m od granicy", card.market_history)
+
+    def test_a_card_without_signals_has_no_market_history(self):
+        self.assertIsNone(ad_card(AdBuilder().build(), None, None, 500).market_history)
 
 
 if __name__ == "__main__":
