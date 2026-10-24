@@ -158,7 +158,8 @@ export function SignalChips({ ad }: SignalChipsProps) {
       title:
         `Mediana ${money(signals.street_transactions_median_price_per_m2, 'zł/m²')} z ` +
         `${signals.street_transactions_count} sprzedaży z RCN na tej samej ulicy, do 1,5 km od pinezki, ` +
-        `z ostatnich 2 lat (metraż ±35%). Ulica mówi więcej niż promień, gdy obok stoją budynki z innej półki.`,
+        `z ostatnich 2 lat (metraż ±35%). Ulica mówi więcej niż promień, gdy obok stoją budynki z innej półki, ` +
+        `ale na długiej ulicy też miesza stare bloki z nowymi.`,
     })
   }
 

@@ -61,7 +61,7 @@ def street_transactions_phrase(signals: Optional[AdMarketSignals]) -> Optional[s
     if signals is None or not signals.street_transactions_median_price_per_m2:
         return None
     phrase = (
-        f"na tej samej ulicy (do 1,5 km, metraż ±35%) mediana {signals.street_transactions_count} transakcji "
+        f"na tej samej ulicy (do 1,5 km, metraż ±35%, mogą to być budynki z innych lat) mediana {signals.street_transactions_count} transakcji "
         f"to {signals.street_transactions_median_price_per_m2} zł za metr"
     )
     if signals.price_vs_street_transactions_pct is not None:
