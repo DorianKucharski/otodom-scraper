@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchAdHistory } from '../api/client'
-import type { AdSummary, MarketSignals } from '../api/types'
+import type { AdSummary, MarketSignals, PriceObservation } from '../api/types'
 import { AREA_FLAG_LABELS, LOCATION_FLAG_LABELS } from '../api/types'
 
 const LONG_ON_MARKET_DAYS = 90
@@ -28,6 +28,23 @@ export function formatDuration(days: number): string {
   if (days >= 60) return `${Math.round(days / 30)} mies.`
   if (days === 1) return '1 dzień'
   return `${days} dni`
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  outdated: 'zniknęło z otodom',
+  removed: 'zdjęte',
+  removed_by_user: 'zdjęte przez ogłoszeniodawcę',
+  removed_by_parent_ad: 'zdjęte z inwestycją',
+}
+
+function repricedWithinListing(prices: PriceObservation[]): boolean {
+  const byListing = new Map<number, Set<number>>()
+  for (const price of prices) {
+    const seen = byListing.get(price.ad_id) ?? new Set<number>()
+    seen.add(price.price_value)
+    byListing.set(price.ad_id, seen)
+  }
+  return [...byListing.values()].some((seen) => seen.size > 1)
 }
 
 function formatDate(value: string | null): string {
@@ -293,15 +310,18 @@ export function MarketHistory({ adId, signals }: MarketHistoryProps) {
         </table>
       )}
 
-      {history && history.prices.length > 1 && (
-        <ul className="detail-list price-timeline">
-          {history.prices.map((price, index) => (
-            <li key={`${price.ad_id}-${index}`}>
-              {formatDate(price.observed_at)}: {money(price.price_value)}
-              {price.status && price.status !== 'active' ? ` (${price.status})` : ''}
-            </li>
-          ))}
-        </ul>
+      {history && repricedWithinListing(history.prices) && (
+        <>
+          <h4>Zmiany ceny w trakcie ogłoszeń</h4>
+          <ul className="detail-list price-timeline">
+            {history.prices.map((price, index) => (
+              <li key={`${price.ad_id}-${index}`}>
+                {formatDate(price.observed_at)}: {money(price.price_value)}
+                {price.status && price.status !== 'active' ? `, ${STATUS_LABELS[price.status] ?? price.status}` : ''}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   )
