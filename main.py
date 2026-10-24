@@ -10,10 +10,10 @@ from sqlalchemy import func, or_
 from data.ad_dto import AdDto
 from data.area_scope import OTODOM_RADII_KM, within_city_radius
 from data.location_resolver import LocationIndex, complete_location
-from data.price_history import PriceState, price_observation, price_state_of
+from data.price_history import PriceState, baseline_observation, price_observation, price_state_of
 from data.raw_payload import raw_payload_row
 from data.search_dto import SearchResultDto
-from data.models import Ad, AdRawPayload, AdStatus, County, Province, City, District, Owner, ServiceStatus, is_masked
+from data.models import Ad, AdPriceObservation, AdRawPayload, AdStatus, County, Province, City, District, Owner, ServiceStatus, is_masked
 from data.search_url import SearchUrl, OfferType, ObjectType, Location
 from database import DatabaseManager
 from monitoring.heartbeat import ServiceHeartbeatWriter
@@ -168,22 +168,29 @@ class ScrapingContext:
             session.merge(row)
 
     @staticmethod
-    def _record_price(session, ad: Ad, previous: Optional[PriceState]):
+    def _record_price(session, ad: Ad, previous: Optional[PriceState], previous_seen_at: Optional[datetime] = None):
         observation = price_observation(ad, previous, datetime.now())
-        if observation is not None:
-            session.add(observation)
+        if observation is None:
+            return
+        if previous is not None and previous_seen_at is not None and not session.query(
+                session.query(AdPriceObservation.id).filter(AdPriceObservation.ad_id == ad.id).exists()
+        ).scalar():
+            baseline = baseline_observation(ad.id, previous, previous_seen_at)
+            if baseline is not None:
+                session.add(baseline)
+        session.add(observation)
 
     def _refresh(self, session, saved_ad: Ad, ad_dto: AdDto, offer_type: Optional[str], object_type: Optional[str]):
-        previous = price_state_of(saved_ad)
+        previous, previous_seen_at = price_state_of(saved_ad), saved_ad.scraped_at
         self._store_dimensions(session, ad_dto)
         saved_ad.update(ad_dto, offer_type, object_type)
         self._store_raw_payload(session, ad_dto)
-        self._record_price(session, saved_ad, previous)
+        self._record_price(session, saved_ad, previous, previous_seen_at)
 
     def _outdate(self, session, saved_ad: Ad):
-        previous = price_state_of(saved_ad)
+        previous, previous_seen_at = price_state_of(saved_ad), saved_ad.scraped_at
         saved_ad.outdate()
-        self._record_price(session, saved_ad, previous)
+        self._record_price(session, saved_ad, previous, previous_seen_at)
 
     @staticmethod
     def _ensure_entity(session, cache: set, entity_id, factory):

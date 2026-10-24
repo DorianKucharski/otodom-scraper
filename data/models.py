@@ -82,6 +82,12 @@ def enum_column_type(enum_cls: type[enum.Enum], length: int = 50) -> Enum:
 MASKED_VALUE = "***"
 
 
+def status_value(status) -> Optional[str]:
+    if status is None:
+        return None
+    return status.value if hasattr(status, "value") else str(status)
+
+
 def is_masked(value: Optional[str]) -> bool:
     return value is not None and value.strip() == MASKED_VALUE
 

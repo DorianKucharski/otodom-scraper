@@ -40,7 +40,7 @@ class TestRadiusScope(unittest.TestCase):
     def test_a_radius_widens_the_city_to_its_surroundings(self):
         sql = _screening_sql(AdFilter(city="Kraków", radius_km=15))
 
-        self.assertIn("ST_DWithin", sql)
+        self.assertIn("ST_Buffer", sql)
         self.assertIn("15000", sql)
         self.assertIn("LEFT OUTER JOIN cities", sql)
 

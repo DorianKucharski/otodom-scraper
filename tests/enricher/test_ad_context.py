@@ -163,13 +163,24 @@ class TestMarketSignalsInContext(unittest.TestCase):
 
         self.assertIn("96,73 m² powierzchni użytkowej", context.area_label)
 
-    def test_comparables_stand_in_when_district_stats_are_missing(self):
+    def test_comparables_follow_the_district_position(self):
+        ad = AdBuilder().with_location().with_price(1_099_000, 9_158).build()
+        stats = DistrictPriceStats(ad_count=42, median_price_per_m2=15_000, p25_price_per_m2=13_000,
+                                   p75_price_per_m2=16_000, is_city_level=False)
+
+        context = build_ad_context(
+            ad, market_context=MarketContext(_stats_by_key={(1, 2, False, None, None): stats}), signals=_signals(),
+        )
+
+        self.assertEqual(15_000, context.market_stats.median_price_per_m2)
+        self.assertIn("20% poniżej", context.market_stats.position_label)
+
+    def test_without_district_stats_there_is_no_market_section(self):
         ad = AdBuilder().with_price(1_099_000, 9_158).build()
 
         context = build_ad_context(ad, market_context=MarketContext(_stats_by_key={}), signals=_signals())
 
-        self.assertEqual(11_400, context.market_stats.median_price_per_m2)
-        self.assertIn("20% poniżej", context.market_stats.position_label)
+        self.assertIsNone(context.market_stats)
 
 
 if __name__ == "__main__":

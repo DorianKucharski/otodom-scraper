@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .geo import excerpt
+
 USABLE_AREA_SMALLER = "usable_area_smaller"
 ATTIC_SLOPES = "attic_slopes"
 APPURTENANT_INCLUDED = "appurtenant_included"
@@ -57,11 +59,11 @@ def area_verdict(area: Optional[float], title: Optional[str], description: Optio
 
     slopes = _SLOPES.search(content)
     if slopes:
-        verdict.add(ATTIC_SLOPES, f"Opis wspomina skosy albo powierzchnię po podłodze: „{_excerpt(content, slopes)}”.")
+        verdict.add(ATTIC_SLOPES, f"Opis wspomina skosy albo powierzchnię po podłodze: „{excerpt(content, slopes.start(), slopes.end())}”.")
 
     appurtenant = _APPURTENANT.search(content)
     if appurtenant:
-        verdict.add(APPURTENANT_INCLUDED, f"Metraż może obejmować pomieszczenia przynależne: „{_excerpt(content, appurtenant)}”.")
+        verdict.add(APPURTENANT_INCLUDED, f"Metraż może obejmować pomieszczenia przynależne: „{excerpt(content, appurtenant.start(), appurtenant.end())}”.")
 
     return verdict
 
@@ -82,10 +84,3 @@ def _usable_area(content: str, area: Optional[float]) -> Optional[float]:
 
 def _area(value: float) -> str:
     return f"{value:.2f}".rstrip("0").rstrip(".").replace(".", ",") + " m²"
-
-
-def _excerpt(content: str, match: re.Match, margin: int = 50) -> str:
-    left = max(content.rfind(" ", 0, max(match.start() - margin, 0)) + 1, 0)
-    right = content.find(" ", min(match.end() + margin, len(content)))
-    right = len(content) if right == -1 else right
-    return ("…" if left > 0 else "") + content[left:right].strip() + ("…" if right < len(content) else "")

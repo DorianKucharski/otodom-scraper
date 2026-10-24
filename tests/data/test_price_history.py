@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 
 from data.models import AdStatus
-from data.price_history import PriceState, price_observation, price_state_of
+from data.price_history import PriceState, baseline_observation, price_observation, price_state_of
 from tests.enricher.ad_builder import AdBuilder
 
 _NOW = datetime(2026, 10, 24, 20, 0)
@@ -43,6 +43,15 @@ class TestPriceObservation(unittest.TestCase):
         ad = AdBuilder().with_price(0).build()
 
         self.assertIsNone(price_observation(ad, None, _NOW))
+
+    def test_the_price_before_the_first_recorded_change_is_kept(self):
+        seen_at = datetime(2026, 9, 1, 12, 0)
+        baseline = baseline_observation(7, PriceState(1_099_000, 94.0, "active"), seen_at)
+
+        self.assertEqual((7, seen_at, 1_099_000), (baseline.ad_id, baseline.observed_at, baseline.price_value))
+
+    def test_no_baseline_without_a_previous_price(self):
+        self.assertIsNone(baseline_observation(7, PriceState(None, None, "active"), _NOW))
 
 
 if __name__ == "__main__":

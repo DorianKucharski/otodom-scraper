@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from data.comparables import MIN_COMPARABLES, ComparableRow, ComparablesIndex
+from data.comparables import MIN_COMPARABLES, ComparableRow, ComparablesIndex, bounded_pct
 
 
 def _row(row_id: int, latitude: float = 50.0600, longitude: float = 19.9400, area: float = 60.0,
@@ -61,6 +61,17 @@ class TestComparables(unittest.TestCase):
         index = ComparablesIndex(_neighbourhood(MIN_COMPARABLES))
 
         self.assertIsNone(index.stats_for(_row(1, object_type="HOUSE")))
+
+    def test_a_typo_in_the_price_reports_no_percentage(self):
+        index = ComparablesIndex(_neighbourhood(MIN_COMPARABLES))
+        stats = index.stats_for(_row(1))
+
+        self.assertIsNone(stats.difference_pct(15_000_000))
+        self.assertEqual(-20.0, stats.difference_pct(12_000))
+
+    def test_percentages_beyond_the_column_range_are_dropped(self):
+        self.assertEqual(999.0, bounded_pct(999))
+        self.assertIsNone(bounded_pct(-1000.4))
 
 
 if __name__ == "__main__":

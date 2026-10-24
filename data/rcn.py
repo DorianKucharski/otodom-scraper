@@ -9,7 +9,7 @@ import requests
 from lxml import etree
 from psycopg2.extras import execute_values
 from sqlalchemy import text
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Engine
 
 from .derived_tables import ensure_table
 from .models import RcnTransaction
@@ -153,20 +153,24 @@ def flat_sales_due(connection: Connection, refresh_days: float, now: Optional[da
     return last is None or ((now or datetime.now()) - last).total_seconds() >= refresh_days * 86400
 
 
-def load_flat_sales(connection: Connection, cities: list[str], margin_m: int, now: Optional[datetime] = None) -> int:
+def load_flat_sales(engine: Engine, cities: list[str], margin_m: int, now: Optional[datetime] = None) -> int:
     now = now or datetime.now()
-    ensure_table(connection.engine, RcnTransaction.__table__)
-    bounds = connection.execute(_AREA_BOUNDS, {"cities": cities, "margin": margin_m}).one()
+    ensure_table(engine, RcnTransaction.__table__)
+    with engine.connect() as connection:
+        bounds = connection.execute(_AREA_BOUNDS, {"cities": cities, "margin": margin_m}).one()
     if bounds[0] is None:
         raise ValueError(f"No boundaries loaded for {cities}, run load_boundaries.py first")
     http = requests.Session()
-    cursor = connection.connection.cursor()
     loaded = 0
     tile_list = list(tiles(tuple(bounds)))
     for number, tile in enumerate(tile_list, start=1):
         sales = {sale.id: sale for sale in iter_tile(tile, http)}
         if sales:
-            execute_values(cursor, _UPSERT, [_row(sale, now) for sale in sales.values()], template=_VALUE_TEMPLATE)
+            with engine.begin() as connection:
+                execute_values(
+                    connection.connection.cursor(), _UPSERT, [_row(sale, now) for sale in sales.values()],
+                    template=_VALUE_TEMPLATE,
+                )
             loaded += len(sales)
         logger.info("RCN tile %d of %d: %d flat sales (%d so far)", number, len(tile_list), len(sales), loaded)
     return loaded

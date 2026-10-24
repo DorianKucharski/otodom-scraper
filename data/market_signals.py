@@ -14,14 +14,14 @@ from sqlalchemy.engine import Engine
 from .derived_tables import ensure_table
 from .area_checks import AREA_TEXT_PATTERN, AreaVerdict, area_verdict
 from .previous_sales import FlatSale, PreviousSaleIndex, floor_number
-from .comparables import ComparableRow, ComparablesIndex
+from .comparables import ComparableRow, ComparablesIndex, bounded_pct
 from .listing_lineage import ListingGroup, ListingRow, ListingText, build_groups, sketch_of
 from .location_checks import (
     TEXT_CHECK_BORDER_M, LocationVerdict, PlaceFinder, lineage_verdict, load_district_names, load_pin_checks,
     load_place_centres, pin_verdict, text_verdict,
 )
 from .inferred_types import HOUSE_BUILDING_TYPES, HOUSE_TITLE_PATTERN
-from .models import AdMarketSignals, is_masked
+from .models import AdMarketSignals, is_masked, status_value
 from .price_history import BACKFILL_MISSING_OBSERVATIONS
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,9 @@ LEFT JOIN cities c ON c.id = a.city_id
 """)
 
 _TEXTS = text("SELECT id, title, description FROM ads WHERE id = ANY(:ids)")
-_ALL_FLAT_SALES = text("""
+_FLAT_SALE_COLUMNS_AND_FILTER = """
 SELECT t.id,
+       t.market,
        t.transaction_date,
        t.rooms,
        t.floor,
@@ -83,24 +84,12 @@ WHERE t.function = 'mieszkalna'
   AND (t.share IS NULL OR t.share = '1/1')
   AND (t.transaction_kind IS NULL OR t.transaction_kind = 'wolnyRynek')
   AND t.area_value BETWEEN 15 AND 400
-""")
+"""
+_ALL_FLAT_SALES = text(_FLAT_SALE_COLUMNS_AND_FILTER)
 _AREA_TEXTS = text("SELECT id, title, description FROM ads WHERE description ~* :pattern AND description <> '***'")
-_FLAT_SALES = text("""
-SELECT t.id,
-       t.market,
-       ST_Y(t.location_point)                                   AS latitude,
-       ST_X(t.location_point)                                   AS longitude,
-       t.area_value::float                                      AS area_value,
-       coalesce(t.unit_price, CASE WHEN k.lokale = 1 THEN t.transaction_price END)::float AS price
-FROM rcn_transactions t
-JOIN (SELECT transaction_key, count(*) AS lokale FROM rcn_transactions GROUP BY transaction_key) k
-  ON k.transaction_key = t.transaction_key
-WHERE t.transaction_date >= :since
+_FLAT_SALES = text(_FLAT_SALE_COLUMNS_AND_FILTER + """
+  AND t.transaction_date >= :since
   AND (t.market IS DISTINCT FROM 'rynekPierwotny' OR t.transaction_date >= :primary_since)
-  AND t.function = 'mieszkalna'
-  AND (t.share IS NULL OR t.share = '1/1')
-  AND (t.transaction_kind IS NULL OR t.transaction_kind = 'wolnyRynek')
-  AND t.area_value BETWEEN 15 AND 400
 """)
 _OBSERVATIONS = text("SELECT ad_id, observed_at, price_value FROM ad_price_observations ORDER BY observed_at")
 
@@ -191,7 +180,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
     area_verdicts: dict[int, AreaVerdict] = {}
     with engine.connect() as connection:
         for ad_id, title, description in _iter_texts(connection, texts_needed):
-            fact = facts[ad_id]
+            fact = facts.get(ad_id)
+            if fact is None:
+                continue
             verdict = LocationVerdict()
             text_verdict(
                 fact.city_name, fact.listing.latitude, fact.listing.longitude, title, description, places, verdict,
@@ -312,7 +303,7 @@ def group_history(
 
 
 def listing_from_row(row, now: datetime) -> ListingRow:
-    status = _status_value(row.status)
+    status = status_value(row.status)
     last_seen = row.scraped_at or row.modified_at
     seen_alive_until = None
     if status == "active" and last_seen is not None and now - last_seen > STALE_AFTER:
@@ -352,7 +343,7 @@ def _load_facts(connection, now: datetime) -> dict[int, AdFacts]:
         listing = listing_from_row(row, now)
         facts[row.id] = AdFacts(
             listing=listing,
-            status=_status_value(row.status),
+            status=status_value(row.status),
             city_name=row.city_name,
             last_seen_at=row.scraped_at or row.modified_at,
         )
@@ -496,8 +487,4 @@ def _load_all_flat_sales(connection) -> list[FlatSale]:
 def _change_pct(price: Optional[int], first_price: Optional[int]) -> Optional[float]:
     if not price or not first_price:
         return None
-    return round((price / first_price - 1) * 100, 1)
-
-
-def _status_value(status) -> str:
-    return status.value if hasattr(status, "value") else str(status)
+    return bounded_pct((price / first_price - 1) * 100)

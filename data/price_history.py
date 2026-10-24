@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy import text
 
-from .models import Ad, AdPriceObservation
+from .models import Ad, AdPriceObservation, status_value
 
 BACKFILL_MISSING_OBSERVATIONS = text("""
 INSERT INTO ad_price_observations (ad_id, observed_at, price_value, area_value, status)
@@ -28,7 +28,19 @@ def price_state_of(ad: Ad) -> PriceState:
     return PriceState(
         price_value=ad.price_value,
         area_value=float(ad.area_value) if ad.area_value is not None else None,
-        status=_status_value(ad.status),
+        status=status_value(ad.status),
+    )
+
+
+def baseline_observation(ad_id: int, previous: PriceState, seen_at: datetime) -> Optional[AdPriceObservation]:
+    if not previous.price_value:
+        return None
+    return AdPriceObservation(
+        ad_id=ad_id,
+        observed_at=seen_at,
+        price_value=previous.price_value,
+        area_value=previous.area_value,
+        status=previous.status,
     )
 
 
@@ -45,9 +57,3 @@ def price_observation(ad: Ad, previous: Optional[PriceState], observed_at: datet
         area_value=current.area_value,
         status=current.status,
     )
-
-
-def _status_value(status) -> Optional[str]:
-    if status is None:
-        return None
-    return status.value if hasattr(status, "value") else str(status)

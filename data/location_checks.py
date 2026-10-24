@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import math
 import re
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
+
+from .geo import METRES_PER_DEGREE, distance_m, excerpt
 
 NEAR_BORDER_M = 1000
 NEAR_BORDER_MIN_CITY_KM2 = 80
@@ -109,7 +110,6 @@ _POSTAL_ADDRESS = re.compile(r"(?:\bul\.|\b\d{2}-\d{3})[^.]{0,40}$", re.IGNORECA
 _ADJECTIVE_ENDINGS = ("k", "sk", "ck", "ńsk", "dzk")
 _NOT_A_PLACE = {"Miejsce", "Dom", "Działka", "Mieszkanie", "Oferta", "Nieruchomość", "Lokal", "Teren", "Cena", "Lokalizacja"}
 _TAG = re.compile(r"<[^>]+>")
-_METRES_PER_DEGREE = 111_320
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,7 +235,7 @@ def text_verdict(
 class PlaceFinder:
     def __init__(self, centres: Iterable[PlaceCentre], radius_m: float = NEARBY_PLACE_RADIUS_M):
         self._radius_m = radius_m
-        self._cell_degrees = radius_m / _METRES_PER_DEGREE
+        self._cell_degrees = radius_m / METRES_PER_DEGREE
         self._cells: dict[tuple[int, int], list[PlaceCentre]] = {}
         self._patterns: dict[str, re.Pattern] = {}
         for centre in centres:
@@ -254,14 +254,14 @@ class PlaceFinder:
                 continue
             if claimed_city and _same_place(centre.name, claimed_city):
                 continue
-            if _distance_m(latitude, longitude, centre.latitude, centre.longitude) > self._radius_m:
+            if distance_m(latitude, longitude, centre.latitude, centre.longitude) > self._radius_m:
                 continue
             stem_length = len(_stem(centre.name.split()[-1]))
             for match in self._patterns[centre.name].finditer(content):
                 ending = match.group(0)[len(match.group(0)) - (len(match.group(0).split()[-1]) - stem_length):]
                 if ending.startswith(_ADJECTIVE_ENDINGS) or _travel_mention(content, match.start(), match.end()):
                     continue
-                found[centre.name] = _excerpt(content, match.start(), match.end())
+                found[centre.name] = excerpt(content, match.start(), match.end())
                 break
         return list(found.items())
 
@@ -336,17 +336,3 @@ def _travel_mention(content: str, start: int, end: int) -> bool:
 
 def _plain(value: str) -> str:
     return re.sub(r"\s+", " ", _TAG.sub(" ", value)).strip()
-
-
-def _excerpt(content: str, start: int, end: int, margin: int = 50) -> str:
-    left = max(content.rfind(" ", 0, max(start - margin, 0)) + 1, 0)
-    right = content.find(" ", min(end + margin, len(content)))
-    right = len(content) if right == -1 else right
-    prefix = "…" if left > 0 else ""
-    suffix = "…" if right < len(content) else ""
-    return f"{prefix}{content[left:right].strip()}{suffix}"
-
-
-def _distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    mean_lat = math.radians((lat1 + lat2) / 2)
-    return math.hypot((lat2 - lat1) * _METRES_PER_DEGREE, (lon2 - lon1) * _METRES_PER_DEGREE * math.cos(mean_lat))

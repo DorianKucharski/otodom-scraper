@@ -144,12 +144,4 @@ def _market_stats_view(
             p75_price_per_m2=stats.p75_price_per_m2,
             position_label=f"{label}; {comparables}" if comparables else label,
         )
-    if comparables is None:
-        return None
-    return MarketStatsView(
-        ad_count=signals.comparables_count,
-        median_price_per_m2=signals.comparables_median_price_per_m2,
-        p25_price_per_m2=signals.comparables_p25_price_per_m2,
-        p75_price_per_m2=signals.comparables_p75_price_per_m2,
-        position_label=comparables,
-    )
+    return None

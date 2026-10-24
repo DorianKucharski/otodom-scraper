@@ -22,8 +22,7 @@ def main(
 ):
     database_manager = DatabaseManager()
     database_manager.create_all_tables()
-    with database_manager.engine.begin() as connection:
-        loaded = load_flat_sales(connection, cities, int(margin_km * 1000))
+    loaded = load_flat_sales(database_manager.engine, cities, int(margin_km * 1000))
     logger.info("Loaded %d RCN flat sales around %s", loaded, ", ".join(cities))
 
 

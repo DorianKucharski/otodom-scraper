@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import math
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterable, Optional
+
+from .geo import distance_m
 
 MATCH_RADIUS_M = 150
 AREA_TOLERANCE = 0.01
@@ -14,7 +15,6 @@ MAX_AMBIGUOUS_MATCHES = 2
 MIN_PRICE_RATIO = 0.35
 MAX_PRICE_RATIO = 2.0
 _CELL_DEGREES = 0.002
-_METRES_PER_DEGREE = 111_320
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +77,7 @@ class PreviousSaleIndex:
                         continue
                     if floor is not None and sale.floor is not None and abs(floor - sale.floor) > 1:
                         continue
-                    distance = _distance_m(latitude, longitude, sale.latitude, sale.longitude)
+                    distance = distance_m(latitude, longitude, sale.latitude, sale.longitude)
                     if distance <= MATCH_RADIUS_M:
                         matches.append((sale, distance))
         if not matches or len(matches) > MAX_AMBIGUOUS_MATCHES:
@@ -96,8 +96,3 @@ def floor_number(floor: Optional[str]) -> Optional[int]:
 
 def _cell_of(latitude: float, longitude: float) -> tuple[int, int]:
     return int(latitude // _CELL_DEGREES), int(longitude // _CELL_DEGREES)
-
-
-def _distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    mean_lat = math.radians((lat1 + lat2) / 2)
-    return math.hypot((lat2 - lat1) * _METRES_PER_DEGREE, (lon2 - lon1) * _METRES_PER_DEGREE * math.cos(mean_lat))

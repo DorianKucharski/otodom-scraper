@@ -7,12 +7,14 @@ from dataclasses import dataclass
 from statistics import median, quantiles
 from typing import Iterable, Optional
 
+from .geo import METRES_PER_DEGREE, distance_m
+
 SEARCH_RADII_M = (750, 1500, 3000, 6000, 10000)
+MAX_REPORTED_PCT = 999
 MIN_COMPARABLES = 10
 AREA_RATIO = 1.35
 _CELL_LAT_DEGREES = 0.01
 _CELL_LON_DEGREES = 0.015
-_METRES_PER_DEGREE = 111_320
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +40,7 @@ class ComparableStats:
     def difference_pct(self, price_per_m2: Optional[float]) -> Optional[float]:
         if not price_per_m2 or not self.median_price_per_m2:
             return None
-        return round((price_per_m2 / self.median_price_per_m2 - 1) * 100, 1)
+        return bounded_pct((price_per_m2 / self.median_price_per_m2 - 1) * 100)
 
 
 class ComparablesIndex:
@@ -73,7 +75,7 @@ class ComparablesIndex:
                 for member in members[bisect_left(areas, low_area):bisect_right(areas, high_area)]:
                     if member.group_id == target.group_id:
                         continue
-                    distance = _distance_m(target.latitude, target.longitude, member.latitude, member.longitude)
+                    distance = distance_m(target.latitude, target.longitude, member.latitude, member.longitude)
                     known = nearest_by_group.get(member.group_id)
                     if known is None or distance < known[0]:
                         nearest_by_group[member.group_id] = (distance, member.price_per_m2)
@@ -82,6 +84,10 @@ class ComparablesIndex:
             if len(within) >= self._min_comparables:
                 return _stats(within, radius)
         return None
+
+
+def bounded_pct(value: float) -> Optional[float]:
+    return round(value, 1) if abs(value) <= MAX_REPORTED_PCT else None
 
 
 def _stats(prices: list[float], radius: int) -> ComparableStats:
@@ -104,8 +110,8 @@ def _cell_of(latitude: float, longitude: float) -> tuple[int, int]:
 
 
 def _cells_within(latitude: float, longitude: float, radius_m: float) -> list[tuple[int, int]]:
-    lat_span = math.ceil(radius_m / (_METRES_PER_DEGREE * _CELL_LAT_DEGREES))
-    lon_metres = _METRES_PER_DEGREE * _CELL_LON_DEGREES * math.cos(math.radians(latitude))
+    lat_span = math.ceil(radius_m / (METRES_PER_DEGREE * _CELL_LAT_DEGREES))
+    lon_metres = METRES_PER_DEGREE * _CELL_LON_DEGREES * math.cos(math.radians(latitude))
     lon_span = math.ceil(radius_m / lon_metres)
     lat_cell, lon_cell = _cell_of(latitude, longitude)
     return [
@@ -113,10 +119,3 @@ def _cells_within(latitude: float, longitude: float, radius_m: float) -> list[tu
         for d_lat in range(-lat_span, lat_span + 1)
         for d_lon in range(-lon_span, lon_span + 1)
     ]
-
-
-def _distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    mean_lat = math.radians((lat1 + lat2) / 2)
-    d_lat = (lat2 - lat1) * _METRES_PER_DEGREE
-    d_lon = (lon2 - lon1) * _METRES_PER_DEGREE * math.cos(mean_lat)
-    return math.hypot(d_lat, d_lon)

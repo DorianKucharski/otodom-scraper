@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from data.models import Ad, AdEvaluation, AdMarketSignals, AdPriceObservation, AdScreening, AdTracking, Owner
+from data.models import (
+    Ad, AdEvaluation, AdMarketSignals, AdPriceObservation, AdScreening, AdTracking, Owner, is_masked, status_value,
+)
 from data.read_models import ad_all_features, district_price_stats
 from ..dependencies import get_session
 from ..mappers import to_ad_detail, to_ad_summary, to_market_signals
@@ -117,9 +119,9 @@ def get_ad_history(
                 id=ad.id,
                 url=ad.url,
                 title=ad.title,
-                status=ad.status.value if hasattr(ad.status, "value") else str(ad.status),
+                status=status_value(ad.status),
                 advertiser_type=display_label(ADVERTISER_TYPES, ad.advertiser_type),
-                advertiser_name=owner_name if owner_name and owner_name.strip() != "***" else None,
+                advertiser_name=owner_name if owner_name and not is_masked(owner_name) else None,
                 created_at=ad.created_at,
                 last_seen_at=ad.scraped_at,
                 price_value=ad.price_value,

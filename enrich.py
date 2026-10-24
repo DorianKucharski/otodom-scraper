@@ -4,7 +4,7 @@ import subprocess
 import sys
 from dataclasses import replace
 from pathlib import Path
-from time import sleep
+from time import monotonic, sleep
 from typing import Optional
 
 import typer
@@ -86,6 +86,8 @@ def print_dry_run(summary: RunSummary) -> None:
 SIGNALS_SCRIPT = Path(__file__).with_name("signals.py")
 TRANSACTIONS_SCRIPT = Path(__file__).with_name("load_transactions.py")
 MARKET_SIGNALS_TIMEOUT_SECONDS = 3600
+TRANSACTIONS_TIMEOUT_SECONDS = 4 * 3600
+_last_attempts: dict[str, float] = {}
 
 
 def main(
@@ -208,6 +210,14 @@ def main(
         sleep(config.cycle_pause_seconds)
 
 
+def _attempted_recently(job: str, interval_hours: float) -> bool:
+    last = _last_attempts.get(job)
+    if last is not None and monotonic() - last < interval_hours * 3600:
+        return True
+    _last_attempts[job] = monotonic()
+    return False
+
+
 def _refresh_transactions_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
     if not config.rcn_cities:
         return
@@ -215,10 +225,12 @@ def _refresh_transactions_if_due(database_manager: DatabaseManager, config: Enri
         with database_manager.engine.connect() as connection:
             if not flat_sales_due(connection, config.rcn_refresh_days):
                 return
+        if _attempted_recently("rcn", config.rcn_refresh_days * 24):
+            return
         heartbeat.report(ServiceStatus.RUNNING, phase="pobieranie transakcji z RCN")
         arguments = [argument for city in config.rcn_cities for argument in ("--city", city)]
         result = subprocess.run(
-            [sys.executable, str(TRANSACTIONS_SCRIPT), *arguments], timeout=MARKET_SIGNALS_TIMEOUT_SECONDS, check=False,
+            [sys.executable, str(TRANSACTIONS_SCRIPT), *arguments], timeout=TRANSACTIONS_TIMEOUT_SECONDS, check=False,
         )
         if result.returncode != 0:
             logger.error("RCN refresh exited with %s, keeping the previous transactions", result.returncode)
@@ -229,6 +241,8 @@ def _refresh_transactions_if_due(database_manager: DatabaseManager, config: Enri
 def _refresh_market_signals_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
     try:
         if not market_signals_due(database_manager.engine, config.market_signals_interval_hours):
+            return
+        if _attempted_recently("signals", config.market_signals_interval_hours):
             return
         heartbeat.report(ServiceStatus.RUNNING, phase="historia ogłoszeń, ceny w okolicy, lokalizacja")
         result = subprocess.run(
