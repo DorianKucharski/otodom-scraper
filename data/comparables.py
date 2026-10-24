@@ -82,7 +82,7 @@ class ComparablesIndex:
 
             within = [price for distance, price in nearest_by_group.values() if distance <= radius]
             if len(within) >= self._min_comparables:
-                return _stats(within, radius)
+                return stats_of(within, radius)
         return None
 
 
@@ -90,7 +90,7 @@ def bounded_pct(value: float) -> Optional[float]:
     return round(value, 1) if abs(value) <= MAX_REPORTED_PCT else None
 
 
-def _stats(prices: list[float], radius: int) -> ComparableStats:
+def stats_of(prices: list[float], radius: int) -> ComparableStats:
     quartiles = quantiles(prices, n=4, method="inclusive")
     return ComparableStats(
         count=len(prices),

@@ -271,6 +271,9 @@ export interface MarketSignals {
   transactions_p25_price_per_m2: number | null
   transactions_p75_price_per_m2: number | null
   price_vs_transactions_pct: number | null
+  street_transactions_count: number
+  street_transactions_median_price_per_m2: number | null
+  price_vs_street_transactions_pct: number | null
   pin_city_name: string | null
   pin_gmina_name: string | null
   city_border_distance_m: number | null

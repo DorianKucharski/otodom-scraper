@@ -22,7 +22,8 @@ from .location_checks import (
 )
 from .inferred_types import HOUSE_BUILDING_TYPES, HOUSE_TITLE_PATTERN
 from .nuisances import load_nuisance_checks, nuisance_verdict
-from .street_checks import load_street_checks, street_verdict
+from .street_checks import load_street_checks, street_key, street_verdict
+from .street_sales import StreetSale, StreetSalesIndex, rcn_street_key
 from .models import AdMarketSignals, is_masked, status_value
 from .price_history import BACKFILL_MISSING_OBSERVATIONS
 
@@ -61,6 +62,7 @@ SELECT a.id,
        a.longitude::float                     AS longitude,
        a.city_id,
        c.name                                 AS city_name,
+       a.street,
        a.title,
        a.building_type
 FROM ads a
@@ -72,6 +74,7 @@ _TEXTS = text("SELECT id, title, description FROM ads WHERE id = ANY(:ids)")
 _FLAT_SALE_COLUMNS_AND_FILTER = """
 SELECT t.id,
        t.market,
+       t.address,
        t.transaction_date,
        t.rooms,
        t.floor,
@@ -103,6 +106,7 @@ INSERT INTO ad_market_signals (
     comparables_p25_price_per_m2, comparables_p75_price_per_m2, price_vs_comparables_pct,
     transactions_count, transactions_radius_m, transactions_median_price_per_m2,
     transactions_p25_price_per_m2, transactions_p75_price_per_m2, price_vs_transactions_pct,
+    street_transactions_count, street_transactions_median_price_per_m2, price_vs_street_transactions_pct,
     pin_city_name, pin_gmina_name, city_border_distance_m, location_flags, location_notes,
     area_flags, area_notes, previous_sale_at, previous_sale_price, previous_sale_distance_m,
     expressway_distance_m, expressway_label, railway_distance_m, runway_approach_m, nuisance_flags, nuisance_notes,
@@ -117,6 +121,7 @@ class AdFacts:
     status: str
     city_name: Optional[str]
     last_seen_at: datetime
+    street_key: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -156,9 +161,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         observations = _load_observations(connection)
         place_centres = load_place_centres(connection)
         district_names = load_district_names(connection)
-        sales = TransactionIndex(_load_flat_sales(
-            connection, now - TRANSACTION_RECENCY, now - PRIMARY_TRANSACTION_RECENCY,
-        ))
+        recent_sales = _load_flat_sales(connection, now - TRANSACTION_RECENCY, now - PRIMARY_TRANSACTION_RECENCY)
+        sales = TransactionIndex([row for row, _ in recent_sales])
+        street_sales = StreetSalesIndex([sale for _, sale in recent_sales if sale is not None])
         previous_sales = PreviousSaleIndex(_load_all_flat_sales(connection))
     logger.info("Loaded %d recent RCN flat sales", sales.size)
 
@@ -222,6 +227,10 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         stats = comparables.get(ad_id)
         price_per_m2 = fact.listing.price / fact.listing.area if fact.listing.area else None
         sold = sales.stats_for(fact.listing)
+        on_street = street_sales.stats_for(
+            fact.street_key, fact.listing.latitude, fact.listing.longitude, fact.listing.area,
+            (fact.listing.market or "").upper() or None,
+        ) if _is_flat_sale(fact.listing) else None
         previous = previous_sales.match(
             fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
             fact.listing.created_at, fact.listing.price, floor_number(fact.listing.floor),
@@ -252,6 +261,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             sold.p25_price_per_m2 if sold else None,
             sold.p75_price_per_m2 if sold else None,
             sold.difference_pct(price_per_m2) if sold else None,
+            on_street.count if on_street else 0,
+            on_street.median_price_per_m2 if on_street else None,
+            on_street.difference_pct(price_per_m2) if on_street else None,
             check.pin_city_name if check else None,
             check.pin_gmina_name if check else None,
             check.border_m if check else None,
@@ -362,6 +374,7 @@ def _load_facts(connection, now: datetime) -> dict[int, AdFacts]:
             status=status_value(row.status),
             city_name=row.city_name,
             last_seen_at=row.scraped_at or row.modified_at,
+            street_key=street_key(row.street),
         )
     return facts
 
@@ -470,7 +483,9 @@ def _is_flat_sale(listing: ListingRow) -> bool:
     )
 
 
-def _load_flat_sales(connection, since: datetime, primary_since: datetime) -> list[ComparableRow]:
+def _load_flat_sales(
+        connection, since: datetime, primary_since: datetime,
+) -> list[tuple[ComparableRow, Optional[StreetSale]]]:
     if not inspect(connection).has_table("rcn_transactions"):
         return []
     rows = []
@@ -480,9 +495,16 @@ def _load_flat_sales(connection, since: datetime, primary_since: datetime) -> li
         price_per_m2 = row.price / row.area_value
         if not MIN_TRANSACTION_PRICE_PER_M2 <= price_per_m2 <= MAX_TRANSACTION_PRICE_PER_M2:
             continue
-        rows.append(ComparableRow(
-            id=row.id, group_id=-row.id, offer_type=_RCN_MARKETS.get(row.market), object_type=None,
-            latitude=row.latitude, longitude=row.longitude, area=row.area_value, price_per_m2=price_per_m2,
+        key = rcn_street_key(row.address)
+        rows.append((
+            ComparableRow(
+                id=row.id, group_id=-row.id, offer_type=_RCN_MARKETS.get(row.market), object_type=None,
+                latitude=row.latitude, longitude=row.longitude, area=row.area_value, price_per_m2=price_per_m2,
+            ),
+            StreetSale(
+                key=key, market=_RCN_MARKETS.get(row.market), latitude=row.latitude, longitude=row.longitude,
+                area=row.area_value, price_per_m2=price_per_m2,
+            ) if key else None,
         ))
     return rows
 

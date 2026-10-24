@@ -57,6 +57,20 @@ def transactions_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
     return phrase
 
 
+def street_transactions_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
+    if signals is None or not signals.street_transactions_median_price_per_m2:
+        return None
+    phrase = (
+        f"na tej samej ulicy (do 1,5 km, metraż ±35%) mediana {signals.street_transactions_count} transakcji "
+        f"to {signals.street_transactions_median_price_per_m2} zł za metr"
+    )
+    if signals.price_vs_street_transactions_pct is not None:
+        difference = float(signals.price_vs_street_transactions_pct)
+        relation = "powyżej" if difference > 0 else "poniżej"
+        phrase += f", ta oferta jest {abs(difference):.0f}% {relation}"
+    return phrase
+
+
 def area_warnings_phrase(signals: Optional[AdMarketSignals]) -> Optional[str]:
     if signals is None or not signals.area_notes:
         return None

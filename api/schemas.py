@@ -204,6 +204,9 @@ class MarketSignalsResponse(BaseModel):
     transactions_p25_price_per_m2: Optional[int] = None
     transactions_p75_price_per_m2: Optional[int] = None
     price_vs_transactions_pct: Optional[float] = None
+    street_transactions_count: int = 0
+    street_transactions_median_price_per_m2: Optional[int] = None
+    price_vs_street_transactions_pct: Optional[float] = None
     pin_city_name: Optional[str]
     pin_gmina_name: Optional[str]
     city_border_distance_m: Optional[int]

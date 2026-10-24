@@ -149,6 +149,19 @@ export function SignalChips({ ad }: SignalChipsProps) {
     })
   }
 
+  if (signals.price_vs_street_transactions_pct !== null) {
+    const value = signals.price_vs_street_transactions_pct
+    chips.push({
+      key: 'street-transactions',
+      label: `${percent(value)} vs ulica`,
+      tone: value <= -NOTABLE_COMPARABLE_PCT ? 'good' : value >= NOTABLE_COMPARABLE_PCT ? 'bad' : 'neutral',
+      title:
+        `Mediana ${money(signals.street_transactions_median_price_per_m2, 'zł/m²')} z ` +
+        `${signals.street_transactions_count} sprzedaży z RCN na tej samej ulicy, do 1,5 km od pinezki, ` +
+        `z ostatnich 2 lat (metraż ±35%). Ulica mówi więcej niż promień, gdy obok stoją budynki z innej półki.`,
+    })
+  }
+
   if (signals.price_vs_transactions_pct !== null) {
     const value = signals.price_vs_transactions_pct
     chips.push({

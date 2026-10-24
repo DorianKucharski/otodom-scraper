@@ -1141,6 +1141,9 @@ class AdMarketSignals(Base):
     transactions_p25_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
     transactions_p75_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
     price_vs_transactions_pct: Mapped[Optional[float]] = mapped_column(Numeric(6, 1))
+    street_transactions_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    street_transactions_median_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    price_vs_street_transactions_pct: Mapped[Optional[float]] = mapped_column(Numeric(6, 1))
 
     pin_city_name: Mapped[Optional[str]] = mapped_column(String(200))
     pin_gmina_name: Mapped[Optional[str]] = mapped_column(String(200))
