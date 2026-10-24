@@ -11,7 +11,7 @@ from sqlalchemy.engine import Connection
 NEAR_BORDER_M = 1000
 NEAR_BORDER_MIN_CITY_KM2 = 80
 OUTSIDE_TOLERANCE_M = 100
-TEXT_CHECK_BORDER_M = 2500
+TEXT_CHECK_BORDER_M = 1500
 NEARBY_PLACE_RADIUS_M = 6000
 MIN_ADS_FOR_PLACE_CENTRE = 3
 
@@ -97,10 +97,13 @@ _BORDER_PHRASES = (
 )
 _FOREIGN_BORDERS = ("Czech", "Niemc", "Słowac", "Ukrain", "Litw", "Białoru", "Rosj", "Polsk")
 _TRAVEL_BEFORE = re.compile(
-    r"(?:\bdo|\bod|\bkoło|\bpod|\bblisko|\bniedaleko|\bobok|\bCH|\bcentrum|\bstacj\w*|\bpętl\w*|\bwęz\w*|\bkierunku|\btrasie|\bdrodze|\bdojazd\w*|\bulic\w*|\bul\.)\s*$",
+    r"(?:\bdo|\bod|\bkoło|\bpod|\bblisko|\bniedaleko|\bobok|\bCH|\bcentrum|\bstacj\w*|\bpętl\w*|\bwęz\w*|\bkierunku|\btrasie|\bdrodze|\bdojazd\w*|\bwyjazd\w*|\błącząc\w*|\blotnisk\w*|\bport\w*\s+lotnicz\w*|\bPKP|\bfort\w*|\bulic\w*|\bul\.|\bNa)\s*$",
     re.IGNORECASE,
 )
 _TRAVEL_AFTER = re.compile(r"^[\s\w,.:()–-]{0,25}?\d+(?:[.,]\d+)?\s*(?:km|min|m\b)", re.IGNORECASE)
+_TRAVEL_CLAUSE = re.compile(
+    r"\b(?:dojazd\w*|wyjazd\w*|dojedziesz|dotrzesz|łącząc\w*|lotnisk\w*|stacj\w*|PKP|minut\w*)\b", re.IGNORECASE
+)
 _POSTAL_ADDRESS = re.compile(r"(?:\bul\.|\b\d{2}-\d{3})[^.]{0,40}$", re.IGNORECASE)
 _ADJECTIVE_ENDINGS = ("k", "sk", "ck", "ńsk", "dzk")
 _NOT_A_PLACE = {"Miejsce", "Dom", "Działka", "Mieszkanie", "Oferta", "Nieruchomość", "Lokal", "Teren", "Cena", "Lokalizacja"}
@@ -307,8 +310,12 @@ def _stem_pattern(name: str) -> re.Pattern:
 
 def _travel_mention(content: str, start: int, end: int) -> bool:
     before = content[max(0, start - 45):start]
+    clause = re.split(r"[.;:!?•*\n]", before)[-1]
     return bool(
-        _TRAVEL_BEFORE.search(before[-25:]) or _POSTAL_ADDRESS.search(before) or _TRAVEL_AFTER.match(content[end:end + 40])
+        _TRAVEL_BEFORE.search(before[-25:])
+        or _TRAVEL_CLAUSE.search(clause)
+        or _POSTAL_ADDRESS.search(before)
+        or _TRAVEL_AFTER.match(content[end:end + 40])
     )
 
 

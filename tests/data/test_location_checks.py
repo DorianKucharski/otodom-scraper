@@ -162,6 +162,28 @@ class TestTextVerdict(unittest.TestCase):
         self.assertEqual([], verdict.flags)
 
 
+    def test_a_journey_mentioned_earlier_in_the_sentence_does_not_count(self):
+        verdict = LocationVerdict()
+
+        text_verdict("Kraków", *_GAIK, "Mieszkanie", "Wygodny dojazd do centrum Krakowa i Modlnicy.", _PLACES, verdict)
+
+        self.assertEqual([], verdict.flags)
+
+    def test_a_street_named_after_a_village_does_not_count(self):
+        verdict = LocationVerdict()
+
+        text_verdict("Kraków", *_GAIK, "Na Zielonki | 118 m2 | ogród", None, _PLACES, verdict)
+
+        self.assertEqual([], verdict.flags)
+
+    def test_a_development_placed_in_another_town_is_flagged(self):
+        verdict = LocationVerdict()
+
+        text_verdict("Kraków", *_GAIK, "Domy", "Prezentujemy nową inwestycję w Modlnicy, sześć domów.", _PLACES, verdict)
+
+        self.assertEqual([OTHER_PLACE_IN_TEXT], verdict.flags)
+
+
 class TestLineageVerdict(unittest.TestCase):
 
     def test_another_listing_of_the_flat_naming_a_different_place_is_flagged(self):
