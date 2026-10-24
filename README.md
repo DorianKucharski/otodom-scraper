@@ -315,7 +315,7 @@ Każde ogłoszenie dostaje w tabeli `ad_market_signals` zestaw sygnałów liczon
 
 ```bash
 uv run python load_boundaries.py                    # granice z PRG, raz (i po zmianach granic)
-uv run python load_transactions.py --city Kraków    # transakcje RCN, np. raz w miesiącu
+uv run python load_transactions.py --city Kraków    # transakcje RCN (enricher robi to sam, gdy ustawisz RCN_CITIES)
 uv run python load_transactions.py --city Warszawa --city Wrocław --margin-km 10
 uv run python signals.py                            # przelicza sygnały od razu
 ```

@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 
 from data.market_signals import market_signals_due
+from data.rcn import flat_sales_due
 from data.models import ServiceStatus
 from data.search_url import ObjectType, OfferType
 from database import DatabaseManager
@@ -83,6 +84,7 @@ def print_dry_run(summary: RunSummary) -> None:
 
 
 SIGNALS_SCRIPT = Path(__file__).with_name("signals.py")
+TRANSACTIONS_SCRIPT = Path(__file__).with_name("load_transactions.py")
 MARKET_SIGNALS_TIMEOUT_SECONDS = 3600
 
 
@@ -178,6 +180,7 @@ def main(
         database_manager.refresh_district_price_stats()
         database_manager.refresh_inferred_types()
         if not dry_run:
+            _refresh_transactions_if_due(database_manager, config, heartbeat)
             _refresh_market_signals_if_due(database_manager, config, heartbeat)
 
         if screen_enabled:
@@ -203,6 +206,24 @@ def main(
         logger.info("Cycle complete. Restarting in %s seconds...", config.cycle_pause_seconds)
         heartbeat.report(ServiceStatus.IDLE, phase="przerwa między cyklami", detail=_budget_detail(budget))
         sleep(config.cycle_pause_seconds)
+
+
+def _refresh_transactions_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
+    if not config.rcn_cities:
+        return
+    try:
+        with database_manager.engine.connect() as connection:
+            if not flat_sales_due(connection, config.rcn_refresh_days):
+                return
+        heartbeat.report(ServiceStatus.RUNNING, phase="pobieranie transakcji z RCN")
+        arguments = [argument for city in config.rcn_cities for argument in ("--city", city)]
+        result = subprocess.run(
+            [sys.executable, str(TRANSACTIONS_SCRIPT), *arguments], timeout=MARKET_SIGNALS_TIMEOUT_SECONDS, check=False,
+        )
+        if result.returncode != 0:
+            logger.error("RCN refresh exited with %s, keeping the previous transactions", result.returncode)
+    except Exception as error:
+        logger.exception("RCN refresh failed, keeping the previous transactions: %s", error)
 
 
 def _refresh_market_signals_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):

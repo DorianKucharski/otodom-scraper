@@ -144,6 +144,15 @@ def iter_tile(tile: tuple[int, int, int, int], session: requests.Session) -> Ite
         start += PAGE_SIZE
 
 
+def flat_sales_due(connection: Connection, refresh_days: float, now: Optional[datetime] = None) -> bool:
+    if refresh_days <= 0:
+        return False
+    if not connection.dialect.has_table(connection, "rcn_transactions"):
+        return True
+    last = connection.execute(text("SELECT max(loaded_at) FROM rcn_transactions")).scalar()
+    return last is None or ((now or datetime.now()) - last).total_seconds() >= refresh_days * 86400
+
+
 def load_flat_sales(connection: Connection, cities: list[str], margin_m: int, now: Optional[datetime] = None) -> int:
     now = now or datetime.now()
     ensure_table(connection.engine, RcnTransaction.__table__)

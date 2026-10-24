@@ -35,6 +35,8 @@ class EnricherConfig:
     max_tries: int
     retry_pause_seconds: int
     market_signals_interval_hours: float
+    rcn_cities: tuple[str, ...]
+    rcn_refresh_days: float
 
     @classmethod
     def from_env(cls) -> "EnricherConfig":
@@ -68,6 +70,8 @@ class EnricherConfig:
             max_tries=_read_int("ENRICHER_MAX_TRIES", 3),
             retry_pause_seconds=_read_int("ENRICHER_RETRY_PAUSE_SECONDS", 10),
             market_signals_interval_hours=_read_float("MARKET_SIGNALS_INTERVAL_HOURS", 6.0),
+            rcn_cities=tuple(city.strip() for city in os.environ.get("RCN_CITIES", "").split(",") if city.strip()),
+            rcn_refresh_days=_read_float("RCN_REFRESH_DAYS", 30.0),
         )
 
 
