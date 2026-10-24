@@ -1140,6 +1140,8 @@ class AdMarketSignals(Base):
     city_border_distance_m: Mapped[Optional[int]] = mapped_column(Integer)
     location_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     location_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    area_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    area_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

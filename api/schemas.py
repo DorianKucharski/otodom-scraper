@@ -125,6 +125,9 @@ class AdSearchQuery(BaseModel):
     excluded_location_flags: list[str] = Field(
         default_factory=list, description="Ukrywa ogłoszenia z którąś z tych flag lokalizacji."
     )
+    excluded_area_flags: list[str] = Field(
+        default_factory=list, description="Ukrywa ogłoszenia z którąś z tych flag metrażu (usable_area_smaller, attic_slopes, appurtenant_included)."
+    )
 
     tracking_statuses: list[TrackingStatus] = Field(
         default_factory=list, description="Tylko ogłoszenia z jednym z tych statusów."
@@ -202,6 +205,8 @@ class MarketSignalsResponse(BaseModel):
     city_border_distance_m: Optional[int]
     location_flags: list[str] = Field(default_factory=list)
     location_notes: list[str] = Field(default_factory=list)
+    area_flags: list[str] = Field(default_factory=list)
+    area_notes: list[str] = Field(default_factory=list)
     computed_at: datetime
 
 

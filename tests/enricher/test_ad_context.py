@@ -122,6 +122,8 @@ def _signals(**overrides) -> AdMarketSignals:
         price_vs_comparables_pct=-19.7,
         location_flags=["near_city_border"],
         location_notes=["Pinezka jest 835 m od granicy miasta Kraków."],
+        area_flags=["usable_area_smaller"],
+        area_notes=["Opis podaje 96,73 m² powierzchni użytkowej, a ogłoszenie 120 m²."],
         computed_at=datetime(2026, 10, 24),
     )
     values.update(overrides)
@@ -153,6 +155,13 @@ class TestMarketSignalsInContext(unittest.TestCase):
         context = build_ad_context(ad, signals=_signals())
 
         self.assertIn("835 m od granicy", context.address)
+
+    def test_area_warnings_follow_the_area(self):
+        ad = AdBuilder().build()
+
+        context = build_ad_context(ad, signals=_signals())
+
+        self.assertIn("96,73 m² powierzchni użytkowej", context.area_label)
 
     def test_comparables_stand_in_when_district_stats_are_missing(self):
         ad = AdBuilder().with_price(1_099_000, 9_158).build()

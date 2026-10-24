@@ -137,6 +137,8 @@ def to_market_signals(signals: Optional[AdMarketSignals]) -> Optional[MarketSign
         city_border_distance_m=signals.city_border_distance_m,
         location_flags=list(signals.location_flags or []),
         location_notes=list(signals.location_notes or []),
+        area_flags=list(signals.area_flags or []),
+        area_notes=list(signals.area_notes or []),
         computed_at=signals.computed_at,
     )
 

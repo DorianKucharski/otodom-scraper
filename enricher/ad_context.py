@@ -7,7 +7,7 @@ from data.description import plain_description
 from data.feature_groups import labelled_feature_groups
 from data.models import Ad, AdMarketSignals
 from data.signal_phrases import (
-    comparables_phrase, listing_history_phrase, location_warnings_phrase, transactions_phrase,
+    area_warnings_phrase, comparables_phrase, listing_history_phrase, location_warnings_phrase, transactions_phrase,
 )
 from .market_context import MarketContext
 
@@ -70,7 +70,7 @@ def build_ad_context(
         price_label=_money_label(ad.price_value, ad.price_currency),
         price_per_m2_label=_money_label(ad.price_per_m2, ad.price_currency, suffix=" za metr"),
         rent_label=_money_label(ad.rent_value, ad.rent_currency or "PLN") if ad.rent_value else None,
-        area_label=f"{float(ad.area_value):.1f} m2" if ad.area_value else "brak danych",
+        area_label=_with_area_warnings(f"{float(ad.area_value):.1f} m2" if ad.area_value else "brak danych", signals),
         rooms=ad.flat_number_of_rooms,
         floor=ad.flat_floor,
         building_floors=ad.building_number_of_floors,
@@ -108,6 +108,11 @@ def _address_of(ad: Ad) -> str:
 def _with_location_warnings(address: str, signals: Optional[AdMarketSignals]) -> str:
     warnings = location_warnings_phrase(signals)
     return f"{address} (uwaga: {warnings})" if warnings else address
+
+
+def _with_area_warnings(label: str, signals: Optional[AdMarketSignals]) -> str:
+    warnings = area_warnings_phrase(signals)
+    return f"{label} (uwaga: {warnings})" if warnings else label
 
 
 def _listing_history_label(ad: Ad, signals: Optional[AdMarketSignals]) -> str:

@@ -11,7 +11,7 @@ from data.feature_groups import labelled_feature_groups
 from data.inferred_types import object_type_of, offer_type_of
 from data.models import Ad, AdEvaluation, AdMarketSignals, AdScreening
 from data.signal_phrases import (
-    comparables_phrase, listing_history_phrase, location_warnings_phrase, transactions_phrase,
+    area_warnings_phrase, comparables_phrase, listing_history_phrase, location_warnings_phrase, transactions_phrase,
 )
 from ..labels import (
     BUILDING_HEATING, BUILDING_MATERIALS, BUILDING_TYPES, MARKETS, OBJECT_TYPES, OFFER_TYPES, PROPERTY_CONDITIONS,
@@ -204,6 +204,7 @@ def _market_history(ad: Ad, signals: Optional[AdMarketSignals]) -> Optional[str]
         comparables_phrase(signals),
         transactions_phrase(signals),
         f"uwaga na lokalizację: {warnings}" if warnings else None,
+        f"uwaga na metraż: {area_warnings_phrase(signals)}" if area_warnings_phrase(signals) else None,
     ]
     return "; ".join(part for part in parts if part) or None
 

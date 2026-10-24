@@ -12,6 +12,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from .derived_tables import ensure_table
+from .area_checks import AREA_TEXT_PATTERN, area_verdict
 from .comparables import ComparableRow, ComparablesIndex
 from .listing_lineage import ListingGroup, ListingRow, ListingText, build_groups, words_of
 from .location_checks import (
@@ -64,6 +65,7 @@ LEFT JOIN cities c ON c.id = a.city_id
 """)
 
 _TEXTS = text("SELECT id, title, description FROM ads WHERE id = ANY(:ids)")
+_AREA_TEXTS = text("SELECT id, title, description FROM ads WHERE description ~* :pattern AND description <> '***'")
 _FLAT_SALES = text("""
 SELECT t.id,
        t.market,
@@ -90,7 +92,8 @@ INSERT INTO ad_market_signals (
     comparables_p25_price_per_m2, comparables_p75_price_per_m2, price_vs_comparables_pct,
     transactions_count, transactions_radius_m, transactions_median_price_per_m2,
     transactions_p25_price_per_m2, transactions_p75_price_per_m2, price_vs_transactions_pct,
-    pin_city_name, pin_gmina_name, city_border_distance_m, location_flags, location_notes, computed_at
+    pin_city_name, pin_gmina_name, city_border_distance_m, location_flags, location_notes,
+    area_flags, area_notes, computed_at
 ) VALUES %s
 """
 
@@ -161,6 +164,8 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
     ]
     with engine.connect() as connection:
         descriptions = _load_raw_texts(connection, texts_needed)
+        area_texts = {row.id: (row.title, row.description) for row in connection.execute(_AREA_TEXTS, {"pattern": AREA_TEXT_PATTERN})}
+    logger.info("Checking area wording in %d descriptions", len(area_texts))
     places = PlaceFinder(place_centres)
 
     rows = []
@@ -177,6 +182,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
                 district_names.get(fact.city_name, ()),
             )
         lineage_verdict(fact.city_name, (facts[member].city_name for member in group.member_ids if member != ad_id), verdict)
+        area = area_verdict(fact.listing.area, *area_texts[ad_id]) if ad_id in area_texts else None
         stats = comparables.get(ad_id)
         price_per_m2 = fact.listing.price / fact.listing.area if fact.listing.area else None
         sold = sales.stats_for(fact.listing)
@@ -208,6 +214,8 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             check.border_m if check else None,
             Json(verdict.flags),
             Json(verdict.notes),
+            Json(area.flags if area else []),
+            Json(area.notes if area else []),
             now,
         ))
 

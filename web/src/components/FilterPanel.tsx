@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import type { AdSearchQuery, Facets, FacetValue } from '../api/types'
 import {
-  LOCATION_FLAG_LABELS, PRICE_TREND_LABELS, SCORE_FIELDS, SCORE_LABELS, SUSPICIOUS_LOCATION_FLAGS, TRACKING_LABELS,
+  AREA_FLAG_LABELS, LOCATION_FLAG_LABELS, PRICE_TREND_LABELS, SCORE_FIELDS, SCORE_LABELS, SUSPICIOUS_LOCATION_FLAGS, TRACKING_LABELS,
   TRACKING_STATUSES,
 } from '../api/types'
 
@@ -403,6 +403,21 @@ export function FilterPanel({ query, facets, onChange, onReset, onClose }: Filte
             })}
           />
         </label>
+        <span className="filter-caption">Ukryj ogłoszenia, w których metraż może być zawyżony</span>
+        {Object.entries(AREA_FLAG_LABELS).map(([flag, label]) => (
+          <label key={flag} className="filter-checkbox">
+            <input
+              type="checkbox"
+              checked={query.excluded_area_flags.includes(flag)}
+              onChange={(event) => onChange({
+                excluded_area_flags: event.target.checked
+                  ? [...query.excluded_area_flags, flag]
+                  : query.excluded_area_flags.filter((item) => item !== flag),
+              })}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
         <span className="filter-multi-header">
           Ukryj podejrzane lokalizacje
           <button

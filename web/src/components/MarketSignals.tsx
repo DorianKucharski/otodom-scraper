@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { fetchAdHistory } from '../api/client'
 import type { AdSummary, MarketSignals } from '../api/types'
-import { LOCATION_FLAG_LABELS } from '../api/types'
+import { AREA_FLAG_LABELS, LOCATION_FLAG_LABELS } from '../api/types'
 
 const LONG_ON_MARKET_DAYS = 90
 const NOTABLE_ON_MARKET_DAYS = 45
@@ -121,6 +121,15 @@ export function SignalChips({ ad }: SignalChipsProps) {
     })
   }
 
+  signals.area_flags.forEach((flag, index) => {
+    chips.push({
+      key: flag,
+      label: `⚠ ${AREA_FLAG_LABELS[flag] ?? flag}`,
+      tone: 'warn',
+      title: signals.area_notes[index] ?? '',
+    })
+  })
+
   for (const flag of signals.location_flags) {
     const nearBorder = flag === 'near_city_border'
     chips.push({
@@ -168,9 +177,9 @@ export function MarketHistory({ adId, signals }: MarketHistoryProps) {
     <section className="detail-parameters market-history">
       <h3>Historia ogłoszenia i rynek</h3>
 
-      {signals.location_notes.length > 0 && (
+      {signals.location_notes.length + signals.area_notes.length > 0 && (
         <ul className="detail-list market-warnings">
-          {signals.location_notes.map((note) => <li key={note}>{note}</li>)}
+          {[...signals.area_notes, ...signals.location_notes].map((note) => <li key={note}>{note}</li>)}
         </ul>
       )}
 

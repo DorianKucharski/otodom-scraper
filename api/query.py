@@ -296,6 +296,12 @@ def _market_signal_conditions(query: AdSearchQuery) -> list:
             Ad.scraped_at >= func.now() - func.make_interval(0, 0, 0, UNCHECKED_AFTER_DAYS),
         ))
 
+    if query.excluded_area_flags:
+        conditions.append(or_(
+            AdMarketSignals.ad_id.is_(None),
+            ~AdMarketSignals.area_flags.op("?|")(cast(query.excluded_area_flags, _TEXT_ARRAY)),
+        ))
+
     if query.excluded_location_flags:
         conditions.append(or_(
             AdMarketSignals.ad_id.is_(None),

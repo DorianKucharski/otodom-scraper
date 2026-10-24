@@ -171,6 +171,7 @@ export interface AdSearchQuery {
   min_price_vs_comparables_pct?: number
   max_price_vs_transactions_pct?: number
   excluded_location_flags: string[]
+  excluded_area_flags: string[]
   hide_unchecked: boolean
   tracking_statuses: TrackingStatus[]
   hide_dismissed: boolean
@@ -273,6 +274,8 @@ export interface MarketSignals {
   city_border_distance_m: number | null
   location_flags: string[]
   location_notes: string[]
+  area_flags: string[]
+  area_notes: string[]
   computed_at: string
 }
 
@@ -312,6 +315,12 @@ export const LOCATION_FLAG_LABELS: Record<string, string> = {
   other_place_in_text: 'Opis wymienia sąsiednią miejscowość',
   border_in_text: 'Opis wspomina granicę albo gminę',
   lineage_city_mismatch: 'Inne ogłoszenia lokalu podają inną miejscowość',
+}
+
+export const AREA_FLAG_LABELS: Record<string, string> = {
+  usable_area_smaller: 'Opis podaje mniejszą powierzchnię użytkową',
+  attic_slopes: 'Skosy albo metraż po podłodze',
+  appurtenant_included: 'W metrażu piwnica, komórka albo garaż',
 }
 
 export const SUSPICIOUS_LOCATION_FLAGS = [
