@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 COMPARABLE_RECENCY = timedelta(days=180)
 STALE_AFTER = timedelta(days=45)
 TRANSACTION_RECENCY = timedelta(days=730)
+PRIMARY_TRANSACTION_RECENCY = timedelta(days=365)
 MIN_TRANSACTIONS = 8
 MAX_FLAT_SALE_AREA = 180
 _HOUSE_TITLE = re.compile(HOUSE_TITLE_PATTERN, re.IGNORECASE)
@@ -95,6 +96,7 @@ FROM rcn_transactions t
 JOIN (SELECT transaction_key, count(*) AS lokale FROM rcn_transactions GROUP BY transaction_key) k
   ON k.transaction_key = t.transaction_key
 WHERE t.transaction_date >= :since
+  AND (t.market IS DISTINCT FROM 'rynekPierwotny' OR t.transaction_date >= :primary_since)
   AND t.function = 'mieszkalna'
   AND (t.share IS NULL OR t.share = '1/1')
   AND (t.transaction_kind IS NULL OR t.transaction_kind = 'wolnyRynek')
@@ -161,7 +163,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         observations = _load_observations(connection)
         place_centres = load_place_centres(connection)
         district_names = load_district_names(connection)
-        sales = TransactionIndex(_load_flat_sales(connection, now - TRANSACTION_RECENCY))
+        sales = TransactionIndex(_load_flat_sales(
+            connection, now - TRANSACTION_RECENCY, now - PRIMARY_TRANSACTION_RECENCY,
+        ))
         previous_sales = PreviousSaleIndex(_load_all_flat_sales(connection))
     logger.info("Loaded %d recent RCN flat sales", sales.size)
 
@@ -459,11 +463,11 @@ def _is_flat_sale(listing: ListingRow) -> bool:
     )
 
 
-def _load_flat_sales(connection, since: datetime) -> list[ComparableRow]:
+def _load_flat_sales(connection, since: datetime, primary_since: datetime) -> list[ComparableRow]:
     if not inspect(connection).has_table("rcn_transactions"):
         return []
     rows = []
-    for row in connection.execute(_FLAT_SALES, {"since": since}):
+    for row in connection.execute(_FLAT_SALES, {"since": since, "primary_since": primary_since}):
         if not row.price or not row.area_value:
             continue
         price_per_m2 = row.price / row.area_value
