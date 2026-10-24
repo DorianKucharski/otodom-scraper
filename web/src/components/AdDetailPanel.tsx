@@ -73,7 +73,7 @@ export function AdDetailPanel({ adId, variant, onClose, onToggleVariant }: AdDet
       <section className="detail-summary">
         <p className="detail-price">
           <strong>{formatPrice(ad)}</strong>
-          <span>{formatMoney(ad.price_per_m2, 'zł/m²')}</span>
+          {ad.price_per_m2 ? <span>{formatMoney(ad.price_per_m2, 'zł/m²')}</span> : null}
           {ad.rent_value ? <span>czynsz {formatMoney(ad.rent_value)}</span> : null}
         </p>
         <p className="detail-location">

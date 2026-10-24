@@ -63,7 +63,7 @@ export function AdCard({ ad, selected, onSelect }: AdCardProps) {
 
         <p className="ad-card-price">
           <strong>{formatPrice(ad)}</strong>
-          <span>{formatMoney(ad.price_per_m2, 'zł/m²')}</span>
+          {ad.price_per_m2 ? <span>{formatMoney(ad.price_per_m2, 'zł/m²')}</span> : null}
           {ad.tracking && <PriceChange saved={ad.tracking.price_at_save} current={ad.price_value} />}
         </p>
 
