@@ -15,7 +15,7 @@ _CELL_LON_DEGREES = 0.015
 _METRES_PER_DEGREE = 111_320
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ComparableRow:
     id: int
     group_id: int
@@ -27,7 +27,7 @@ class ComparableRow:
     price_per_m2: float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ComparableStats:
     count: int
     radius_m: int

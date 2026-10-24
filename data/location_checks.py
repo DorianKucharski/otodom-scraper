@@ -111,7 +111,7 @@ _TAG = re.compile(r"<[^>]+>")
 _METRES_PER_DEGREE = 111_320
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PinCheck:
     ad_id: int
     claimed_is_town: bool
@@ -139,6 +139,12 @@ class LocationVerdict:
         if flag not in self.flags:
             self.flags.append(flag)
         self.notes.append(note)
+
+    def merge(self, other: Optional["LocationVerdict"]):
+        if other is None:
+            return
+        self.flags.extend(flag for flag in other.flags if flag not in self.flags)
+        self.notes.extend(other.notes)
 
 
 def load_pin_checks(connection: Connection) -> dict[int, PinCheck]:

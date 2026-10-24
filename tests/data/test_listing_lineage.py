@@ -4,7 +4,7 @@ import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta
 
-from data.listing_lineage import ListingRow, ListingText, build_groups, words_of
+from data.listing_lineage import ListingRow, ListingText, build_groups, similarity, sketch_of, words_of
 
 _NOW = datetime(2026, 10, 24)
 
@@ -36,7 +36,7 @@ def _listing(listing_id: int, **overrides) -> ListingRow:
 def _texts(texts: dict[int, tuple[str, str]]):
     def load(ids):
         return {
-            ad_id: ListingText(title=words_of(title), description=words_of(description))
+            ad_id: ListingText(title=sketch_of(title), description=sketch_of(description))
             for ad_id, (title, description) in texts.items()
             if ad_id in set(ids)
         }
@@ -163,6 +163,9 @@ class TestListingLineage(unittest.TestCase):
 
 
 class TestWords(unittest.TestCase):
+
+    def test_short_texts_are_compared_exactly(self):
+        self.assertEqual(0.5, similarity(sketch_of("ogród balkon"), sketch_of("ogród taras balkon garaż")))
 
     def test_html_and_short_words_are_ignored(self):
         self.assertEqual(frozenset({"ogród", "balkon"}), words_of("<p>4M| ogród_balkon</p>"))

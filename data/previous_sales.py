@@ -17,7 +17,7 @@ _CELL_DEGREES = 0.002
 _METRES_PER_DEGREE = 111_320
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FlatSale:
     id: int
     sold_at: datetime

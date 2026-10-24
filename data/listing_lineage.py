@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+from array import array
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -24,7 +25,10 @@ _EARTH_RADIUS_M = 6_371_000
 _GRID_DEGREES = 0.03
 
 
-@dataclass(frozen=True)
+SKETCH_SIZE = 32
+
+
+@dataclass(frozen=True, slots=True)
 class ListingRow:
     id: int
     owner_id: Optional[int]
@@ -58,10 +62,10 @@ class Link:
     score: float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ListingText:
-    title: frozenset[str]
-    description: frozenset[str]
+    title: array
+    description: array
 
 
 @dataclass
@@ -77,10 +81,16 @@ def words_of(value: Optional[str]) -> frozenset[str]:
     return frozenset(word.lower() for word in _WORD.findall(_TAG.sub(" ", value)) if len(word) >= 3)
 
 
-def similarity(first: frozenset[str], second: frozenset[str]) -> float:
+def sketch_of(value: Optional[str]) -> array:
+    return array("q", sorted({hash(word) for word in words_of(value)})[:SKETCH_SIZE])
+
+
+def similarity(first: array, second: array) -> float:
     if not first or not second:
         return 0.0
-    return len(first & second) / len(first | second)
+    first_set, second_set = set(first), set(second)
+    union = sorted(first_set | second_set)[:SKETCH_SIZE]
+    return sum(1 for value in union if value in first_set and value in second_set) / len(union)
 
 
 def text_similarity(first: Optional[ListingText], second: Optional[ListingText]) -> float:

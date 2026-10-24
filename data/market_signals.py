@@ -3,19 +3,19 @@ from __future__ import annotations
 import logging
 import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
-from typing import Iterable, Mapping, Optional
+from typing import Iterable, Iterator, Mapping, Optional
 
 from psycopg2.extras import Json, execute_values
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from .derived_tables import ensure_table
-from .area_checks import AREA_TEXT_PATTERN, area_verdict
+from .area_checks import AREA_TEXT_PATTERN, AreaVerdict, area_verdict
 from .previous_sales import FlatSale, PreviousSaleIndex, floor_number
 from .comparables import ComparableRow, ComparablesIndex
-from .listing_lineage import ListingGroup, ListingRow, ListingText, build_groups, words_of
+from .listing_lineage import ListingGroup, ListingRow, ListingText, build_groups, sketch_of
 from .location_checks import (
     TEXT_CHECK_BORDER_M, LocationVerdict, PlaceFinder, lineage_verdict, load_district_names, load_pin_checks,
     load_place_centres, pin_verdict, text_verdict,
@@ -116,7 +116,7 @@ INSERT INTO ad_market_signals (
 """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AdFacts:
     listing: ListingRow
     status: str
@@ -181,27 +181,40 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         ad_id for ad_id, check in pin_checks.items()
         if check.claimed_is_town and (not check.inside_claimed or (check.border_m or 0) <= TEXT_CHECK_BORDER_M)
     ]
-    with engine.connect() as connection:
-        descriptions = _load_raw_texts(connection, texts_needed)
-        area_texts = {row.id: (row.title, row.description) for row in connection.execute(_AREA_TEXTS, {"pattern": AREA_TEXT_PATTERN})}
-    logger.info("Checking area wording in %d descriptions", len(area_texts))
     places = PlaceFinder(place_centres)
+    text_verdicts: dict[int, LocationVerdict] = {}
+    area_verdicts: dict[int, AreaVerdict] = {}
+    with engine.connect() as connection:
+        for ad_id, title, description in _iter_texts(connection, texts_needed):
+            fact = facts[ad_id]
+            verdict = LocationVerdict()
+            text_verdict(
+                fact.city_name, fact.listing.latitude, fact.listing.longitude, title, description, places, verdict,
+                district_names.get(fact.city_name, ()),
+            )
+            if verdict.flags:
+                text_verdicts[ad_id] = verdict
+        streamed = connection.execution_options(stream_results=True, yield_per=TEXT_BATCH_SIZE)
+        for row in streamed.execute(_AREA_TEXTS, {"pattern": AREA_TEXT_PATTERN}):
+            fact = facts.get(row.id)
+            verdict = area_verdict(fact.listing.area if fact else None, row.title, row.description)
+            if verdict.flags:
+                area_verdicts[row.id] = verdict
+    logger.info("Text checks flagged %d locations and %d areas", len(text_verdicts), len(area_verdicts))
 
-    rows = []
-    for ad_id, fact in facts.items():
+    def rows():
+        for ad_id, fact in facts.items():
+            yield _row(ad_id, fact)
+
+    def _row(ad_id: int, fact: AdFacts) -> tuple:
         group = groups[ad_id]
         history = histories[group.group_id]
         verdict = LocationVerdict()
         check = pin_checks.get(ad_id)
         pin_verdict(fact.city_name, check, verdict)
-        if ad_id in descriptions:
-            title, description = descriptions[ad_id]
-            text_verdict(
-                fact.city_name, fact.listing.latitude, fact.listing.longitude, title, description, places, verdict,
-                district_names.get(fact.city_name, ()),
-            )
+        verdict.merge(text_verdicts.get(ad_id))
         lineage_verdict(fact.city_name, (facts[member].city_name for member in group.member_ids if member != ad_id), verdict)
-        area = area_verdict(fact.listing.area, *area_texts[ad_id]) if ad_id in area_texts else None
+        area = area_verdicts.get(ad_id)
         stats = comparables.get(ad_id)
         price_per_m2 = fact.listing.price / fact.listing.area if fact.listing.area else None
         sold = sales.stats_for(fact.listing)
@@ -209,7 +222,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
             fact.listing.created_at, fact.listing.price, floor_number(fact.listing.floor),
         ) if _is_flat_sale(fact.listing) else None
-        rows.append((
+        return (
             ad_id,
             group.group_id,
             len(group.member_ids),
@@ -243,14 +256,17 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             previous.price if previous else None,
             previous.distance_m if previous else None,
             now,
-        ))
+        )
 
+    written = 0
     with engine.begin() as connection:
         connection.execute(text("DELETE FROM ad_market_signals"))
         cursor = connection.connection.cursor()
-        execute_values(cursor, _INSERT, rows, page_size=INSERT_PAGE_SIZE)
-    logger.info("Market signals written for %d ads", len(rows))
-    return len(rows)
+        for chunk in _chunks(rows(), INSERT_PAGE_SIZE):
+            execute_values(cursor, _INSERT, chunk, page_size=INSERT_PAGE_SIZE)
+            written += len(chunk)
+    logger.info("Market signals written for %d ads", written)
+    return written
 
 
 def group_history(
@@ -336,21 +352,31 @@ def _load_facts(connection, now: datetime) -> dict[int, AdFacts]:
 
 def _load_texts(connection, ids: Iterable[int]) -> dict[int, ListingText]:
     return {
-        ad_id: ListingText(
-            title=words_of(title),
-            description=frozenset() if is_masked(description) else words_of(description),
-        )
+        ad_id: ListingText(title=sketch_of(title), description=sketch_of(description))
         for ad_id, (title, description) in _load_raw_texts(connection, ids).items()
     }
 
 
 def _load_raw_texts(connection, ids: Iterable[int]) -> dict[int, tuple[Optional[str], Optional[str]]]:
+    return {ad_id: (title, description) for ad_id, title, description in _iter_texts(connection, ids)}
+
+
+def _iter_texts(connection, ids: Iterable[int]) -> Iterator[tuple[int, Optional[str], Optional[str]]]:
     ids = list(ids)
-    texts = {}
     for start in range(0, len(ids), TEXT_BATCH_SIZE):
         for row in connection.execute(_TEXTS, {"ids": ids[start:start + TEXT_BATCH_SIZE]}):
-            texts[row.id] = (row.title, None if is_masked(row.description) else row.description)
-    return texts
+            yield row.id, row.title, None if is_masked(row.description) else row.description
+
+
+def _chunks(items: Iterable, size: int) -> Iterator[list]:
+    chunk = []
+    for item in items:
+        chunk.append(item)
+        if len(chunk) == size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
 
 def _load_observations(connection) -> dict[int, list[tuple[datetime, int]]]:
@@ -401,7 +427,7 @@ class TransactionIndex:
         self.size = len(rows)
         self._by_market = ComparablesIndex(rows, min_comparables=MIN_TRANSACTIONS)
         self._any_market = ComparablesIndex(
-            [ComparableRow(**{**row.__dict__, "offer_type": None}) for row in rows], min_comparables=MIN_TRANSACTIONS,
+            [replace(row, offer_type=None) for row in rows], min_comparables=MIN_TRANSACTIONS,
         )
 
     def stats_for(self, listing: ListingRow):
@@ -413,7 +439,7 @@ class TransactionIndex:
             price_per_m2=listing.price / listing.area,
         )
         return self._by_market.stats_for(target) or self._any_market.stats_for(
-            ComparableRow(**{**target.__dict__, "offer_type": None})
+            replace(target, offer_type=None)
         )
 
 

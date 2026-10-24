@@ -1,13 +1,15 @@
 import json
 import logging
+import subprocess
 import sys
 from dataclasses import replace
+from pathlib import Path
 from time import sleep
 from typing import Optional
 
 import typer
 
-from data.market_signals import market_signals_due, refresh_market_signals
+from data.market_signals import market_signals_due
 from data.models import ServiceStatus
 from data.search_url import ObjectType, OfferType
 from database import DatabaseManager
@@ -78,6 +80,10 @@ def print_dry_run(summary: RunSummary) -> None:
             continue
         payload = {"ad_id": outcome.ad_id, "stage": summary.stage, **outcome.result.as_dict()}
         typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+SIGNALS_SCRIPT = Path(__file__).with_name("signals.py")
+MARKET_SIGNALS_TIMEOUT_SECONDS = 3600
 
 
 def main(
@@ -201,9 +207,14 @@ def main(
 
 def _refresh_market_signals_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
     try:
-        if market_signals_due(database_manager.engine, config.market_signals_interval_hours):
-            heartbeat.report(ServiceStatus.RUNNING, phase="historia ogłoszeń, ceny w okolicy, lokalizacja")
-            refresh_market_signals(database_manager.engine)
+        if not market_signals_due(database_manager.engine, config.market_signals_interval_hours):
+            return
+        heartbeat.report(ServiceStatus.RUNNING, phase="historia ogłoszeń, ceny w okolicy, lokalizacja")
+        result = subprocess.run(
+            [sys.executable, str(SIGNALS_SCRIPT)], timeout=MARKET_SIGNALS_TIMEOUT_SECONDS, check=False,
+        )
+        if result.returncode != 0:
+            logger.error("Market signals refresh exited with %s, keeping the previous ones", result.returncode)
     except Exception as error:
         logger.exception("Market signals refresh failed, keeping the previous ones: %s", error)
 
