@@ -15,6 +15,7 @@ from .street_checks import street_key
 AREA_TOLERANCE_M2 = 0.05
 EXACT_PRICE_RATIO = 0.01
 CLOSE_PRICE_RATIO = 0.05
+MAX_PRICE_GAP = 0.15
 MIN_SCORE = 2
 GONE_AFTER = timedelta(days=3)
 
@@ -139,6 +140,8 @@ def _score(unit: DeveloperUnitRow, street: Optional[str], rooms: Optional[int], 
         score += 2
     prices = [value for value in (unit.price, unit.first_price, unit.highest_price) if value]
     difference = min(abs(price - value) / value for value in prices)
+    if difference > MAX_PRICE_GAP:
+        return 0
     if difference <= EXACT_PRICE_RATIO:
         score += 2
     elif difference <= CLOSE_PRICE_RATIO:

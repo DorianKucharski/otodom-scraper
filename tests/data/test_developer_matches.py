@@ -28,6 +28,11 @@ class TestDeveloperUnitIndex(unittest.TestCase):
         self.assertEqual("B.1", match.unit.unit)
         self.assertEqual("Conrada 27, ul. Józefa Conrada 27, Kraków", match.investment_label)
 
+    def test_another_developer_on_the_same_street_is_not_taken_for_the_unit(self):
+        index = DeveloperUnitIndex([_unit(1, price=686_550, first_price=686_550, highest_price=686_550)])
+
+        self.assertIsNone(index.match("Kraków", "conrada", 68.0, 3, 950_300))
+
     def test_without_a_street_the_price_has_to_agree(self):
         index = DeveloperUnitIndex([_unit(1)])
 
