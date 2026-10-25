@@ -223,6 +223,24 @@ class MarketSignalsResponse(BaseModel):
     runway_approach_m: Optional[int] = None
     nuisance_flags: list[str] = Field(default_factory=list)
     nuisance_notes: list[str] = Field(default_factory=list)
+    developer_dataset_id: Optional[int] = None
+    developer_name: Optional[str] = None
+    developer_investment: Optional[str] = None
+    developer_unit: Optional[str] = None
+    developer_price: Optional[int] = None
+    developer_price_per_m2: Optional[int] = None
+    developer_price_since: Optional[datetime] = None
+    developer_first_seen: Optional[datetime] = None
+    developer_first_price: Optional[int] = None
+    developer_highest_price: Optional[int] = None
+    developer_last_seen: Optional[datetime] = None
+    developer_unit_gone: bool = False
+    developer_price_with_extras: Optional[int] = None
+    developer_extras: list[str] = Field(default_factory=list)
+    price_vs_developer_pct: Optional[float] = None
+    investment_units_listed: Optional[int] = None
+    investment_units_gone: Optional[int] = None
+    investment_tracked_since: Optional[datetime] = None
     computed_at: datetime
 
 

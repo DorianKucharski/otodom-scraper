@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 
 from data.market_signals import market_signals_due
+from data.developer_price_lists import due as developer_prices_due
 from data.overpass import osm_due
 from data.rcn import flat_sales_due
 from data.models import ServiceStatus
@@ -87,9 +88,11 @@ def print_dry_run(summary: RunSummary) -> None:
 SIGNALS_SCRIPT = Path(__file__).with_name("signals.py")
 TRANSACTIONS_SCRIPT = Path(__file__).with_name("load_transactions.py")
 OSM_SCRIPT = Path(__file__).with_name("load_osm.py")
+DEVELOPER_PRICES_SCRIPT = Path(__file__).with_name("load_developer_prices.py")
 OSM_TIMEOUT_SECONDS = 1800
 MARKET_SIGNALS_TIMEOUT_SECONDS = 3600
 TRANSACTIONS_TIMEOUT_SECONDS = 4 * 3600
+DEVELOPER_PRICES_TIMEOUT_SECONDS = 4 * 3600
 _last_attempts: dict[str, float] = {}
 
 
@@ -187,6 +190,7 @@ def main(
         if not dry_run:
             _refresh_transactions_if_due(database_manager, config, heartbeat)
             _refresh_osm_if_due(database_manager, config, heartbeat)
+            _refresh_developer_prices_if_due(database_manager, config, heartbeat)
             _refresh_market_signals_if_due(database_manager, config, heartbeat)
 
         if screen_enabled:
@@ -260,6 +264,27 @@ def _refresh_osm_if_due(database_manager: DatabaseManager, config: EnricherConfi
             logger.error("OpenStreetMap refresh exited with %s, keeping the previous data", result.returncode)
     except Exception as error:
         logger.exception("OpenStreetMap refresh failed, keeping the previous data: %s", error)
+
+
+def _refresh_developer_prices_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):
+    if not config.rcn_cities:
+        return
+    try:
+        with database_manager.engine.connect() as connection:
+            if not developer_prices_due(connection, config.developer_prices_refresh_hours):
+                return
+        if _attempted_recently("developer_prices", config.developer_prices_refresh_hours):
+            return
+        heartbeat.report(ServiceStatus.RUNNING, phase="cenniki deweloperów z dane.gov.pl")
+        arguments = [argument for city in config.rcn_cities for argument in ("--city", city)]
+        result = subprocess.run(
+            [sys.executable, str(DEVELOPER_PRICES_SCRIPT), *arguments], timeout=DEVELOPER_PRICES_TIMEOUT_SECONDS,
+            check=False,
+        )
+        if result.returncode != 0:
+            logger.error("Developer price lists refresh exited with %s, keeping the previous ones", result.returncode)
+    except Exception as error:
+        logger.exception("Developer price lists refresh failed, keeping the previous ones: %s", error)
 
 
 def _refresh_market_signals_if_due(database_manager: DatabaseManager, config: EnricherConfig, heartbeat):

@@ -37,6 +37,7 @@ class EnricherConfig:
     market_signals_interval_hours: float
     rcn_cities: tuple[str, ...]
     rcn_refresh_days: float
+    developer_prices_refresh_hours: float
 
     @classmethod
     def from_env(cls) -> "EnricherConfig":
@@ -72,6 +73,7 @@ class EnricherConfig:
             market_signals_interval_hours=_read_float("MARKET_SIGNALS_INTERVAL_HOURS", 6.0),
             rcn_cities=tuple(city.strip() for city in os.environ.get("RCN_CITIES", "").split(",") if city.strip()),
             rcn_refresh_days=_read_float("RCN_REFRESH_DAYS", 30.0),
+            developer_prices_refresh_hours=_read_float("DEVELOPER_PRICES_REFRESH_HOURS", 24.0),
         )
 
 

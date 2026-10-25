@@ -12,6 +12,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from .derived_tables import ensure_table
+from .developer_matches import DeveloperMatch, load_developer_units
 from .area_checks import AREA_TEXT_PATTERN, AreaVerdict, area_verdict
 from .previous_sales import FlatSale, PreviousSaleIndex, floor_number
 from .comparables import ComparableRow, ComparablesIndex, bounded_pct
@@ -110,6 +111,10 @@ INSERT INTO ad_market_signals (
     pin_city_name, pin_gmina_name, city_border_distance_m, location_flags, location_notes,
     area_flags, area_notes, previous_sale_at, previous_sale_price, previous_sale_distance_m,
     expressway_distance_m, expressway_label, railway_distance_m, runway_approach_m, nuisance_flags, nuisance_notes,
+    developer_dataset_id, developer_name, developer_investment, developer_unit, developer_price, developer_price_per_m2,
+    developer_price_since, developer_first_seen, developer_first_price, developer_highest_price, developer_last_seen,
+    developer_unit_gone, developer_price_with_extras, developer_extras, price_vs_developer_pct,
+    investment_units_listed, investment_units_gone, investment_tracked_since,
     computed_at
 ) VALUES %s
 """
@@ -165,7 +170,8 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         sales = TransactionIndex([row for row, _ in recent_sales])
         street_sales = StreetSalesIndex([sale for _, sale in recent_sales if sale is not None])
         previous_sales = PreviousSaleIndex(_load_all_flat_sales(connection))
-    logger.info("Loaded %d recent RCN flat sales", sales.size)
+        developer_units = load_developer_units(connection)
+    logger.info("Loaded %d recent RCN flat sales and %d developer price-list units", sales.size, developer_units.size)
 
     linked = sum(1 for group in {id(group): group for group in groups.values()}.values() if len(group.member_ids) > 1)
     logger.info("Linked listings into %d multi-listing groups", linked)
@@ -235,6 +241,9 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             fact.listing.latitude, fact.listing.longitude, fact.listing.area, fact.listing.rooms,
             fact.listing.created_at, fact.listing.price, floor_number(fact.listing.floor),
         ) if _is_flat_sale(fact.listing) else None
+        developer = developer_units.match(
+            fact.city_name, fact.street_key, fact.listing.area, fact.listing.rooms, fact.listing.price,
+        ) if fact.listing.offer_type in (None, "SALE") else None
         nuisance = None if pin_misplaced else nuisance_checks.get(ad_id)
         nuisances = nuisance_verdict(nuisance)
         return (
@@ -280,6 +289,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
             nuisance.approach_m if nuisance else None,
             Json(nuisances.flags),
             Json(nuisances.notes),
+            *_developer_values(developer, fact.listing.price),
             now,
         )
 
@@ -520,6 +530,32 @@ def _load_all_flat_sales(connection) -> list[FlatSale]:
         for row in connection.execute(_ALL_FLAT_SALES)
         if row.price and row.area_value and row.price / row.area_value >= MIN_TRANSACTION_PRICE_PER_M2
     ]
+
+
+def _developer_values(match: Optional[DeveloperMatch], price: Optional[int]) -> tuple:
+    if match is None:
+        return (None,) * 13 + (Json([]), None, None, None, None)
+    unit = match.unit
+    return (
+        unit.dataset_id,
+        unit.developer,
+        match.investment_label,
+        unit.unit,
+        unit.price,
+        unit.price_per_m2,
+        unit.price_since,
+        unit.first_seen,
+        unit.first_price,
+        unit.highest_price,
+        unit.last_seen,
+        match.gone,
+        unit.price_with_extras,
+        Json(list(unit.extras)),
+        _change_pct(price, unit.price),
+        match.investment.listed,
+        match.investment.gone,
+        match.investment.tracked_since,
+    )
 
 
 def _change_pct(price: Optional[int], first_price: Optional[int]) -> Optional[float]:

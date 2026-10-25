@@ -182,6 +182,32 @@ class TestMarketSignalsInContext(unittest.TestCase):
         self.assertEqual(15_000, context.market_stats.median_price_per_m2)
         self.assertIn("20% poniżej", context.market_stats.position_label)
 
+    def test_the_developer_price_list_follows_the_district_position(self):
+        ad = AdBuilder().with_location().with_price(1_050_000, 15_441).build()
+        stats = DistrictPriceStats(ad_count=42, median_price_per_m2=15_000, p25_price_per_m2=13_000,
+                                   p75_price_per_m2=16_000, is_city_level=False)
+        signals = _signals(
+            developer_name="MJM", developer_unit="B.93", developer_investment="Conrada 27, Kraków",
+            developer_price=998_000, developer_price_since=datetime(2026, 10, 17), price_vs_developer_pct=5.2,
+            developer_first_seen=datetime(2025, 9, 11), developer_first_price=1_017_600,
+            developer_extras=["miejsce postojowe: 45 000 zł"], developer_unit_gone=True,
+            developer_last_seen=datetime(2026, 10, 1), investment_units_listed=40, investment_units_gone=80,
+            investment_tracked_since=datetime(2025, 9, 11),
+        )
+
+        context = build_ad_context(
+            ad, market_context=MarketContext(_stats_by_key={(1, 2, False, None, None): stats}), signals=signals,
+        )
+
+        label = context.market_stats.position_label
+        self.assertIn("oficjalny cennik dewelopera MJM", label)
+        self.assertIn("998 000 zł od 2026-10-17", label)
+        self.assertIn("5% powyżej cennika", label)
+        self.assertIn("pierwsza cena 1 017 600 zł", label)
+        self.assertIn("miejsce postojowe: 45 000 zł", label)
+        self.assertIn("zniknął z cennika po 2026-10-01", label)
+        self.assertIn("40 lokali w cenniku, 80 zniknęło od 2025-09", label)
+
     def test_without_district_stats_there_is_no_market_section(self):
         ad = AdBuilder().with_price(1_099_000, 9_158).build()
 

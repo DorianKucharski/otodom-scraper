@@ -5,8 +5,8 @@ from typing import List, Optional
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import (
-    BigInteger, Integer, SmallInteger, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum, func,
-    LargeBinary
+    BigInteger, Boolean, Integer, SmallInteger, String, Text, Numeric, DateTime, ForeignKey, Index, UniqueConstraint, Enum,
+    func, LargeBinary
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -1161,6 +1161,24 @@ class AdMarketSignals(Base):
     runway_approach_m: Mapped[Optional[int]] = mapped_column(Integer)
     nuisance_flags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     nuisance_notes: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    developer_dataset_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    developer_name: Mapped[Optional[str]] = mapped_column(Text)
+    developer_investment: Mapped[Optional[str]] = mapped_column(Text)
+    developer_unit: Mapped[Optional[str]] = mapped_column(Text)
+    developer_price: Mapped[Optional[int]] = mapped_column(Integer)
+    developer_price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    developer_price_since: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    developer_first_seen: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    developer_first_price: Mapped[Optional[int]] = mapped_column(Integer)
+    developer_highest_price: Mapped[Optional[int]] = mapped_column(Integer)
+    developer_last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    developer_unit_gone: Mapped[Optional[bool]] = mapped_column(Boolean)
+    developer_price_with_extras: Mapped[Optional[int]] = mapped_column(Integer)
+    developer_extras: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    price_vs_developer_pct: Mapped[Optional[float]] = mapped_column(Numeric(6, 1))
+    investment_units_listed: Mapped[Optional[int]] = mapped_column(Integer)
+    investment_units_gone: Mapped[Optional[int]] = mapped_column(Integer)
+    investment_tracked_since: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
@@ -1238,3 +1256,79 @@ class OsmStreet(Base):
 
     def __repr__(self):
         return f"<OsmStreet(osm_id={self.osm_id}, name={self.name})>"
+
+
+class DeveloperPriceList(Base):
+    __tablename__ = 'developer_price_lists'
+
+    dataset_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    institution_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    relevant: Mapped[Optional[bool]] = mapped_column(Boolean)
+    latest_data_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    processed_data_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    history_from: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    units_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[Optional[str]] = mapped_column(Text)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    def __repr__(self):
+        return f"<DeveloperPriceList(dataset_id={self.dataset_id}, title={self.title})>"
+
+
+class DeveloperUnit(Base):
+    __tablename__ = 'developer_units'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    institution_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    dataset_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    unit_key: Mapped[str] = mapped_column(Text, nullable=False)
+    developer: Mapped[Optional[str]] = mapped_column(Text)
+    investment: Mapped[Optional[str]] = mapped_column(Text)
+    voivodeship: Mapped[Optional[str]] = mapped_column(String(100))
+    gmina: Mapped[Optional[str]] = mapped_column(String(200))
+    town: Mapped[str] = mapped_column(String(200), nullable=False)
+    street: Mapped[Optional[str]] = mapped_column(Text)
+    building_number: Mapped[Optional[str]] = mapped_column(String(100))
+    unit: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[Optional[str]] = mapped_column(Text)
+    area: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    rooms: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    floor: Mapped[Optional[str]] = mapped_column(String(100))
+    price: Mapped[Optional[int]] = mapped_column(Integer)
+    price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+    price_since: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    price_with_extras: Mapped[Optional[int]] = mapped_column(Integer)
+    extras: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    extras_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prospectus_url: Mapped[Optional[str]] = mapped_column(Text)
+    first_seen: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    last_seen: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    first_price: Mapped[Optional[int]] = mapped_column(Integer)
+    lowest_price: Mapped[Optional[int]] = mapped_column(Integer)
+    highest_price: Mapped[Optional[int]] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint('institution_id', 'unit_key', name='uq_developer_unit'),
+        Index('idx_developer_units_town', 'town'),
+    )
+
+    def __repr__(self):
+        return f"<DeveloperUnit(dataset_id={self.dataset_id}, unit={self.unit}, price={self.price})>"
+
+
+class DeveloperUnitPrice(Base):
+    __tablename__ = 'developer_unit_prices'
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    unit_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    observed_on: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    price: Mapped[Optional[int]] = mapped_column(Integer)
+    price_per_m2: Mapped[Optional[int]] = mapped_column(Integer)
+
+    __table_args__ = (
+        Index('idx_developer_unit_prices_unit', 'unit_id', 'observed_on'),
+    )
+
+    def __repr__(self):
+        return f"<DeveloperUnitPrice(unit_id={self.unit_id}, price={self.price})>"

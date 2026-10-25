@@ -290,6 +290,24 @@ export interface MarketSignals {
   runway_approach_m: number | null
   nuisance_flags: string[]
   nuisance_notes: string[]
+  developer_dataset_id: number | null
+  developer_name: string | null
+  developer_investment: string | null
+  developer_unit: string | null
+  developer_price: number | null
+  developer_price_per_m2: number | null
+  developer_price_since: string | null
+  developer_first_seen: string | null
+  developer_first_price: number | null
+  developer_highest_price: number | null
+  developer_last_seen: string | null
+  developer_unit_gone: boolean
+  developer_price_with_extras: number | null
+  developer_extras: string[]
+  price_vs_developer_pct: number | null
+  investment_units_listed: number | null
+  investment_units_gone: number | null
+  investment_tracked_since: string | null
   computed_at: string
 }
 

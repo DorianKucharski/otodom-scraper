@@ -51,6 +51,26 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleDateString('pl-PL') : '-'
 }
 
+function developerTitle(signals: MarketSignals): string {
+  const parts = [
+    `Oficjalny cennik ${signals.developer_name ?? 'dewelopera'} z dane.gov.pl, lokal ${signals.developer_unit} ` +
+      `(${signals.developer_investment}): ${money(signals.developer_price)}` +
+      (signals.developer_price_per_m2 ? `, ${money(signals.developer_price_per_m2, 'zł/m²')}` : '') +
+      (signals.developer_price_since ? `, cena od ${formatDate(signals.developer_price_since)}` : '') + '.',
+  ]
+  if (signals.developer_first_price && signals.developer_first_price !== signals.developer_price) {
+    parts.push(`W cenniku od ${formatDate(signals.developer_first_seen)}, pierwsza cena ${money(signals.developer_first_price)}.`)
+  }
+  if (signals.developer_highest_price && signals.developer_highest_price > (signals.developer_price ?? 0)) {
+    parts.push(`Najwyższa cena w cenniku: ${money(signals.developer_highest_price)}.`)
+  }
+  if (signals.developer_unit_gone) {
+    parts.push(`Lokal zniknął z cennika po ${formatDate(signals.developer_last_seen)}: może być sprzedany albo zarezerwowany.`)
+  }
+  parts.push('Dopasowanie po miejscowości, metrażu, ulicy i cenie, więc warto potwierdzić numer lokalu.')
+  return parts.join(' ')
+}
+
 function transactionsTitle(signals: MarketSignals): string {
   return (
     `Mediana ${money(signals.transactions_median_price_per_m2, 'zł/m²')} z ${signals.transactions_count} sprzedaży lokali ` +
@@ -136,6 +156,21 @@ export function SignalChips({ ad }: SignalChipsProps) {
         `Rejestr Cen Nieruchomości: sprzedaż lokalu o tym samym metrażu ${signals.previous_sale_distance_m} m od pinezki, ` +
         `${formatDate(signals.previous_sale_at)}, ${money(signals.previous_sale_price)}. Najpewniej to ten sam lokal, ` +
         'czyli tyle zapłacił obecny właściciel.',
+    })
+  }
+
+  if (signals.developer_price !== null) {
+    const value = signals.price_vs_developer_pct
+    const differs = value !== null && Math.abs(value) >= 1
+    chips.push({
+      key: 'developer',
+      label: signals.developer_unit_gone
+        ? 'zniknęło z cennika dewelopera'
+        : differs
+          ? `${percent(value)} vs cennik dewelopera`
+          : 'zgodne z cennikiem dewelopera',
+      tone: signals.developer_unit_gone || (value ?? 0) >= 1 ? 'bad' : 'neutral',
+      title: developerTitle(signals),
     })
   }
 
@@ -298,6 +333,28 @@ export function MarketHistory({ adId, signals }: MarketHistoryProps) {
             <dd>
               {formatDate(signals.previous_sale_at)}: {money(signals.previous_sale_price)}
               {` (ten sam metraż, ${signals.previous_sale_distance_m} m od pinezki, najpewniej ten lokal)`}
+            </dd>
+          </div>
+        )}
+        {signals.developer_price !== null && (
+          <div>
+            <dt>Cennik dewelopera</dt>
+            <dd title={developerTitle(signals)}>
+              {signals.developer_dataset_id !== null ? (
+                <a href={`https://dane.gov.pl/pl/dataset/${signals.developer_dataset_id}`} target="_blank" rel="noreferrer">
+                  lokal {signals.developer_unit}
+                </a>
+              ) : `lokal ${signals.developer_unit}`}
+              {`: ${money(signals.developer_price)}`}
+              {signals.developer_price_since && ` od ${formatDate(signals.developer_price_since)}`}
+              {signals.developer_first_price !== null && signals.developer_first_price !== signals.developer_price &&
+                `, pierwsza cena ${money(signals.developer_first_price)} (${formatDate(signals.developer_first_seen)})`}
+              {signals.developer_price_with_extras !== null && signals.developer_price_with_extras > (signals.developer_price ?? 0) &&
+                `, z dodatkami ${money(signals.developer_price_with_extras)}`}
+              {signals.developer_extras.length > 0 && `, w cenniku też: ${signals.developer_extras.join('; ')}`}
+              {signals.investment_units_listed !== null &&
+                `. Inwestycja: ${signals.investment_units_listed} lokali w cenniku, ${signals.investment_units_gone} ` +
+                `zniknęło od ${formatDate(signals.investment_tracked_since)}`}
             </dd>
           </div>
         )}
