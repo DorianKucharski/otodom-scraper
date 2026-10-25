@@ -187,6 +187,56 @@ class TestListingLineage(unittest.TestCase):
         self.assertEqual([2], groups[2].member_ids)
 
 
+    def test_an_agency_relisting_a_flat_cheaper_before_the_old_ad_is_gone_is_one_flat(self):
+        description = "Dwupoziomowe mieszkanie, ogródek, dwa miejsca postojowe, strych nad mieszkaniem"
+        listings = [
+            _listing(1, area=101.08, rooms=5, price=1_250_000, created_at=datetime(2026, 9, 2)),
+            _listing(2, area=101.08, rooms=5, price=1_199_000, created_at=datetime(2026, 10, 20)),
+        ]
+        texts = {1: ("101,8 m² | 5 pokoi | ogródek", description), 2: ("101,8 m² | 5 pokoi | ogródek", description)}
+
+        groups = build_groups(listings, _texts(texts), _NOW)
+
+        self.assertEqual([1, 2], groups[2].member_ids)
+        self.assertIn("relisted", groups[2].link_kinds)
+
+    def test_a_developer_relisting_identical_units_at_new_prices_keeps_them_apart(self):
+        description = "Nowa inwestycja, lokal z ogródkiem, hala garażowa"
+        listings = [
+            _listing(1, market="PRIMARY", area=101.08, price=1_250_000, created_at=datetime(2026, 9, 2)),
+            _listing(2, market="PRIMARY", area=101.08, price=1_199_000, created_at=datetime(2026, 10, 20)),
+        ]
+        texts = {1: ("Lokal z ogródkiem", description), 2: ("Lokal z ogródkiem", description)}
+
+        groups = build_groups(listings, _texts(texts), _NOW)
+
+        self.assertEqual([2], groups[2].member_ids)
+
+    def test_a_segment_listed_once_as_a_house_and_once_as_a_flat_is_one_listing_history(self):
+        description = "Segment przy lesie, trzy kondygnacje, ogródek, dwa miejsca postojowe"
+        listings = [
+            _listing(1, object_type="APARTMENT", floor=None, area=125.78, price=1_300_000,
+                     created_at=datetime(2026, 3, 16), ended_at=datetime(2026, 5, 1)),
+            _listing(2, object_type="HOUSE", floor=None, area=125.78, price=1_250_000, created_at=datetime(2026, 7, 5)),
+        ]
+        texts = {1: ("Segment Premium przy lesie", description), 2: ("Segment Premium przy lesie", description)}
+
+        groups = build_groups(listings, _texts(texts), _NOW)
+
+        self.assertEqual([1, 2], groups[2].member_ids)
+
+    def test_two_advertisers_counting_rooms_differently_still_offer_one_flat(self):
+        listings = [
+            _listing(1, owner_id=1, area=149.5, rooms=5, floor=None, object_type="HOUSE", price=1_045_000),
+            _listing(2, owner_id=2, area=149.5, rooms=4, floor=None, object_type="HOUSE", price=1_045_000,
+                     created_at=datetime(2026, 6, 3)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([1, 2], groups[2].member_ids)
+        self.assertIn("parallel", groups[2].link_kinds)
+
     def test_a_round_area_alone_does_not_make_two_offers_one_flat(self):
         listings = [
             _listing(1, owner_id=1, price=3_200, area=40.0, rooms=2, floor="FLOOR_2", offer_type="RENT"),

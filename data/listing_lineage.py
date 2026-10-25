@@ -139,11 +139,13 @@ def candidate_pairs(rows: Iterable[ListingRow]) -> list[tuple[ListingRow, Listin
 def attributes_match(earlier: ListingRow, later: ListingRow) -> bool:
     if earlier.id == later.id:
         return False
-    if not _same_kind(earlier.offer_type, later.offer_type) or not _same_kind(earlier.object_type, later.object_type):
+    if not _same_kind(earlier.offer_type, later.offer_type):
+        return False
+    if not _same_kind(earlier.object_type, later.object_type) and not _segment_listed_both_ways(earlier, later):
         return False
     if abs(earlier.area - later.area) > max(0.15, 0.005 * earlier.area):
         return False
-    if not _equal_when_known(earlier.rooms, later.rooms):
+    if not _rooms_match(earlier, later):
         return False
     if not _equal_when_known(earlier.floor, later.floor):
         return False
@@ -176,6 +178,8 @@ def classify(
     if _overlap(earlier, later, now):
         if same_owner and price_ratio <= 0.01 and text_similarity >= MIN_DUPLICATE_TEXT_SIMILARITY:
             return Link(earlier.id, later.id, "duplicate", 3 + text_similarity)
+        if _relisted(earlier, later, same_owner, price_ratio) and text_similarity >= MIN_DUPLICATE_TEXT_SIMILARITY:
+            return Link(earlier.id, later.id, "relisted", 2.7 + text_similarity - price_ratio)
         if _parallel_offer(earlier, later, same_owner, price_ratio, distance):
             return Link(earlier.id, later.id, "parallel", 2.5 - price_ratio)
         return None
@@ -255,6 +259,8 @@ def _live_together(first: ListingRow, second: ListingRow, now: datetime) -> bool
     if first.price == second.price:
         return False
     same_owner = first.owner_id is not None and first.owner_id == second.owner_id
+    if _relisted(first, second, same_owner, _price_ratio(first, second)):
+        return False
     if _parallel_offer(first, second, same_owner, _price_ratio(first, second), distance_m(first, second)):
         return False
     if abs(first.created_at - second.created_at) < SERIES_WINDOW:
@@ -276,10 +282,35 @@ def _parallel_offer(
         not same_owner
         and _identifying_area(earlier)
         and price_ratio <= PARALLEL_PRICE_TOLERANCE
-        and earlier.rooms is not None and earlier.rooms == later.rooms
-        and earlier.floor is not None and earlier.floor == later.floor
+        and earlier.rooms is not None and later.rooms is not None and abs(earlier.rooms - later.rooms) <= 1
+        and (earlier.floor == later.floor if earlier.floor and later.floor else earlier.floor is None and later.floor is None)
         and distance is not None and distance <= MAX_PARALLEL_DISTANCE_M
     )
+
+
+def _relisted(earlier: ListingRow, later: ListingRow, same_owner: bool, price_ratio: float) -> bool:
+    return (
+        same_owner
+        and _identifying_area(earlier)
+        and "PRIMARY" not in ((earlier.market or "").upper(), (later.market or "").upper())
+        and price_ratio <= SAME_OWNER_PRICE_TOLERANCE
+        and _equal_when_known(earlier.floor, later.floor)
+        and earlier.rooms == later.rooms
+    )
+
+
+def _segment_listed_both_ways(earlier: ListingRow, later: ListingRow) -> bool:
+    return (
+        {earlier.object_type, later.object_type} == {"HOUSE", "APARTMENT"}
+        and earlier.owner_id is not None and earlier.owner_id == later.owner_id
+        and _identifying_area(earlier)
+    )
+
+
+def _rooms_match(earlier: ListingRow, later: ListingRow) -> bool:
+    if earlier.rooms is None or later.rooms is None or earlier.rooms == later.rooms:
+        return True
+    return abs(earlier.rooms - later.rooms) == 1 and _identifying_area(earlier) and _identifying_area(later)
 
 
 def _identifying_area(row: ListingRow) -> bool:
