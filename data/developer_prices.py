@@ -11,14 +11,15 @@ from typing import Iterable, Iterator, Optional
 from lxml import etree
 
 from .search_url import normalize_name
+from .structured_price_lists import json_rows, xml_rows
 
-PARSED_FORMATS = ("xlsx", "csv")
+PARSED_FORMATS = ("xlsx", "csv", "json", "xml")
 MAX_HEADER_SEARCH_ROWS = 15
 MIN_UNIT_PRICE = 20_000
 MIN_PRICE_PER_M2 = 1_000
 MAX_PRICE_PER_M2 = 100_000
 
-_EMPTY_VALUES = {"", "x", "-", "--", "brak", "nie dotyczy", "n/d", "nd", "none", "null", "0", "0,00", "0.00"}
+_EMPTY_VALUES = {"", "x", "-", "--", "brak", "nie dotyczy", "n/d", "nd", "nd.", "none", "null", "0", "0,00", "0.00"}
 _PLACE_PREFIX = re.compile(r"^(?:m\.|m\.st\.|miasto|gmina|gm\.|powiat|pow\.|woj\.|wojewodztwo)\s+")
 _SHEET_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 _PROJECT = ("przedsiewziecia", "inwestycji", "zadania")
@@ -89,6 +90,10 @@ def parse_price_list(content: bytes, file_format: str) -> list[PriceListUnit]:
         rows = _xlsx_rows(content)
     elif file_format == "csv":
         rows = _csv_rows(content)
+    elif file_format == "json":
+        rows = json_rows(content)
+    elif file_format == "xml":
+        rows = xml_rows(content)
     else:
         return []
     return list(units_from_rows(rows))
@@ -124,7 +129,7 @@ def _columns_of(row: list) -> Optional[_Columns]:
 
     def find(*required: str, excluded: tuple[str, ...] = (), starts: Optional[str] = None) -> Optional[int]:
         for index, header in enumerate(headers):
-            if starts is not None and not header.startswith(starts):
+            if starts is not None and not header.startswith(starts) and f" {starts} " not in f" {header} ":
                 continue
             if all(part in header for part in required) and not any(part in header for part in excluded):
                 return index
@@ -139,7 +144,7 @@ def _columns_of(row: list) -> Optional[_Columns]:
 
     price_per_m2 = find("cena", "m2", excluded=("data",), starts="cena")
     price = _first(
-        find("cena", "iloczyn", excluded=("data", "uwzgledniajac"), starts="cena"),
+        find("cena", "ilocz", excluded=("data", "uwzgledniajac"), starts="cena"),
         find("cena", excluded=_NOT_UNIT_PRICE, starts="cena"),
     )
     unit = _first(
@@ -147,7 +152,7 @@ def _columns_of(row: list) -> Optional[_Columns]:
         find("nadany przez dewelopera", excluded=_NOT_UNIT_LABEL),
     )
     if price_per_m2 is None or price is None or unit is None:
-        return None
+        return _loose_columns_of(headers)
     return _Columns(
         developer=find("nazwa dewelopera"),
         investment=_first(find("nazwa", "inwestycji", excluded=("dewelopera", "adres strony")), find("nazwa przedsiewziecia")),
@@ -172,6 +177,76 @@ def _columns_of(row: list) -> Optional[_Columns]:
             (find("wyszczegolnienie rodzajow innych"), None, find("wartosc innych")),
         ),
         prospectus=find("prospekt"),
+    )
+
+
+def _loose_columns_of(headers: list[str]) -> Optional[_Columns]:
+    def find(*candidates: str, excluded: tuple[str, ...] = ()) -> Optional[int]:
+        for candidate in candidates:
+            for index, header in enumerate(headers):
+                words = f" {header} "
+                tail = " ".join(header.split()[-(len(candidate.split()) + 1):])
+                if f" {candidate} " in words and header.endswith(candidate.split()[-1])                         and not any(part in tail for part in excluded):
+                    return index
+        return None
+
+    elsewhere = ("sales", "office", "siedzib", "biur", "sprzedaz", "developer", "dewelopera", "company", "firma",
+                 "kontakt", "contact", "korespond", "phone", "telefon", "tel", "fax", "tax", "nip", "regon", "krs",
+                 "postal", "pocztow", "email", "mail", "url", "www")
+    town = find("miejscowosc", "miasto", "city", "town", "locality", "miejscowosci", excluded=elsewhere)
+    unit = find("nr lokalu", "numer lokalu", "id lokalu", "unit number", "unit id", "unit no", "lokal no", "nr mieszkania", "numer mieszkania",
+                "oznaczenie lokalu", "lokal", "unit", "product name", "symbol", "nr obiektu", "identyfikator", "numer",
+                "number", "nr", "id",
+                excluded=elsewhere + ("inwestycj", "investment", "project", "projekt", "budyn", "building", "ulic",
+                                      "street", "status", "typ", "type", "rodzaj", "kind", "kondygn", "floor", "pietro",
+                                      "pow", "area", "cena", "price"))
+    price_words = ("cena", "price", "gross", "brutto", "wartosc", "value")
+    not_total = ("m2", "metr", "meter", "data", "date", "promoc", "najnizsz", "lowest", "30 dni", "netto", "net", "vat",
+                 "historia", "history", "dzialk", "parking", "garaz", "komork", "miejsc", "postoj")
+    price = None
+    for preferred in ("cena calkowita", "cena aktualna", "cena brutto", "total price", "price gross", "price brutto",
+                      "cena lokalu",
+                      "cena mieszkania", "aktualna cena cena", "cena", "price", "gross", "brutto"):
+        price = find(preferred, excluded=not_total)
+        if price is not None:
+            break
+    tails = [" ".join(header.split()[-4:]) for header in headers]
+    per_m2 = next((index for index, tail in enumerate(tails)
+                   if any(word in tail for word in price_words) and any(unit in tail for unit in ("m2", "metr", "meter"))
+                   and not any(part in tail for part in ("data", "date", "promoc", "najnizsz", "lowest", "netto",
+                                                         "calkowit"))),
+                  None)
+    if town is None or unit is None or price is None:
+        return None
+    return _Columns(
+        developer=find("developer name", "nazwa dewelopera", "company name", "firma deweloperska", "developer",
+                       "deweloper"),
+        investment=find("investment name", "nazwa inwestycji", "project name", "nazwa przedsiewziecia",
+                        "nazwa projektu", "inwestycja", "investment"),
+        voivodeship=find("wojewodztwo", "voivodeship", "region", excluded=elsewhere),
+        gmina=find("gmina", "municipality", "commune", excluded=elsewhere),
+        town=town,
+        street=find("ulica", "street", excluded=elsewhere + ("number", "numer", "nr")),
+        building_number=find("numer ulicy", "nr ulicy", "street number", "building number", "buildings number",
+                             "numer budynku",
+                             "nr budynku", "nr domu", "numer domu", "budynek", "building", excluded=elsewhere),
+        unit=unit,
+        kind=find("rodzaj nieruchomosci", "typ nieruchomosci", "product type", "rodzaj", "typ", "type", "kind"),
+        area=find("powierzchnia uzytkowa", "pow uzytkowa", "powierzchnia m2", "powierzchnia", "metraz m2", "metraz",
+                  "usable area", "area m2", "area", "pow u", "powu",
+                  excluded=("dzialk", "ogrod", "balkon", "taras", "plot", "garden", "calkowit", "cena", "price",
+                            "loggi", "przynalez")),
+        rooms=find("liczba pokoi", "ilosc pokoi", "pokoje", "pokoi", "rooms", "rooms count"),
+        floor=find("pietro", "kondygnacja", "floor"),
+        price=price,
+        price_per_m2=per_m2,
+        price_since=next((index for index, tail in enumerate(tails)
+                          if any(word in tail for word in ("data", "date", "obowiazuje", "valid from"))
+                          and not any(part in tail for part in ("histor", "name", "nazwa", "set", "utworz",
+                                                                   "created", "generat", "oddania", "odbior"))), None),
+        price_with_extras=None,
+        extras=(),
+        prospectus=find("prospekt", "prospectus", "prospekt informacyjny"),
     )
 
 

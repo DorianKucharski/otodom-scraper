@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import date
 
-from data.developer_price_lists import Resource, in_places, sampled
+from data.developer_price_lists import Resource, in_places, same_area, sampled
 from data.developer_prices import parse_price_list, place_name, units_from_rows
 
 _TEMPLATE_HEADER = [
@@ -126,6 +126,11 @@ class TestSampling(unittest.TestCase):
         picked = sampled(self.__resources(1, 2, 3, 9, 10, 20), None, 7)
 
         self.assertEqual([1, 9, 20], [resource.data_date.day for resource in picked])
+
+    def test_a_unit_number_reused_for_another_area_is_another_flat(self):
+        self.assertTrue(same_area(29.77, 29.80))
+        self.assertFalse(same_area(51.67, 29.77))
+        self.assertTrue(same_area(None, 29.77))
 
     def test_only_files_after_the_processed_date_are_taken(self):
         picked = sampled(self.__resources(1, 2, 3), date(2026, 1, 2), 7)

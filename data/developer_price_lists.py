@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Iterator, Optional
 
@@ -14,6 +14,7 @@ from sqlalchemy.engine import Connection, Engine
 
 from .derived_tables import ensure_table
 from .developer_prices import PARSED_FORMATS, PriceListUnit, parse_price_list, place_name
+from .structured_price_lists import harvester_link
 from .models import DeveloperPriceList, DeveloperUnit, DeveloperUnitPrice
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ RECHECK_IRRELEVANT_DAYS = 30
 HISTORY_STEP_DAYS = 30
 UPDATE_STEP_DAYS = 7
 PROGRESS_EVERY = 1000
+SAME_AREA_RATIO = 0.02
 
 _TARGET_PLACES = text("""
 WITH target AS (
@@ -74,6 +76,16 @@ UPDATE developer_units u SET
     highest_price = greatest(u.highest_price, v.price::int)
 FROM (VALUES %s) AS v(id, observed_at, price)
 WHERE u.id = v.id AND v.observed_at::timestamp < u.first_seen
+"""
+
+_RESET_UNITS = """
+WITH reset AS (
+    UPDATE developer_units u SET first_seen = v.observed_at::timestamp, first_price = v.price::int
+    FROM (VALUES %s) AS v(id, observed_at, price)
+    WHERE u.id = v.id
+    RETURNING u.id
+)
+DELETE FROM developer_unit_prices p USING reset WHERE p.unit_id = reset.id
 """
 
 _INSERT_PRICES = "INSERT INTO developer_unit_prices (unit_id, observed_on, price, price_per_m2) VALUES %s"
@@ -120,6 +132,12 @@ class KnownList:
     relevant: Optional[bool]
     processed_data_date: Optional[date]
     checked_at: datetime
+    error: Optional[str] = None
+
+    def due(self, recheck_before: datetime) -> bool:
+        if self.relevant is not False or self.checked_at < recheck_before:
+            return True
+        return (self.error or "").removeprefix("format ") in PARSED_FORMATS
 
 
 @dataclass
@@ -158,7 +176,7 @@ class DaneGovClient:
 
     def developer_institution_ids(self) -> set[int]:
         return {
-            int(item["id"]) for item in self.pages("/institutions")
+            int(item["id"]) for item in self.pages("/institutions", {"sort": "id"})
             if (item.get("attributes") or {}).get("institution_type") == DEVELOPER_INSTITUTION
         }
 
@@ -171,7 +189,7 @@ class DaneGovClient:
         try:
             return [
                 Dataset(int(item["id"]), institution_id, (item.get("attributes") or {}).get("title") or "")
-                for item in self.pages(f"/institutions/{institution_id}/datasets")
+                for item in self.pages(f"/institutions/{institution_id}/datasets", {"sort": "id"})
             ]
         except requests.RequestException as error:
             logger.info("Skipping datasets of institution %s: %s", institution_id, error)
@@ -271,7 +289,7 @@ def fetch_dataset(client: DaneGovClient, dataset: Dataset, known: Optional[Known
             result.relevant = False
             result.error = f"format {latest.file_format or 'unknown'}"
             return result
-        units = [unit for unit in parse_price_list(client.download(latest), latest.file_format) if in_places(unit, places)]
+        units = [unit for unit in units_of(client, latest) if in_places(unit, places)]
         result.relevant = bool(units)
         if units:
             history = [resource for resource in client.resources(dataset.dataset_id) if resource.data_date < latest.data_date]
@@ -284,13 +302,24 @@ def fetch_dataset(client: DaneGovClient, dataset: Dataset, known: Optional[Known
     return result
 
 
+def units_of(client: DaneGovClient, resource: Resource) -> list[PriceListUnit]:
+    content = client.download(resource)
+    units = parse_price_list(content, resource.file_format)
+    if units or resource.file_format != "xml":
+        return units
+    link = harvester_link(content, resource.data_date)
+    if link is None:
+        return []
+    url, file_format = link
+    return parse_price_list(client.download(replace(resource, url=url, file_format=file_format)), file_format)
+
+
 def _snapshots(client: DaneGovClient, resources: list[Resource], places: set[str]) -> Iterator[tuple[date, list]]:
     for resource in resources:
         if resource.file_format not in PARSED_FORMATS or not resource.url:
             continue
         try:
-            units = [unit for unit in parse_price_list(client.download(resource), resource.file_format)
-                     if in_places(unit, places)]
+            units = [unit for unit in units_of(client, resource) if in_places(unit, places)]
         except Exception as error:
             logger.info("Skipping %s from %s: %s", resource.url, resource.data_date, error)
             continue
@@ -303,17 +332,24 @@ def apply_snapshot(connection: Connection, institution_id: int, dataset_id: int,
     observed_at = datetime.combine(observed_on, datetime.min.time())
     existing = {
         row.unit_key: row for row in connection.execute(text(
-            "SELECT id, unit_key, price, price_per_m2, lowest_price, highest_price, first_seen, last_seen "
+            "SELECT id, unit_key, area::float AS area, price, price_per_m2, lowest_price, highest_price, first_seen, "
+            "last_seen "
             "FROM developer_units WHERE institution_id = :institution_id"
         ), {"institution_id": institution_id})
     }
-    earlier = []
+    earlier, renumbered = [], []
     cursor = connection.connection.cursor()
     new_units, updates, prices = [], [], []
     for unit in units:
         row = existing.get(unit.key)
         if row is None:
             new_units.append(unit)
+            continue
+        if not same_area(row.area, unit.area):
+            if observed_at > row.last_seen:
+                renumbered.append((row.id, observed_at, unit.price))
+                prices.append((row.id, observed_at, unit.price, unit.price_per_m2))
+                updates.append(_update_row(row.id, dataset_id, unit, observed_at, unit.price, unit.price))
             continue
         if observed_at < row.first_seen:
             earlier.append((row.id, observed_at, unit.price))
@@ -323,11 +359,7 @@ def apply_snapshot(connection: Connection, institution_id: int, dataset_id: int,
             continue
         lowest = min(filter(None, (row.lowest_price, unit.price)), default=None)
         highest = max(filter(None, (row.highest_price, unit.price)), default=None)
-        updates.append((
-            row.id, dataset_id, unit.developer, unit.investment, unit.street, unit.kind, unit.area, unit.rooms, unit.floor,
-            unit.price, unit.price_per_m2, unit.price_since, unit.price_with_extras, Json(unit.extras),
-            unit.extras_value, unit.prospectus_url, observed_at, lowest, highest,
-        ))
+        updates.append(_update_row(row.id, dataset_id, unit, observed_at, lowest, highest))
         if (unit.price, unit.price_per_m2) != (row.price, row.price_per_m2):
             prices.append((row.id, observed_at, unit.price, unit.price_per_m2))
     if new_units:
@@ -337,6 +369,8 @@ def apply_snapshot(connection: Connection, institution_id: int, dataset_id: int,
         )
         prices.extend((unit_id, observed_at, unit.price, unit.price_per_m2)
                       for (unit_id, _), unit in zip(inserted, new_units))
+    if renumbered:
+        execute_values(cursor, _RESET_UNITS, renumbered)
     if updates:
         execute_values(cursor, _UPDATE_UNITS, updates)
     if earlier:
@@ -344,6 +378,21 @@ def apply_snapshot(connection: Connection, institution_id: int, dataset_id: int,
     if prices:
         execute_values(cursor, _INSERT_PRICES, prices)
     return len(new_units)
+
+
+def same_area(known: Optional[float], seen: Optional[float]) -> bool:
+    if not known or not seen:
+        return True
+    return abs(known - seen) <= max(known, seen) * SAME_AREA_RATIO
+
+
+def _update_row(unit_id: int, dataset_id: int, unit: PriceListUnit, observed_at: datetime, lowest: Optional[int],
+                highest: Optional[int]) -> tuple:
+    return (
+        unit_id, dataset_id, unit.developer, unit.investment, unit.street, unit.kind, unit.area, unit.rooms, unit.floor,
+        unit.price, unit.price_per_m2, unit.price_since, unit.price_with_extras, Json(unit.extras), unit.extras_value,
+        unit.prospectus_url, observed_at, lowest, highest,
+    )
 
 
 def _unit_row(institution_id: int, dataset_id: int, unit: PriceListUnit, observed_at: datetime) -> tuple:
@@ -369,17 +418,16 @@ def refresh_developer_prices(engine: Engine, cities: list[str], margin_m: int, n
         known = {
             row.dataset_id: KnownList(
                 row.relevant, row.processed_data_date.date() if row.processed_data_date else None, row.checked_at,
+                row.error,
             )
             for row in connection.execute(text(
-                "SELECT dataset_id, relevant, processed_data_date, checked_at FROM developer_price_lists"
+                "SELECT dataset_id, relevant, processed_data_date, checked_at, error FROM developer_price_lists"
             ))
         }
     recheck_before = now - timedelta(days=RECHECK_IRRELEVANT_DAYS)
     todo = [
         dataset for dataset in datasets
-        if dataset.dataset_id not in known
-        or known[dataset.dataset_id].relevant is not False
-        or known[dataset.dataset_id].checked_at < recheck_before
+        if dataset.dataset_id not in known or known[dataset.dataset_id].due(recheck_before)
     ]
     logger.info("Checking %d price lists (%d known, %d relevant)", len(todo), len(known),
                 sum(1 for entry in known.values() if entry.relevant))
