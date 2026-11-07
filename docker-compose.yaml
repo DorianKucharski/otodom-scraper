@@ -12,7 +12,7 @@ services:
   otodom-enricher:
     build: .
     image: otodom-scraper:local
-    command: [ "python", "enrich.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000", "--radius-km=15"]
+    command: [ "python", "enrich.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000", "--radius-km=15", "--no-rent"]
     env_file:
       - .env
     environment:
