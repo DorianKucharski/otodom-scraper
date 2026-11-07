@@ -91,6 +91,7 @@ class ScrapingContext:
         self.__scraper = scraper
         self.__update_if_older_than_days = update_if_older_than_days
         self.__store_raw_payloads = store_raw_payloads
+        self.__url_aliases: dict[str, str] = {}
         self.with_retry = ScrapeRetry(scraper)
 
         with database_manager.get_session() as session:
@@ -220,12 +221,13 @@ class ScrapingContext:
         if url is None or url == "":
             return
 
-        if url in self.existing_ad_urls:
+        stored_url = self.__url_aliases.get(url, url)
+        if stored_url in self.existing_ad_urls:
             if is_update_enabled:
                 if self.__update_if_older_than_days is None:
                     raise Exception("Some shit to make IDE happy")
                 with self.__database_manager.get_session() as session:
-                    saved_ad: Ad | None = session.query(Ad).filter(Ad.url == url).first()
+                    saved_ad: Ad | None = session.query(Ad).filter(Ad.url == stored_url).first()
                     if saved_ad is None:
                         logger.warning(f"URL {url} found in cache but not in DB")
                         return
@@ -245,6 +247,8 @@ class ScrapingContext:
 
         ad_dto: AdDto | None= self._fetch_ad(url)
         if ad_dto:
+            if ad_dto.url and ad_dto.url != url:
+                self.__url_aliases[url] = ad_dto.url
             if ad_dto.id in self.existing_ad_ids:
                 with self.__database_manager.get_session() as session:
                     saved_ad = session.query(Ad).filter(Ad.id == ad_dto.id).first()

@@ -2,7 +2,7 @@ services:
   otodom-scrapper:
     build: .
     image: otodom-scraper:local
-    command: [ "python", "main.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000", "--max-age-days=1"]
+    command: [ "python", "main.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000", "--max-age-days=1", "--radius-km=15"]
     env_file:
       - .env
     restart: on-failure
@@ -12,7 +12,7 @@ services:
   otodom-enricher:
     build: .
     image: otodom-scraper:local
-    command: [ "python", "enrich.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000" ]
+    command: [ "python", "enrich.py", "--voivodeship=Małopolskie", "--city=Kraków", "--max-price=2000000", "--radius-km=15"]
     env_file:
       - .env
     environment:
