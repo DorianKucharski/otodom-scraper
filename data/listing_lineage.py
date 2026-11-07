@@ -20,6 +20,11 @@ MIN_DUPLICATE_TEXT_SIMILARITY = 0.8
 ATTRIBUTE_MATCH_PRICE_TOLERANCE = 0.15
 SAME_OWNER_PRICE_TOLERANCE = 0.10
 PRIMARY_MARKET_TEXT_SIMILARITY = 0.9
+SAME_PRICE_MAX_DISTANCE_M = 300
+SAME_PRICE_AREA_TOLERANCE = 0.10
+SAME_PRICE_MAX_GAP = timedelta(days=365)
+SAME_PRICE_MIN_PRICE = 300_000
+ATTACHED_BUILDING_TYPES = frozenset({"SEMI_DETACHED", "RIBBON"})
 
 _WORD = re.compile(r"[0-9a-ząćęłńóśźż]+", re.IGNORECASE)
 _TAG = re.compile(r"<[^>]+>")
@@ -127,13 +132,68 @@ def candidate_pairs(rows: Iterable[ListingRow]) -> list[tuple[ListingRow, Listin
             buckets[_bucket_key(row)].append(row)
 
     pairs = []
+    seen = set()
     for key, members in buckets.items():
         neighbours = [other for neighbour_key in _neighbour_keys(key) for other in buckets.get(neighbour_key, ())]
         for later in members:
             for earlier in neighbours:
                 if _ordered(earlier, later) and attributes_match(earlier, later):
                     pairs.append((earlier, later))
+                    seen.add((earlier.id, later.id))
+    for earlier, later in _same_price_house_pairs(buckets.values()):
+        if (earlier.id, later.id) not in seen:
+            pairs.append((earlier, later))
     return pairs
+
+
+def _same_price_house_pairs(buckets: Iterable[list[ListingRow]]) -> Iterable[tuple[ListingRow, ListingRow]]:
+    by_price: dict[tuple, list[ListingRow]] = defaultdict(list)
+    for members in buckets:
+        for row in members:
+            if _same_price_candidate(row):
+                by_price[(row.price, _cell(row))].append(row)
+    for (price, (lat_cell, lon_cell)), members in by_price.items():
+        neighbours = [
+            other
+            for d_lat in (-1, 0, 1)
+            for d_lon in (-1, 0, 1)
+            for other in by_price.get((price, (lat_cell + d_lat, lon_cell + d_lon)), ())
+        ]
+        for later in members:
+            for earlier in neighbours:
+                if _ordered(earlier, later) and same_house_at_same_price(earlier, later):
+                    yield earlier, later
+
+
+def same_house_at_same_price(earlier: ListingRow, later: ListingRow) -> bool:
+    if not (_same_price_candidate(earlier) and _same_price_candidate(later)):
+        return False
+    if earlier.price != later.price or not _same_kind(earlier.offer_type, later.offer_type):
+        return False
+    same_owner = earlier.owner_id is not None and earlier.owner_id == later.owner_id
+    if not same_owner and ATTACHED_BUILDING_TYPES & {earlier.building_type, later.building_type}:
+        return False
+    if later.created_at - earlier.created_at > SAME_PRICE_MAX_GAP:
+        return False
+    if abs(earlier.area - later.area) > SAME_PRICE_AREA_TOLERANCE * max(earlier.area, later.area):
+        return False
+    if earlier.rooms is not None and later.rooms is not None and abs(earlier.rooms - later.rooms) > 1:
+        return False
+    if earlier.building_year and later.building_year and abs(earlier.building_year - later.building_year) > 2:
+        return False
+    distance = distance_m(earlier, later)
+    return distance is not None and distance <= SAME_PRICE_MAX_DISTANCE_M
+
+
+def _same_price_candidate(row: ListingRow) -> bool:
+    return (
+        row.object_type == "HOUSE"
+        and row.floor is None
+        and "PRIMARY" != (row.market or "").upper()
+        and row.price >= SAME_PRICE_MIN_PRICE
+        and bool(row.area)
+        and _has_coordinates(row)
+    )
 
 
 def attributes_match(earlier: ListingRow, later: ListingRow) -> bool:
@@ -190,6 +250,9 @@ def classify(
 
     if text_similarity >= MIN_TEXT_SIMILARITY:
         return Link(earlier.id, later.id, "text", 1 + text_similarity - price_ratio - gap_penalty)
+
+    if same_house_at_same_price(earlier, later):
+        return Link(earlier.id, later.id, "same_price", 0.8 - gap_penalty)
 
     if (
         _identifying_area(earlier)
@@ -319,10 +382,14 @@ def _identifying_area(row: ListingRow) -> bool:
 
 def _bucket_key(row: ListingRow) -> tuple:
     if _has_coordinates(row):
-        cell = (int(row.latitude // _GRID_DEGREES), int(row.longitude // _GRID_DEGREES))
+        cell = _cell(row)
     else:
         cell = ("city", row.city_id)
     return (cell, round(row.area))
+
+
+def _cell(row: ListingRow) -> tuple[int, int]:
+    return int(row.latitude // _GRID_DEGREES), int(row.longitude // _GRID_DEGREES)
 
 
 def _neighbour_keys(key: tuple) -> Iterable[tuple]:

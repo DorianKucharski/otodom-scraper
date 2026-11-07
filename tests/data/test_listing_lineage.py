@@ -249,6 +249,44 @@ class TestListingLineage(unittest.TestCase):
         self.assertEqual([2], groups[2].member_ids)
 
 
+    def test_a_house_back_at_the_same_price_with_another_agency_is_one_house(self):
+        listings = [
+            _listing(1, owner_id=1, object_type="HOUSE", floor=None, price=1_350_000, area=160.0, rooms=6,
+                     building_year=2005, created_at=datetime(2026, 4, 7), ended_at=datetime(2026, 10, 5)),
+            _listing(2, owner_id=2, object_type="HOUSE", floor=None, price=1_350_000, area=155.1, rooms=6,
+                     building_year=2007, latitude=50.1110, created_at=datetime(2026, 10, 29)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([1, 2], groups[2].member_ids)
+        self.assertIn("same_price", groups[2].link_kinds)
+
+    def test_an_advertiser_correcting_the_area_of_a_semi_detached_house_keeps_its_history(self):
+        listings = [
+            _listing(1, object_type="HOUSE", floor=None, building_type="SEMI_DETACHED", price=1_045_000,
+                     area=130.0, created_at=datetime(2026, 10, 7), ended_at=datetime(2026, 10, 8)),
+            _listing(2, object_type="HOUSE", floor=None, building_type="SEMI_DETACHED", price=1_045_000,
+                     area=120.0, created_at=datetime(2026, 11, 2)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([1, 2], groups[2].member_ids)
+
+    def test_two_halves_of_a_semi_detached_house_at_one_price_stay_apart(self):
+        listings = [
+            _listing(1, owner_id=1, object_type="HOUSE", floor=None, building_type="SEMI_DETACHED",
+                     price=1_500_000, area=107.41, created_at=datetime(2026, 4, 22), ended_at=datetime(2026, 5, 5)),
+            _listing(2, owner_id=2, object_type="HOUSE", floor=None, building_type="SEMI_DETACHED",
+                     price=1_500_000, area=107.74, latitude=50.1102, created_at=datetime(2026, 5, 13)),
+        ]
+
+        groups = build_groups(listings, _no_texts, _NOW)
+
+        self.assertEqual([2], groups[2].member_ids)
+
+
 class TestWords(unittest.TestCase):
 
     def test_short_texts_are_compared_exactly(self):
