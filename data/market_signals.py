@@ -243,6 +243,7 @@ def refresh_market_signals(engine: Engine, now: Optional[datetime] = None) -> in
         ) if _is_flat_sale(fact.listing) else None
         developer = developer_units.match(
             fact.city_name, fact.street_key, fact.listing.area, fact.listing.rooms, fact.listing.price,
+            fact.listing.latitude, fact.listing.longitude,
         ) if fact.listing.offer_type in (None, "SALE") else None
         nuisance = None if pin_misplaced else nuisance_checks.get(ad_id)
         nuisances = nuisance_verdict(nuisance)

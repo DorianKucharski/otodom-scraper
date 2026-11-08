@@ -60,6 +60,23 @@ class TestDeveloperUnitIndex(unittest.TestCase):
 
         self.assertIsNone(index.match("Kraków", None, 68.0, 3, 998_000))
 
+    def test_a_unit_on_a_street_far_from_the_pin_is_another_investment(self):
+        conrada = {"conrada": [[(50.0900, 19.9000), (50.0920, 19.9020)]]}
+        index = DeveloperUnitIndex([_unit(1)], conrada)
+
+        self.assertIsNone(index.match("Kraków", "darwina", 68.0, 3, 998_000, 50.0000, 19.9000))
+        self.assertIsNotNone(index.match("Kraków", None, 68.0, 3, 998_000, 50.0915, 19.9010))
+
+    def test_the_same_street_in_the_ad_outweighs_a_misplaced_pin(self):
+        index = DeveloperUnitIndex([_unit(1)], {"conrada": [[(50.0900, 19.9000), (50.0920, 19.9020)]]})
+
+        self.assertIsNotNone(index.match("Kraków", "conrada", 68.0, 3, 998_000, 50.0000, 19.9000))
+
+    def test_a_long_straight_street_is_measured_to_its_segment_not_its_ends(self):
+        index = DeveloperUnitIndex([_unit(1)], {"conrada": [[(50.0900, 19.8800), (50.0900, 19.9400)]]})
+
+        self.assertIsNotNone(index.match("Kraków", None, 68.0, 3, 998_000, 50.0930, 19.9100))
+
     def test_a_unit_missing_from_the_newest_list_is_gone(self):
         index = DeveloperUnitIndex([_unit(1, last_seen=datetime(2026, 8, 1)), _unit(2, area=54.2)])
 
