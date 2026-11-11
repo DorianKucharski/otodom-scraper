@@ -1,28 +1,30 @@
-# Otodom scraper + ocena AI + wyszukiwarka
+# Otodom scraper + AI evaluation + search
 
-Trzy niezależne procesy nad jedną bazą PostgreSQL (PostGIS + pg_trgm):
+Three independent processes on top of a single PostgreSQL database (PostGIS + pg_trgm):
 
-| Usługa | Co robi | Obraz |
+| Service | What it does | Image |
 | --- | --- | --- |
-| `otodom-scrapper` | zbiera ogłoszenia z otodom.pl do bazy | `otodom-scraper:local` |
-| `otodom-enricher` | ocenia zebrane ogłoszenia modelem LLM (zdjęcia + opis) | ten sam obraz, inna komenda |
-| `otodom-api` | REST API + zbudowany frontend na `:8000` | `otodom-api:local` |
+| `otodom-scrapper` | collects listings from otodom.pl into the database | `otodom-scraper:local` |
+| `otodom-enricher` | evaluates the collected listings with an LLM (photos + description) | same image, different command |
+| `otodom-api` | REST API + the built frontend on `:8000` | `otodom-api:local` |
 
-Enricher pisze wyłącznie do `ad_screenings` i `ad_evaluations`. Scraper ich nie dotyka, więc kolejny przebieg scrapera nie kasuje ocen.
+The enricher writes only to `ad_screenings` and `ad_evaluations`. The scraper never touches them, so the next scraper run does not wipe the evaluations.
 
-## Uruchomienie od zera
+Tech stack: Python 3.12 (managed with `uv`), SQLAlchemy + GeoAlchemy2, FastAPI, Anthropic/OpenAI SDKs; frontend in `web/` (React + TypeScript, Vite); Docker Compose for deployment.
+
+## Running from scratch
 
 ```bash
 cp .env.example .env
-# uzupełnij DATABASE_URL i ANTHROPIC_API_KEY
+# fill in DATABASE_URL and ANTHROPIC_API_KEY
 docker compose up -d --build
 ```
 
-Baza i widoki tworzą się same przy starcie scrapera i enrichera. Frontend jest pod `http://<host>:8000`, dokumentacja API pod `http://<host>:8000/docs`.
+The database and views are created automatically when the scraper and enricher start. The frontend is at `http://<host>:8000`, the API docs at `http://<host>:8000/docs`.
 
-## Zawężanie zakresu
+## Narrowing the scope
 
-Parametry ustawia się w `command:` w `docker-compose.yaml`, osobno dla scrapera i osobno dla enrichera.
+Parameters are set in `command:` in `docker-compose.yaml`, separately for the scraper and for the enricher.
 
 ```yaml
   otodom-scrapper:
@@ -36,341 +38,341 @@ Parametry ustawia się w `command:` w `docker-compose.yaml`, osobno dla scrapera
                "--max-price=2000000", "--no-rent", "--no-houses" ]
 ```
 
-**Trzymaj oba zakresy zgodne.** Enricher ocenia tylko to, co scraper zebrał, więc szerszy enricher nic nie zmieni, a węższy zostawi część ogłoszeń bez ocen.
+**Keep both scopes in sync.** The enricher only evaluates what the scraper collected, so a wider enricher scope changes nothing, and a narrower one leaves some listings without evaluations.
 
-Nazwy lokalizacji można pisać z ogonkami i z wielkiej litery (`Kraków`, `Małopolskie`) albo jako slug otodomu (`krakow`, `malopolskie`) - obie usługi przyjmują jedno i drugie. `--district` wymaga `--city`, a `--city` wymaga `--voivodeship`.
+Location names can be written with Polish diacritics and capitalised (`Kraków`, `Małopolskie`) or as an otodom slug (`krakow`, `malopolskie`) - both services accept either. `--district` requires `--city`, and `--city` requires `--voivodeship`.
 
-### Wspólne flagi zakresu
+### Shared scope flags
 
-| Flaga | Domyślnie | Uwaga |
+| Flag | Default | Note |
 | --- | --- | --- |
-| `--voivodeship=` | brak (cała Polska) | |
-| `--city=` | brak | wymaga `--voivodeship` |
-| `--district=` | brak | wymaga `--city` |
-| `--min-price=` / `--max-price=` | scraper `0` / `1000000`, enricher bez limitu | |
-| `--houses` / `--no-houses` | włączone | |
-| `--apartments` / `--no-apartments` | włączone | |
-| `--sale` / `--no-sale` | włączone | |
-| `--rent` / `--no-rent` | włączone | |
+| `--voivodeship=` | none (all of Poland) | |
+| `--city=` | none | requires `--voivodeship` |
+| `--district=` | none | requires `--city` |
+| `--min-price=` / `--max-price=` | scraper `0` / `1000000`, enricher unlimited | |
+| `--houses` / `--no-houses` | on | |
+| `--apartments` / `--no-apartments` | on | |
+| `--sale` / `--no-sale` | on | |
+| `--rent` / `--no-rent` | on | |
 
-### Flagi tylko scrapera
+### Scraper-only flags
 
-| Flaga | Do czego |
+| Flag | Purpose |
 | --- | --- |
-| `--scrape` / `--no-scrape` | zbieranie nowych ogłoszeń |
-| `--update` / `--no-update` | odświeżanie już zapisanych (cena, status) |
-| `--max-age-days=` | po ilu dniach od ostatniego sprawdzenia ogłoszenie jest odświeżane (domyślnie `30`, `0` = zawsze) |
-| `--request-delay=` | minimalna przerwa między zapytaniami do otodom w sekundach, plus do 50% losowo (domyślnie `2`) |
+| `--scrape` / `--no-scrape` | collecting new listings |
+| `--update` / `--no-update` | refreshing already stored listings (price, status) |
+| `--max-age-days=` | how many days after the last check a listing gets refreshed (default `30`, `0` = always) |
+| `--request-delay=` | minimum pause between requests to otodom in seconds, plus up to 50% random (default `2`) |
 
-### Flagi tylko enrichera
+### Enricher-only flags
 
-| Flaga | Do czego |
+| Flag | Purpose |
 | --- | --- |
-| `--screen` / `--no-screen` | tani etap tekstowy (Haiku) |
-| `--evaluate` / `--no-evaluate` | pełna ocena ze zdjęciami (Sonnet) |
-| `--limit=N` | maksymalnie N ogłoszeń na etap w jednym cyklu - **tak ogranicza się koszt** |
-| `--once` | jeden przebieg zamiast pętli |
-| `--force` | ocenia od nowa, nawet gdy wynik jest aktualny |
-| `--dry-run` | drukuje JSON, nic nie zapisuje |
-| `--ad-url=` | jedno konkretne ogłoszenie |
+| `--screen` / `--no-screen` | cheap text-only stage (Haiku) |
+| `--evaluate` / `--no-evaluate` | full evaluation with photos (Sonnet) |
+| `--limit=N` | at most N listings per stage in one cycle - **this is how you cap cost** |
+| `--once` | a single pass instead of a loop |
+| `--force` | re-evaluates even when the result is up to date |
+| `--dry-run` | prints JSON, saves nothing |
+| `--ad-url=` | one specific listing |
 
-## Koszty
+## Costs
 
-Zmierzone dla domyślnych modeli i ośmiu zdjęć w wariancie `medium` (655x491, ~429 tokenów każde):
+Measured for the default models and eight photos in the `medium` variant (655x491, ~429 tokens each):
 
-| Etap | Wejście | Wyjście | Koszt za ogłoszenie |
+| Stage | Input | Output | Cost per listing |
 | --- | --- | --- | --- |
-| Przesiew (Haiku 4.5) | ~2 600 tok. | ~250 tok. | **~0,004 USD** |
-| Ocena (Sonnet 5) | ~6 500 tok. | ~600 tok. | **~0,029 USD** |
+| Screening (Haiku 4.5) | ~2,600 tok. | ~250 tok. | **~0.004 USD** |
+| Evaluation (Sonnet 5) | ~6,500 tok. | ~600 tok. | **~0.029 USD** |
 
-Z tego zdjęcia to 3 400 tokenów, czyli ponad połowa wejścia oceny, a odpowiedź modelu to około jedna trzecia całego kosztu i nie zależy od liczby zdjęć.
+Of that, photos are 3,400 tokens, i.e. more than half of the evaluation input, and the model's response is about a third of the total cost and does not depend on the number of photos.
 
-**Skala ma znaczenie większe niż cokolwiek innego.** Kraków do 2 mln zł to blisko 20 tys. ogłoszeń, czyli około 80 USD samego przesiewu i około 500 USD ocen. Zawężaj filtrami, zanim zaczniesz kręcić gałkami modeli.
+**Scale matters more than anything else.** Kraków up to 2 million PLN is close to 20k listings, i.e. about 80 USD for screening alone and about 500 USD for evaluations. Narrow the filters before you start turning the model knobs.
 
-### Co realnie obniża rachunek
+### What actually lowers the bill
 
-| Zmiana | Oszczędność | Koszt zmiany |
+| Change | Savings | Trade-off |
 | --- | --- | --- |
-| Węższe filtry (dzielnica, wąskie widełki cen, `--no-rent`) | proporcjonalna do liczby ogłoszeń | brak, to zwykle i tak jest to, czego szukasz |
-| `ENRICHER_DAILY_BUDGET_USD` (domyślnie 10) | twardy sufit dobowy, sprawdzany przed każdym ogłoszeniem | ocenianie rozkłada się na dni |
-| `LLM_MAX_IMAGES=5` | ~13% kosztu oceny | mniej materiału na `photo_trust_score` |
-| `LLM_IMAGE_VARIANT=small` | ~30% kosztu oceny | 314x236 nie wystarcza, by ocenić jakość wykończenia |
-| `LLM_MAX_DESCRIPTION_CHARACTERS=2000` | ~8% kosztu oceny, ~25% przesiewu | dłuższe opisy tracą końcówkę |
-| `EVALUATION_MODEL=claude-haiku-4-5` | ~65% kosztu oceny | wyraźnie słabsza ocena zdjęć, czyli to, po co to narzędzie powstało |
+| Narrower filters (district, tight price range, `--no-rent`) | proportional to the number of listings | none, it's usually what you're looking for anyway |
+| `ENRICHER_DAILY_BUDGET_USD` (default 10) | hard daily ceiling, checked before every listing | evaluation is spread over several days |
+| `LLM_MAX_IMAGES=5` | ~13% of evaluation cost | less material for `photo_trust_score` |
+| `LLM_IMAGE_VARIANT=small` | ~30% of evaluation cost | 314x236 is not enough to judge finish quality |
+| `LLM_MAX_DESCRIPTION_CHARACTERS=2000` | ~8% of evaluation cost, ~25% of screening | longer descriptions lose their ending |
+| `EVALUATION_MODEL=claude-haiku-4-5` | ~65% of evaluation cost | noticeably weaker photo assessment, which is what this tool was built for |
 
-### Czy przesiew się opłaca
+### Is screening worth it
 
-Przesiew kosztuje 0,004 USD i oszczędza 0,029 USD na każdym odrzuconym ogłoszeniu, więc zwraca się dopiero przy odrzucaniu ponad 14 procent. Sprawdź swoją stopę:
+Screening costs 0.004 USD and saves 0.029 USD on every rejected listing, so it only pays off when it rejects more than 14 percent. Check your rate:
 
 ```sql
 SELECT status, count(*), round(100.0 * count(*) / sum(count(*)) OVER (), 1) AS procent
 FROM ad_screenings GROUP BY status;
 ```
 
-Jeśli odrzuconych jest mniej niż 14 procent, przesiew dokłada do rachunku zamiast go zbijać i lepiej wyłączyć go przez `--no-screen`. Jedyne, co wtedy tracisz, to `extracted_attributes` wyciągane z opisu.
+If fewer than 14 percent are rejected, screening adds to the bill instead of reducing it and it's better to turn it off with `--no-screen`. The only thing you lose then is the `extracted_attributes` extracted from the description.
 
-Zanim puścisz na szeroki zakres, ustaw `--limit=20` i zobacz w bazie, co wyszło.
+Before running on a wide scope, set `--limit=20` and look at the results in the database.
 
-## Codzienne komendy
+## Everyday commands
 
 ```bash
-# stan usług
+# service status
 docker compose ps
 
-# logi na żywo
+# live logs
 docker compose logs -f otodom-enricher
 docker compose logs -f otodom-scrapper
 docker compose logs --tail=200 otodom-api
 
-# restart jednej usługi bez ruszania reszty
+# restart one service without touching the rest
 docker compose restart otodom-enricher
 
-# zatrzymanie jednej usługi
+# stop one service
 docker compose stop otodom-scrapper
 
-# tylko enricher (reszta wyłączona)
+# enricher only (the rest stopped)
 docker compose stop otodom-scrapper otodom-api
 docker compose up -d otodom-enricher
 
-# wszystko z powrotem
+# everything back up
 docker compose up -d
 ```
 
-### Po zmianie parametrów w `command:`
+### After changing parameters in `command:`
 
-Nie trzeba przebudowywać obrazu, bo `command` nie jest jego częścią:
+No image rebuild needed, because `command` is not part of the image:
 
 ```bash
 docker compose up -d otodom-enricher
 ```
 
-Compose zauważy zmianę konfiguracji i odtworzy sam kontener. `docker compose restart` **nie** wystarczy - restart odpala stary kontener ze starą komendą.
+Compose notices the configuration change and recreates just the container. `docker compose restart` is **not** enough - restart starts the old container with the old command.
 
-### Po zmianie `.env`
+### After changing `.env`
 
 ```bash
 docker compose up -d
 ```
 
-To samo co wyżej - zmienne środowiskowe wczytują się przy tworzeniu kontenera, nie przy restarcie.
+Same as above - environment variables are read when the container is created, not on restart.
 
-### Po zmianie kodu lub promptów
+### After changing code or prompts
 
 ```bash
 docker compose up -d --build
 ```
 
-Prompty (`enricher/prompts/`) są w obrazie, więc ich zmiana wymaga przebudowy. Uwaga: `prompt_version` to hash szablonu, więc **po zmianie promptu enricher oceni od nowa wszystkie ogłoszenia w swoim zakresie**. Przy szerokim zakresie to realny koszt - najpierw sprawdź nowy prompt na `--dry-run`, dopiero potem wdrażaj.
+Prompts (`enricher/prompts/`) are baked into the image, so changing them requires a rebuild. Note: `prompt_version` is a hash of the template, so **after a prompt change the enricher re-evaluates every listing in its scope**. With a wide scope this is a real cost - test the new prompt with `--dry-run` first, and only then deploy.
 
 ```bash
-# przebudowa tylko jednego obrazu
+# rebuild just one image
 docker compose build otodom-enricher && docker compose up -d otodom-enricher
 ```
 
-## Iterowanie nad promptami
+## Iterating on prompts
 
-Najszybsza pętla nie wymaga Dockera ani bazy:
+The fastest loop needs neither Docker nor the database:
 
 ```bash
 uv sync
 uv run python enrich.py --ad-url "https://www.otodom.pl/pl/oferta/..." --dry-run
 ```
 
-Drukuje wynik obu etapów jako JSON i nic nie zapisuje. Prompty edytujesz w `enricher/prompts/`:
+It prints the result of both stages as JSON and saves nothing. Prompts are edited in `enricher/prompts/`:
 
-- `screening_system.md` - kryteria odrzucenia na etapie 1
-- `evaluation_system.md` - rubryka ocen 1-10 (to tu kalibrujesz, co znaczy 5, a co 8)
-- `*_user.jinja2` - dane ogłoszenia wstawiane do promptu
+- `screening_system.md` - rejection criteria for stage 1
+- `evaluation_system.md` - the 1-10 scoring rubric (this is where you calibrate what a 5 means and what an 8 means)
+- `*_user.jinja2` - listing data inserted into the prompt
 
-## Kiedy enricher ocenia ogłoszenie ponownie
+## When the enricher re-evaluates a listing
 
-Sam z siebie nie powtarza pracy. Ponowna ocena leci tylko gdy:
+It does not repeat work on its own. A re-evaluation runs only when:
 
-- ogłoszenia jeszcze nie oceniono,
-- zmieniła się treść (tytuł, opis, cechy, zdjęcia, metraż, pokoje, piętro, stan),
-- zmienił się prompt (`prompt_version`),
-- cena odjechała o więcej niż `EVALUATION_PRICE_DRIFT_THRESHOLD` (domyślnie 5%) od ceny z momentu oceny,
-- poprzednia próba się wywaliła i nie przekroczyła jeszcze trzech podejść.
+- the listing has not been evaluated yet,
+- the content changed (title, description, features, photos, area, rooms, floor, condition),
+- the prompt changed (`prompt_version`),
+- the price drifted by more than `EVALUATION_PRICE_DRIFT_THRESHOLD` (default 5%) from the price at evaluation time,
+- the previous attempt failed and has not yet used up three attempts.
 
-Przebieg `--update` scrapera, który tylko odświeża `modified_at`, nie kosztuje ani tokena.
+A scraper `--update` run that only refreshes `modified_at` does not cost a single token.
 
-## Konfiguracja modeli (`.env`)
+## Model configuration (`.env`)
 
-| Zmienna | Domyślnie | Uwaga |
+| Variable | Default | Note |
 | --- | --- | --- |
-| `LLM_PROVIDER` | `anthropic` | albo `openai` |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | - | brak = błąd przy starcie |
-| `LLM_BASE_URL` | - | dla OpenRouter, vLLM, Ollama |
+| `LLM_PROVIDER` | `anthropic` | or `openai` |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | - | missing = error at startup |
+| `LLM_BASE_URL` | - | for OpenRouter, vLLM, Ollama |
 | `SCREENING_MODEL` | `claude-haiku-4-5` | |
 | `EVALUATION_MODEL` | `claude-sonnet-5` | |
-| `LLM_MAX_IMAGES` | `8` | główny czynnik kosztu etapu 2 |
-| `LLM_DOWNLOAD_IMAGES` | `false` | patrz niżej - ustaw `true`, jeśli CDN otodomu blokuje API |
-| `LLM_EFFORT` | `medium` | pomijany dla modeli, które go nie przyjmują (Haiku) |
+| `LLM_MAX_IMAGES` | `8` | the main cost driver of stage 2 |
+| `LLM_DOWNLOAD_IMAGES` | `false` | see below - set to `true` if otodom's CDN blocks the API |
+| `LLM_EFFORT` | `medium` | skipped for models that don't accept it (Haiku) |
 | `EVALUATION_PRICE_DRIFT_THRESHOLD` | `0.05` | |
-| `ENRICHER_CONCURRENCY` | `4` | równoległych ogłoszeń |
-| `ENRICHER_CYCLE_PAUSE_SECONDS` | `300` | przerwa między cyklami |
+| `ENRICHER_CONCURRENCY` | `4` | listings in parallel |
+| `ENRICHER_CYCLE_PAUSE_SECONDS` | `300` | pause between cycles |
 
-## Logowanie
+## Login
 
-Ustaw `APP_PASSWORD` w `.env` i zrestartuj `otodom-api`. Bez tej zmiennej API jest otwarte dla każdego, kto trafi na port (w logu pojawi się ostrzeżenie).
+Set `APP_PASSWORD` in `.env` and restart `otodom-api`. Without this variable the API is open to anyone who reaches the port (a warning appears in the log).
 
-- Jedno hasło dla wszystkich, a przy logowaniu wpisuje się imię. Trafia ono do historii statusów, więc widać, kto co zmienił.
-- Ciasteczko jest ważne rok, więc na każdym urządzeniu logujesz się raz.
-- Zmiana `APP_PASSWORD` wylogowuje wszystkie urządzenia, bo ciasteczko jest nim podpisane.
-- Chronione jest całe `/api` (także logi usług) oraz `/docs`. Sam zbudowany frontend jest publiczny, ale bez sesji pokazuje tylko ekran logowania.
-- **HTTPS daje domena od Mikrusa** (`https://steve138-30138.wykr.es`, przez Cloudflare). Goły port `:30138` i `http://` na tej domenie nadal działają bez szyfrowania. Dlatego ustaw `APP_PUBLIC_URL=https://steve138-30138.wykr.es`: każde zapytanie, które nie przyszło po HTTPS, dostaje przekierowanie 308 na ten adres, więc formularz logowania nigdy nie wyświetli się po HTTP. Wyjątkiem jest `/api/health`.
-- O tym, czy połączenie było szyfrowane, API wnioskuje z nagłówka `X-Forwarded-Proto` od Cloudflare. Na tej podstawie ciasteczko dostaje też flagę `Secure`.
+- One password for everyone; at login you enter your name. It goes into the status history, so you can see who changed what.
+- The cookie is valid for a year, so you log in once per device.
+- Changing `APP_PASSWORD` logs out all devices, because the cookie is signed with it.
+- All of `/api` (including service logs) and `/docs` are protected. The built frontend itself is public, but without a session it only shows the login screen.
+- **HTTPS is provided by the domain from Mikrus** (the VPS provider; `https://steve138-30138.wykr.es`, via Cloudflare). The bare port `:30138` and `http://` on that domain still work unencrypted. That's why you should set `APP_PUBLIC_URL=https://steve138-30138.wykr.es`: every request that didn't arrive over HTTPS gets a 308 redirect to that address, so the login form is never shown over HTTP. `/api/health` is the exception.
+- The API infers whether the connection was encrypted from the `X-Forwarded-Proto` header set by Cloudflare. Based on that the cookie also gets the `Secure` flag.
 
-## Moje mieszkania
+## My apartments
 
-Każde ogłoszenie można zapisać ze statusem z panelu szczegółów. Każda zmiana statusu i każda notatka to osobny wpis w historii z komentarzem, autorem i datą (`ad_tracking_events`). Bieżący stan leży w `ad_tracking`.
+Any listing can be saved with a status from the details panel. Every status change and every note is a separate history entry with a comment, author and date (`ad_tracking_events`). The current state lives in `ad_tracking`.
 
-| Status | Znaczenie |
+| Status (UI label) | Meaning |
 |---|---|
-| Do sprawdzenia | wpadło w oko, trzeba się przyjrzeć |
-| Do zadzwonienia | warte kontaktu |
-| Po kontakcie | czekam: oddzwonią, wyślą zdjęcia, nie odebrał |
-| Umówione oglądanie | wymaga daty i godziny |
-| Obejrzane | po wizycie, opcjonalna ocena 1-5 |
-| Faworyt | poważny kandydat po obejrzeniu |
-| Negocjacje / oferta | opcjonalna kwota oferty |
-| Wybrane | koniec poszukiwań |
-| Odrzucone | rezygnuję, powód w komentarzu |
-| Niedostępne | sprzedane, wynajęte, wycofane |
+| Do sprawdzenia (to check) | caught my eye, needs a closer look |
+| Do zadzwonienia (to call) | worth contacting |
+| Po kontakcie (contacted) | waiting: they'll call back, send photos, didn't pick up |
+| Umówione oglądanie (viewing scheduled) | requires a date and time |
+| Obejrzane (viewed) | after the visit, optional 1-5 rating |
+| Faworyt (favourite) | serious candidate after viewing |
+| Negocjacje / oferta (negotiation / offer) | optional offer amount |
+| Wybrane (chosen) | end of the search |
+| Odrzucone (rejected) | giving up, reason in the comment |
+| Niedostępne (unavailable) | sold, rented, withdrawn |
 
-Przejścia są dowolne. Wyszukiwarka domyślnie ukrywa odrzucone i niedostępne, a w sekcji filtrów "Moje statusy" można to wyłączyć albo pokazać tylko wybrane statusy. Zakładka **Moje mieszkania** grupuje zapisane ogłoszenia po statusie, a nad nimi pokazuje listę umówionych oglądań. Przy każdym zapisanym ogłoszeniu widać zmianę ceny od chwili zapisania.
+Any transition is allowed. Search hides rejected and unavailable listings by default; in the "Moje statusy" (my statuses) filter section you can turn that off or show only selected statuses. The **Moje mieszkania** (my apartments) tab groups saved listings by status and shows a list of scheduled viewings above them. Each saved listing shows the price change since it was saved.
 
-Tabele tworzą się przy starcie scrapera albo enrichera, jak wszystkie inne. `drop_tables()` w `main.py` kasuje także je.
+The tables are created when the scraper or enricher starts, like all the others. `drop_tables()` in `main.py` drops them too.
 
-## Asystent AI
+## AI assistant
 
-Nad listą wyników w zakładce **Wyszukiwarka** jest pole „Zapytaj asystenta”. Wpisujesz po ludzku, czego szukasz („jasne 3 pokoje w Krakowie do 950 tys., blisko zieleni, nie parter”), a asystent działa w dwóch krokach:
+Above the results list in the **Wyszukiwarka** (search) tab there is an "Ask the assistant" field. You describe in plain language what you're looking for ("bright 3 rooms in Kraków up to 950k, close to greenery, not ground floor"), and the assistant works in two steps:
 
-1. **Rozumienie** (`ASSISTANT_INTERPRET_MODEL`, domyślnie Haiku, 0,005-0,01 USD, 5-7 s) zamienia wiadomość na zwykłe filtry po lewej (miasto, dzielnica albo okolica punktu, cena, metraż, pokoje, piętro), słowa kluczowe do opisów i listę miękkich kryteriów („musi: jasne wnętrze”, „mile widziane: blisko zieleni”). Filtry widzisz i możesz poprawić. Miękkie rzeczy celowo nie są filtrami, bo połowa ogłoszeń ich nie zaznacza.
-2. **Ranking** (`ASSISTANT_RANK_MODEL`, domyślnie Sonnet 5, zmierzone 0,11 USD i 31 s dla 30 ogłoszeń bez ocen, do około 0,20 USD, gdy wszystkie mają ocenę ze zdjęć) bierze `ASSISTANT_CANDIDATES` (30) ogłoszeń spełniających filtry, w kolejności po trafieniach słów kluczowych i ocenie AI. Czyta ich dane, fakty z przesiewu, ocenę ze zdjęć i początek opisu, a potem wybiera najwyżej 10 z oceną dopasowania, uzasadnieniem i listą rzeczy niespełnionych albo niepewnych.
+1. **Understanding** (`ASSISTANT_INTERPRET_MODEL`, Haiku by default, 0.005-0.01 USD, 5-7 s) turns the message into the regular filters on the left (city, district or the area around a point, price, area, rooms, floor), keywords for descriptions and a list of soft criteria ("must: bright interior", "nice to have: close to greenery"). You can see the filters and correct them. Soft criteria are deliberately not filters, because half of the listings don't mark them.
+2. **Ranking** (`ASSISTANT_RANK_MODEL`, Sonnet 5 by default, measured 0.11 USD and 31 s for 30 listings without evaluations, up to about 0.20 USD when all of them have a photo evaluation) takes `ASSISTANT_CANDIDATES` (30) listings matching the filters, ordered by keyword hits and AI score. It reads their data, facts from screening, the photo evaluation and the start of the description, and then picks at most 10 with a match score, a justification and a list of unmet or uncertain points.
 
-„Pod Warszawą” czy „okolice Krakowa” to promień 20-40 km od centrum, bez filtra miasta, więc łapie też ogłoszenia, które mają tylko współrzędne. Kolejna wiadomość w tej samej rozmowie („taniej”, „a może Dębniki”) poprawia poprzednie ustawienia, zamiast zaczynać od zera. Po ręcznej zmianie filtrów „Przelicz ranking” ocenia od nowa z tymi filtrami.
+"Near Warsaw" or "around Kraków" means a 20-40 km radius from the centre, without a city filter, so it also catches listings that only have coordinates. A follow-up message in the same conversation ("cheaper", "what about Dębniki") adjusts the previous settings instead of starting from scratch. After manually changing filters, "Recalculate ranking" re-ranks with those filters.
 
-**Oceń ze zdjęć**: większość ogłoszeń poza zakresem enrichera nie ma oceny ze zdjęć, więc ranking opiera się wtedy tylko na tekście. Przycisk dopisuje je do kolejki `ad_evaluation_requests`. Enricher sprawdza ją co 10 s w osobnym wątku, robi przesiew i pełną ocenę bez względu na swoje filtry `--city` i `--max-price`, a wynik zapisuje w bazie jak każdą inną ocenę. Po zakończeniu pojawia się „Przelicz z nowymi ocenami”. Działa tylko wtedy, gdy kontener enrichera chodzi w pętli.
+**Evaluate from photos**: most listings outside the enricher's scope have no photo evaluation, so the ranking then relies on text only. This button adds them to the `ad_evaluation_requests` queue. The enricher checks it every 10 s in a separate thread, runs screening and full evaluation regardless of its `--city` and `--max-price` filters, and stores the result in the database like any other evaluation. When done, "Recalculate with new evaluations" appears. This only works when the enricher container is running in its loop.
 
-| Zmienna | Domyślnie | Uwaga |
+| Variable | Default | Note |
 | --- | --- | --- |
-| `ASSISTANT_DAILY_BUDGET_USD` | `2` | suma kosztów asystenta z 24 h (`assistant_calls`), po przekroczeniu API zwraca 429 |
-| `ENRICHER_REQUEST_DAILY_BUDGET_USD` | `3` | osobny limit na oceny na żądanie, niezależny od `ENRICHER_DAILY_BUDGET_USD` |
+| `ASSISTANT_DAILY_BUDGET_USD` | `2` | total assistant cost over 24 h (`assistant_calls`); once exceeded the API returns 429 |
+| `ENRICHER_REQUEST_DAILY_BUDGET_USD` | `3` | a separate limit for on-demand evaluations, independent of `ENRICHER_DAILY_BUDGET_USD` |
 | `ASSISTANT_INTERPRET_MODEL` | `claude-haiku-4-5` | |
 | `ASSISTANT_RANK_MODEL` | `claude-sonnet-5` | |
-| `ASSISTANT_RANK_EFFORT` | `low` | wyższy wydłuża odpowiedź, a Cloudflare zrywa połączenie po 100 s |
-| `ASSISTANT_CANDIDATES` | `30` | więcej kandydatów to proporcjonalnie droższy ranking |
-| `ASSISTANT_DESCRIPTION_CHARACTERS` | `800` | ile opisu trafia do rankingu na ogłoszenie |
+| `ASSISTANT_RANK_EFFORT` | `low` | higher makes the response longer, and Cloudflare drops the connection after 100 s |
+| `ASSISTANT_CANDIDATES` | `30` | more candidates make ranking proportionally more expensive |
+| `ASSISTANT_DESCRIPTION_CHARACTERS` | `800` | how much of each description goes into ranking |
 
-Asystent używa tego samego klucza co enricher (`ANTHROPIC_API_KEY`), więc kontener `otodom-api` musi go mieć w `.env`. Bez klucza panel pokazuje, że asystent jest wyłączony. Każde wywołanie, z żądaniem, odpowiedzią i kosztem, jest w tabeli `assistant_calls`.
+The assistant uses the same key as the enricher (`ANTHROPIC_API_KEY`), so the `otodom-api` container must have it in `.env`. Without the key the panel shows that the assistant is disabled. Every call, with request, response and cost, is recorded in the `assistant_calls` table.
 
-## Podgląd statusu i logów
+## Status and log view
 
-UI ma trzy zakładki: **Wyszukiwarka**, **Moje mieszkania** i **Status**. Zakładka Status pokazuje:
+The UI has three tabs: **Wyszukiwarka** (search), **Moje mieszkania** (my apartments) and **Status**. The Status tab shows:
 
-- lampkę i stan każdej usługi (Pracuje / Czeka / Brak sygnału / Zatrzymany), aktualny etap, czas od ostatniego sygnału, czas działania, statystyki ostatniego cyklu i komendę, z jaką proces wystartował,
-- logi obu usług, przełączane zakładkami, z filtrem poziomu, wyszukiwaniem po treści i wyborem liczby linii (200-2000).
+- an indicator light and state for each service (Working / Waiting / No signal / Stopped), the current stage, time since the last heartbeat, uptime, statistics of the last cycle and the command the process was started with,
+- logs of both services, switchable with tabs, with a level filter, text search and a choice of line count (200-2000).
 
-Nie wymaga to dostępu do gniazda Dockera. Scraper i enricher zapisują sygnał życia do tabeli `service_heartbeats`, a swoje logi do `service_logs`, skąd API je czyta. Dzięki temu podgląd działa też przy uruchomieniu spoza kontenerów.
+This does not require access to the Docker socket. The scraper and enricher write a heartbeat to the `service_heartbeats` table and their logs to `service_logs`, from where the API reads them. Thanks to that the view also works when running outside containers.
 
-- Wątek w tle odświeża sygnał co 30 s, więc długi przebieg scrapowania nie wygląda na zawieszenie. Brak sygnału przez ponad 3 minuty oznacza zatrzymany albo zawieszony proces.
-- `service_logs` to bufor cykliczny: trzymane jest ostatnie 2000 linii na usługę, starsze są kasowane. Baza nie rośnie w nieskończoność.
-- Zapis logów nie może wywrócić procesu: przy błędzie bazy handler zrzuca komunikat na stderr i wstrzymuje zapisy na minutę.
-- `--dry-run` w enricherze nie zapisuje ani logów, ani sygnału życia.
+- A background thread refreshes the heartbeat every 30 s, so a long scraping pass doesn't look like a hang. No heartbeat for more than 3 minutes means a stopped or hung process.
+- `service_logs` is a ring buffer: the last 2000 lines per service are kept, older ones are deleted. The database doesn't grow forever.
+- Writing logs must never crash the process: on a database error the handler dumps the message to stderr and pauses writes for a minute.
+- `--dry-run` in the enricher writes neither logs nor heartbeats.
 
-## Zdjęcia: URL kontra pobieranie
+## Photos: URL vs. download
 
-Domyślnie do modelu lecą same adresy zdjęć, a pobiera je API dostawcy. CDN otodomu potrafi taki request odrzucić:
+By default only the photo URLs are sent to the model, and the provider's API downloads them. Otodom's CDN may reject such a request:
 
 ```
 Unable to download the file. Please verify the URL and try again.
 ```
 
-Enricher radzi sobie z tym sam: po pierwszym takim błędzie pobiera zdjęcia przez `cloudscraper` (tak samo jak scraper) i wysyła je jako base64, a kolejne ogłoszenia w tym procesie idą od razu tą drogą. W logu zobaczysz:
+The enricher handles this on its own: after the first such error it downloads photos through `cloudscraper` (just like the scraper) and sends them as base64, and subsequent listings in that process go this way straight away. In the log you'll see:
 
 ```
 The API could not reach the image URLs of ad 68006816, downloading images from now on.
 ```
 
-Ten jeden nieudany request powtarza się po każdym restarcie kontenera. Żeby go uniknąć, ustaw w `.env`:
+That one failed request repeats after every container restart. To avoid it, set in `.env`:
 
 ```
 LLM_DOWNLOAD_IMAGES=true
 ```
 
-Kosztem jest pobranie kilku zdjęć na ogłoszenie po stronie enrichera, czyli trochę ruchu i czasu, ale zero dodatkowych tokenów.
+The cost is downloading a few photos per listing on the enricher side, i.e. a bit of traffic and time, but zero extra tokens.
 
-## Historia ogłoszeń, ceny w okolicy i podejrzane lokalizacje
+## Listing history, nearby prices and suspicious locations
 
-Każde ogłoszenie dostaje w tabeli `ad_market_signals` zestaw sygnałów liczonych bez LLM. Wyszukiwarka pokazuje je jako znaczniki na kartach (najechanie myszką pokazuje szczegóły), w sekcji „Historia ogłoszenia i rynek” w szczegółach i w filtrach „Historia i rynek”.
+Every listing gets a set of signals computed without an LLM in the `ad_market_signals` table. Search shows them as badges on the cards (hovering shows details), in the "Listing history and market" section of the details and in the "History and market" filters.
 
-- **Ten sam lokal w kolejnych ogłoszeniach.** Agencje zdejmują ogłoszenie i wystawiają je od nowa co kilka tygodni, żeby wyglądało na świeże. Właściciel najpierw sprzedaje sam, potem oddaje lokal agencji, która podnosi cenę. Scraper łączy takie ogłoszenia w jeden „rodowód” po metrażu (z dokładnością do 0,5%), pokojach, piętrze, roku budowy, odległości (do 3 km, bo agencje przesuwają pinezki) i podobieństwie tytułu lub opisu. Dwa ogłoszenia wiszące jednocześnie łączy tylko wtedy, gdy to ten sam ogłoszeniodawca, ta sama cena i prawie ten sam tekst, więc identyczne lokale z jednej inwestycji zostają osobno. Z rodowodu wychodzi **czas na rynku** liczony od pierwszego ogłoszenia, liczba ogłoszeń i ogłoszeniodawców oraz pierwsza, najniższa i najwyższa znana cena.
-- **Historia cen.** Od tej wersji scraper zapisuje w `ad_price_observations` każdą zmianę ceny, metrażu i statusu. Starsze ogłoszenia mają jedną obserwację z ostatniego pobrania, więc pełna historia cen narasta od teraz.
-- **Podobne oferty w okolicy.** Zamiast mediany całej dzielnicy: mediana ceny za metr z co najmniej 10 podobnych ofert (ten sam typ, metraż ±35%, aktywne albo zdjęte w ostatnim półroczu, każdy lokal raz) w promieniu od 750 m do 10 km od pinezki. Mediana dzielnicy myliła, bo duży metraż ma niższą cenę za metr, a pinezka mogła wskazywać inną dzielnicę niż faktyczne położenie.
-- **Ceny transakcyjne z RCN.** `load_transactions.py` ściąga z Rejestru Cen Nieruchomości (otwarty WFS GUGiK) sprzedaże lokali wokół wskazanych miast. Sygnały porównują cenę za metr z medianą prawdziwych transakcji z ostatnich 2 lat (ten sam rynek, gdy jest ich dość, metraż ±35%, cały lokal, wolny rynek). To jedyne porównanie, w którym nie ma cen ofertowych.
-- **Transakcje na tej samej ulicy.** Promień 1,5 km potrafi zmieszać starsze osiedle przy granicy miasta z luksusową inwestycją obok. Przy Dożynkowej mediana z promienia wynosiła 14,3 tys. zł/m², a jedyna sprzedaż przy tej ulicy 10,6 tys. Dlatego osobno liczona jest mediana sprzedaży z RCN z tej samej ulicy (adres z RCN, do 1,5 km od pinezki, metraż ±35%, co najmniej 3 transakcje, najpierw ten sam rynek). W Krakowie ma ją ok. 70% ofert z rynku wtórnego. W co trzecim przypadku różni się od mediany z promienia o ponad 10%. Znacznik „±X% vs ulica”. Ulica też potrafi mieszać: przy Piltza (Ruczaj) mediana 36 sprzedaży to 16,9 tys. zł/m², bo obok stoją nowe budynki, a osiedle z 2013 roku z ofertą sprzedaje się po 12,3–15,4 tys. Najlepszy byłby ten sam budynek (RCN podaje numer porządkowy), ale numer budynku zna tylko część ogłoszeń, a 3 sprzedaże w tym samym budynku ma dziś 3,5% ofert.
-- **Poprzednia sprzedaż.** Gdy w RCN jest sprzedaż lokalu do 150 m od pinezki, z tym samym nieokrągłym metrażem (±1%), tą samą liczbą pokoi i wiarygodną ceną, sprzed wystawienia ogłoszenia, karta pokazuje „sprzedane 2021 za 694 tys.”, czyli najpewniej cenę zakupu obecnego właściciela. Przy trzech i więcej takich sprzedażach (blok identycznych mieszkań) nic nie jest pokazywane. W Krakowie dotyczy to ok. 10% świeżych ofert.
-- **Metraż.** Opis jest sprawdzany pod kątem mniejszej powierzchni użytkowej niż w parametrach („powierzchnia podłogi 73 m², użytkowa 37,82 m²”), skosów i metrażu po podłodze oraz piwnicy lub komórki wliczonej w metraż.
-- **Lokalizacja.** `load_boundaries.py` wczytuje granice miast i gmin z PRG (GUGiK). Dla miast sprawdzamy, czy pinezka leży w mieście, które podaje ogłoszenie, i jak daleko jest od granicy. Flagi: `pin_outside_city` (pinezka poza miastem), `near_city_border` (bliżej niż 1 km od granicy, ogłoszeniodawcy przypinają oferty spod miasta do ostatniej ulicy po jego stronie), `other_place_in_text` (opis wymienia miejscowość z okolicy spoza miasta, sprawdzane tylko do 2,5 km od granicy), `border_in_text` („1 km od granicy Krakowa”, „gmina Zielonki”), `lineage_city_mismatch` (inne ogłoszenie tego samego lokalu podaje inną miejscowość). Filtr „Ukryj podejrzane lokalizacje → zalecane” chowa trzy najmocniejsze.
-- **Cennik dewelopera.** Od 11 września 2025 każdy deweloper musi codziennie publikować na dane.gov.pl cennik wszystkich lokali według wzoru ministerstwa: adres inwestycji, numer lokalu, cena za metr i całość z datą obowiązywania, ceny miejsc postojowych, komórek i innych obowiązkowych świadczeń. `load_developer_prices.py` przechodzi przez otwarte API (`api.dane.gov.pl`, bez klucza) wszystkich instytucji typu „developer” i ich zbiorów, czyta pliki xlsx, csv, json i xml (kolumny po nazwach, bo układy się różnią; JSON i XML są spłaszczane do jednego rekordu na lokal z adresem inwestycji z obiektów wyżej, a XML harvestera, który tylko wskazuje dzienne pliki CSV, prowadzi do pliku z danego dnia; format „prices” bez miejscowości zostaje pominięty) i zostawia lokale, których miejscowość albo gmina leży w obszarze `RCN_CITIES` z marginesem. Część deweloperów zakłada nowy zbiór codziennie, więc lokal jest identyfikowany po instytucji i adresie, nie po zbiorze. Przy pierwszym wczytaniu bierze historię co ok. 30 dni wstecz, potem codziennie najnowszy plik. Zbiory bez nowego pliku od 45 dni są pomijane, a nieistotne sprawdzane ponownie co 30 dni. Sygnały dopasowują ogłoszenie do lokalu po miejscowości, metrażu (±0,05 m²) oraz ulicy albo cenie (±1%), a liczba pokoi wyklucza pomyłki. Cena ogłoszenia nie może odbiegać od żadnej ceny lokalu z cennika o więcej niż 15%, bo sama ulica myli inwestycje: oferty Awangardy Skanska z Mogilskiej trafiały do cennika NOHO z tej samej ulicy. Karta pokazuje „zgodne z cennikiem dewelopera” albo „±X% vs cennik dewelopera”, pierwszą i najwyższą cenę lokalu w cenniku, dodatki oraz ile lokali inwestycji zniknęło z cennika (sprzedane lub zarezerwowane). Lokal, którego już nie ma w cenniku, a ogłoszenie wisi, dostaje „zniknęło z cennika dewelopera”.
-- **Pinezka daleko od ulicy.** `load_osm.py` pobiera też nazwane ulice z OpenStreetMap. Gdy ogłoszenie podaje ulicę, a najbliższy odcinek ulicy o tej nazwie (porównywane po ostatnim członie, np. „Bogdanowskiego”) jest ponad 1 km od pinezki, dostaje flagę `pin_far_from_street`. Wtedy odległości od granicy, dróg i kolei liczone od pinezki są niewiarygodne i flagi hałasu się nie pojawiają. Przykład: „94 m² z trzema balkonami”, ul. Bogdanowskiego, pinezka 34 m od A4, a ulica 2 km od autostrady. Krakowskie osiedla („os. Strusia”) to obszary, nie ulice, więc są pomijane. W Krakowie ok. 91% ofert z ulicą ma pinezkę do 300 m od niej.
-- **Hałaśliwa okolica.** `load_osm.py` pobiera z OpenStreetMap (Overpass) autostrady, drogi ekspresowe i krajowe w standardzie trunk, linie kolejowe oraz utwardzone pasy startowe dłuższe niż 1800 m wokół miast z `RCN_CITIES`. Tunele są pomijane. Flagi: `near_expressway` (do 300 m od pinezki, z numerem drogi, np. „S52 280 m”), `near_railway` (do 150 m), `under_approach` (na przedłużeniu pasa, do 8 km od jego końca, w korytarzu szerokości ok. 0,8–1,6 km). Pinezka bywa przesunięta o kilkaset metrów, więc to sygnał do sprawdzenia, nie wyrok: Zakątek w Modlnicy ma pinezkę 1046 m od S52, a sam budynek stoi 525 m od niej. Filtr „Ukryj hałaśliwe okolice” jest w „Historii i rynku”.
+- **The same unit in successive listings.** Agencies take a listing down and re-post it every few weeks so it looks fresh. An owner first sells on their own, then hands the unit to an agency that raises the price. The scraper links such listings into a single "lineage" by area (to within 0.5%), rooms, floor, year of construction, distance (up to 3 km, because agencies move the pins) and similarity of title or description. Two listings live at the same time are linked only if it's the same advertiser, the same price and almost the same text, so identical units from one development stay separate. The lineage yields **time on market** counted from the first listing, the number of listings and advertisers, and the first, lowest and highest known price.
+- **Price history.** From this version on the scraper records every change of price, area and status in `ad_price_observations`. Older listings have one observation from the last fetch, so the full price history builds up from now on.
+- **Similar offers nearby.** Instead of the median of the whole district: the median price per square metre of at least 10 similar offers (same type, area ±35%, active or taken down within the last six months, each unit once) within a radius of 750 m to 10 km from the pin. The district median was misleading, because large units have a lower price per square metre, and the pin could point to a different district than the actual location.
+- **Transaction prices from RCN.** `load_transactions.py` downloads apartment sales around the given cities from the Property Price Register (Rejestr Cen Nieruchomości, GUGiK's open WFS). The signals compare the price per square metre with the median of real transactions from the last 2 years (same market when there are enough of them, area ±35%, whole unit, open market). This is the only comparison that contains no asking prices.
+- **Transactions on the same street.** A 1.5 km radius can mix an older estate at the city border with a luxury development next door. On Dożynkowa street the radius median was 14.3k PLN/m², while the only sale on that street was 10.6k. That's why a separate median of RCN sales on the same street is computed (address from RCN, up to 1.5 km from the pin, area ±35%, at least 3 transactions, same market first). In Kraków about 70% of secondary-market offers have one. In one case in three it differs from the radius median by more than 10%. Badge "±X% vs street". A street can mix things too: on Piltza (Ruczaj) the median of 36 sales is 16.9k PLN/m² because new buildings stand next door, while the 2013 estate with the offer sells at 12.3-15.4k. The same building would be best (RCN gives the building number), but only some listings know the building number, and only 3.5% of offers currently have 3 sales in the same building.
+- **Previous sale.** When RCN has a sale of a unit within 150 m of the pin, with the same non-round area (±1%), the same number of rooms and a plausible price, dated before the listing was posted, the card shows "sold 2021 for 694k", most likely the current owner's purchase price. With three or more such sales (a block of identical apartments) nothing is shown. In Kraków this applies to about 10% of fresh offers.
+- **Area.** The description is checked for a usable area smaller than in the parameters ("floor area 73 m², usable 37.82 m²"), sloped ceilings and floor-based area, and a basement or storage room included in the area.
+- **Location.** `load_boundaries.py` loads city and municipality boundaries from PRG (GUGiK). For cities we check whether the pin lies in the city the listing states, and how far it is from the border. Flags: `pin_outside_city` (pin outside the city), `near_city_border` (closer than 1 km to the border; advertisers pin offers from outside the city to the last street on its side), `other_place_in_text` (the description mentions a nearby place outside the city, checked only up to 2.5 km from the border), `border_in_text` ("1 km from the Kraków border", "Zielonki municipality"), `lineage_city_mismatch` (another listing of the same unit gives a different town). The filter "Hide suspicious locations → recommended" hides the three strongest.
+- **Developer price list.** Since 11 September 2025 every developer must publish daily on dane.gov.pl a price list of all units following the ministry template: development address, unit number, price per square metre and total with the effective date, prices of parking spaces, storage rooms and other mandatory fees. `load_developer_prices.py` walks the open API (`api.dane.gov.pl`, no key) of all institutions of type "developer" and their datasets, reads xlsx, csv, json and xml files (columns by name, because layouts differ; JSON and XML are flattened to one record per unit with the development address taken from parent objects, and a harvester XML that only points to daily CSV files leads to the file for the given day; the "prices" format without a town is skipped) and keeps the units whose town or municipality lies in the `RCN_CITIES` area with a margin. Some developers create a new dataset every day, so a unit is identified by institution and address, not by dataset. On first load it takes history roughly every 30 days back, then the newest file daily. Datasets without a new file for 45 days are skipped, and irrelevant ones are rechecked every 30 days. The signals match a listing to a unit by town, area (±0.05 m²) and street or price (±1%), and the number of rooms rules out mistakes. The listing price must not differ from every price of the unit in the price list by more than 15%, because the street alone mixes developments: Skanska's Awangarda offers on Mogilska were landing in the NOHO price list from the same street. The card shows "matches the developer price list" or "±X% vs developer price list", the first and the highest price of the unit in the price list, extras, and how many units of the development have disappeared from the price list (sold or reserved). A unit that is no longer in the price list while the listing is still up gets "disappeared from the developer price list".
+- **Pin far from the street.** `load_osm.py` also fetches named streets from OpenStreetMap. When a listing gives a street and the nearest segment of a street with that name (compared by the last word, e.g. "Bogdanowskiego") is more than 1 km from the pin, it gets the `pin_far_from_street` flag. Distances to the border, roads and railways measured from the pin are then unreliable, and noise flags are not shown. Example: "94 m² with three balconies", Bogdanowskiego street, pin 34 m from the A4, while the street is 2 km from the motorway. Kraków estates ("os. Strusia") are areas, not streets, so they are skipped. In Kraków about 91% of offers with a street have the pin within 300 m of it.
+- **Noisy surroundings.** `load_osm.py` fetches from OpenStreetMap (Overpass) motorways, expressways and trunk-standard national roads, railway lines and paved runways longer than 1800 m around the cities in `RCN_CITIES`. Tunnels are skipped. Flags: `near_expressway` (up to 300 m from the pin, with the road number, e.g. "S52 280 m"), `near_railway` (up to 150 m), `under_approach` (in line with a runway, up to 8 km from its end, in a corridor about 0.8-1.6 km wide). A pin can be off by a few hundred metres, so this is a signal to check, not a verdict: Zakątek in Modlnica has its pin 1046 m from the S52, while the building itself stands 525 m from it. The "Hide noisy surroundings" filter is in "History and market".
 
 ```bash
-uv run python load_boundaries.py                    # granice z PRG, raz (i po zmianach granic)
-uv run python load_transactions.py --city Kraków    # transakcje RCN (enricher robi to sam, gdy ustawisz RCN_CITIES)
+uv run python load_boundaries.py                    # boundaries from PRG, once (and after boundary changes)
+uv run python load_transactions.py --city Kraków    # RCN transactions (the enricher does this itself when RCN_CITIES is set)
 uv run python load_transactions.py --city Warszawa --city Wrocław --margin-km 10
-uv run python load_osm.py --city Kraków             # ulice, drogi, kolej i lotniska z OSM (enricher też, z RCN_CITIES)
-uv run python load_developer_prices.py --city Kraków  # cenniki deweloperów z dane.gov.pl (enricher codziennie, z RCN_CITIES)
-uv run python signals.py                            # przelicza sygnały od razu
+uv run python load_osm.py --city Kraków             # streets, roads, railways and airports from OSM (enricher too, with RCN_CITIES)
+uv run python load_developer_prices.py --city Kraków  # developer price lists from dane.gov.pl (enricher daily, with RCN_CITIES)
+uv run python signals.py                            # recomputes the signals right away
 ```
 
-- **Niesprawdzane ogłoszenia.** Scraper na produkcji odświeża tylko obszar z `docker-compose.yaml` (dziś `--city=Kraków`), więc ogłoszenia spoza niego zostają „aktywne” na zawsze. W październiku 2026 było takich 195 tys., a sześć „najtańszych” z okolic Krakowa okazało się zdjętych od marca–czerwca. Wyszukiwarka domyślnie ukrywa aktywne ogłoszenia niesprawdzane od ponad 45 dni (`hide_unchecked`, w filtrach „Historia i rynek”), karta pokazuje „niesprawdzane od …”, a sygnały traktują je jak zakończone przy ostatnim sprawdzeniu. Żeby szukać też pod Krakowem, dopisz w `docker-compose.yaml` do komend scrapera i enrichera `--radius-km=15` (otodom przyjmuje 0, 5, 10, 15, 25, 50, 75). Wyszukiwanie dostaje wtedy `distanceRadius` (dla Krakowa i 15 km to ok. 700 ogłoszeń więcej), a przebieg odświeżania i enricher biorą też zapisane ogłoszenia do tej odległości od granicy miasta (potrzebne `load_boundaries.py`). Enricher oceni wtedy więcej ogłoszeń, więc przypilnuj `ENRICHER_DAILY_BUDGET_USD`.
+- **Unchecked listings.** In production the scraper only refreshes the area from `docker-compose.yaml` (currently `--city=Kraków`), so listings outside it stay "active" forever. In October 2026 there were 195k of them, and the six "cheapest" ones around Kraków turned out to have been taken down since March-June. Search hides active listings not checked for more than 45 days by default (`hide_unchecked`, in the "History and market" filters), the card shows "not checked since …", and the signals treat them as ended at the last check. To also search around Kraków, add `--radius-km=15` to the scraper and enricher commands in `docker-compose.yaml` (otodom accepts 0, 5, 10, 15, 25, 50, 75). Search then gets `distanceRadius` (for Kraków and 15 km that's about 700 more listings), and the refresh pass and the enricher also take stored listings up to that distance from the city border (requires `load_boundaries.py`). The enricher will then evaluate more listings, so keep an eye on `ENRICHER_DAILY_BUDGET_USD`.
 
-Enricher przelicza sygnały sam co `MARKET_SIGNALS_INTERVAL_HOURS` (domyślnie 6 h, 0 wyłącza), na początku cyklu. Całość dla ~275 tys. ogłoszeń trwa kilka minut i zajmuje do ok. 1 GB pamięci. Enricher uruchamia ją jako osobny proces (`signals.py`), więc pamięć wraca po zakończeniu, a błąd nie zatrzymuje ocen. Jeśli serwer jest za mały, ustaw `MARKET_SIGNALS_INTERVAL_HOURS=0` i uruchamiaj `signals.py` ręcznie. Sygnały trafiają też do promptu oceny AI i kart asystenta, ale do istniejących pól szablonu (`Adres`, `Data wystawienia`, `Dane rynkowe`), więc zapisane oceny nie unieważniają się. Dostaną je dopiero nowe oceny i te, które się przeliczą z innego powodu.
+The enricher recomputes the signals by itself every `MARKET_SIGNALS_INTERVAL_HOURS` (default 6 h, 0 disables), at the start of a cycle. The whole run for ~275k listings takes a few minutes and uses up to about 1 GB of memory. The enricher runs it as a separate process (`signals.py`), so the memory is released afterwards and an error doesn't stop evaluations. If the server is too small, set `MARKET_SIGNALS_INTERVAL_HOURS=0` and run `signals.py` manually. The signals also go into the AI evaluation prompt and the assistant cards, but into existing template fields (`Adres`, `Data wystawienia`, `Dane rynkowe`), so stored evaluations are not invalidated. Only new evaluations and those recomputed for another reason get them.
 
-Przy okazji: otodom zastępuje opis i ulicę zdjętego ogłoszenia gwiazdkami (`***`). Wcześniej scraper nadpisywał tym zapisane dane i ok. 21 tys. ogłoszeń straciło opis. Teraz zamaskowane wartości nie nadpisują zapisanych, a zamaskowany JSON nie nadpisuje zapisanego surowego JSON-a.
+Side note: otodom replaces the description and street of a taken-down listing with asterisks (`***`). Previously the scraper overwrote the stored data with that, and about 21k listings lost their description. Now masked values don't overwrite stored ones, and masked JSON doesn't overwrite the stored raw JSON.
 
-## Tymczasowo: naprawa ogłoszeń bez lokalizacji
+## Temporary: repairing listings without a location
 
-> **Tymczasowe.** Do usunięcia, gdy w bazie nie będzie już aktywnych ogłoszeń bez miasta (`select count(*) from ads where status='active' and city_id is null`).
+> **Temporary.** To be removed once there are no more active listings without a city in the database (`select count(*) from ads where status='active' and city_id is null`).
 
-Od czerwca 2026 otodom przestał wysyłać miasto, dzielnicę, powiat i województwo w starym polu `address`, więc ~30 tys. ogłoszeń trafiło do bazy bez lokalizacji. Scraper czyta ją już z nowego miejsca i sam naprawia te ogłoszenia przy ponownym pobraniu, ale przy zwykłym tempie trwa to około doby. Żeby to przyspieszyć, uruchom proces, który pobiera wyłącznie ogłoszenia bez miasta. Najlepiej dwa, z różnych IP (otodom blokuje per adres), z podziałem pracy przez `--shard`:
+Since June 2026 otodom stopped sending the city, district, county and voivodeship in the old `address` field, so ~30k listings ended up in the database without a location. The scraper now reads it from the new place and repairs these listings by itself when re-fetching them, but at the normal pace that takes about a day. To speed it up, run a process that fetches only listings without a city. Ideally two, from different IPs (otodom blocks per address), splitting the work with `--shard`:
 
 ```bash
-# na VPS-ie, obok głównego kontenera; --build buduje obraz z bieżącego kodu w katalogu repozytorium
+# on the VPS, next to the main container; --build builds the image from the current code in the repository directory
 docker compose run --build --rm -d --name otodom-location-repair otodom-scrapper python main.py --no-scrape --update --only-missing-locations --max-price=0 --shard=1/2
 docker logs -f otodom-location-repair
 
-# na własnym komputerze (lokalny .env wskazuje na tę samą bazę)
+# on your own computer (local .env points to the same database)
 uv run python main.py --no-scrape --update --only-missing-locations --max-price 0 --shard 2/2
 ```
 
-- `--only-missing-locations` bierze **wszystkie** aktywne ogłoszenia bez miasta, bez względu na `--max-age-days` i `--city`, bo bez miasta nie da się ich przypisać do żadnego. `--max-price 0` wyłącza filtr ceny (domyślnie 1 mln zł).
-- W tym trybie kolejność jest odwrócona: najpierw ogłoszenia, które scraper widział ostatnio w wynikach wyszukiwania. To głównie wciąż aktywne oferty. Te niewidziane od tygodni, prawie zawsze już zdjęte z otodom, idą na koniec i dostają wtedy status zdjętego.
-- `--shard 1/2` bierze ogłoszenia o parzystym ID, `--shard 2/2` o nieparzystym. Bez podziału dwa procesy pobierałyby w większości te same ogłoszenia, bo każdy na starcie bierze tę samą listę w tej samej kolejności. Działa dla dowolnej liczby procesów (`1/3`, `2/3`, `3/3`), byle każdy dostał tę samą liczbę po ukośniku.
-- Proces nie kończy się sam (jak każdy przebieg `main.py`), tylko co minutę sprawdza kolejkę od nowa. Zatrzymaj go (`docker stop otodom-location-repair` albo Ctrl+C), gdy w logu pojawi się `Found 0 ads in DB to verify`.
-- Dwa procesy z jednego IP to dwa razy więcej zapytań do otodom i większe ryzyko blokady. Scraper je przeczeka (pauza od 1 do 30 minut), ale jeśli w logach jest dużo `Blocked by otodom`, zwiększ `--request-delay`.
-- Wszystkie procesy raportują się jako ta sama usługa, więc zakładka Status pokazuje stan tego, który zgłosił się ostatnio, a logi się mieszają.
-- Główny scraper z `--no-scrape` nie zbiera nowych ogłoszeń. Jeśli na czas naprawy zmieniasz jego komendę, przywróć ją potem. Zbieranie nadrobi pominięte ogłoszenia przy następnym przejściu stron wyników.
+- `--only-missing-locations` takes **all** active listings without a city, regardless of `--max-age-days` and `--city`, because without a city they can't be assigned to any. `--max-price 0` disables the price filter (default 1 million PLN).
+- In this mode the order is reversed: first the listings the scraper most recently saw in search results. Those are mostly still-active offers. The ones not seen for weeks, almost always already taken down from otodom, go last and then get the taken-down status.
+- `--shard 1/2` takes listings with an even ID, `--shard 2/2` with an odd one. Without splitting, two processes would mostly fetch the same listings, because each starts with the same list in the same order. It works for any number of processes (`1/3`, `2/3`, `3/3`), as long as each gets the same number after the slash.
+- The process doesn't exit on its own (like every `main.py` run); it rechecks the queue every minute. Stop it (`docker stop otodom-location-repair` or Ctrl+C) when `Found 0 ads in DB to verify` appears in the log.
+- Two processes from one IP mean twice as many requests to otodom and a higher risk of being blocked. The scraper waits it out (pause of 1 to 30 minutes), but if the logs show a lot of `Blocked by otodom`, increase `--request-delay`.
+- All processes report as the same service, so the Status tab shows the state of whichever reported last, and the logs get mixed.
+- The main scraper with `--no-scrape` doesn't collect new listings. If you change its command for the duration of the repair, restore it afterwards. Collection will catch up on skipped listings on the next pass through the result pages.
 
-## Surowe JSON-y i ponowne parsowanie
+## Raw JSON and re-parsing
 
-Scraper zapisuje ostatni JSON każdego pobranego ogłoszenia (skompresowany, 5-8 kB) w tabeli `ad_raw_payloads`. Gdy okaże się, że parser coś gubi albo otodom zmienił format, poprawia się parser i odtwarza dane bez ponownego pobierania stron:
+The scraper stores the last JSON of every fetched listing (compressed, 5-8 kB) in the `ad_raw_payloads` table. When it turns out the parser is missing something or otodom changed the format, you fix the parser and rebuild the data without re-fetching the pages:
 
 ```bash
-uv run python reparse.py            # tylko liczy, co by się zmieniło (ogłoszenia bez miasta)
-uv run python reparse.py --apply    # zapisuje
+uv run python reparse.py            # only counts what would change (listings without a city)
+uv run python reparse.py --apply    # saves
 uv run python reparse.py --all --apply --limit 1000
 ```
 
-`--no-store-raw` w `main.py` wyłącza zapisywanie.
+`--no-store-raw` in `main.py` disables storing.
 
-## Diagnostyka
+## Diagnostics
 
 ```bash
-# ile kosztowało i ile ocenione
+# how much it cost and how many were evaluated
 docker compose exec otodom-api python -c "
 from database import DatabaseManager
 from sqlalchemy import text
@@ -385,29 +387,29 @@ with DatabaseManager().get_session() as s:
 ```
 
 ```sql
--- co odpadło na etapie 1 i dlaczego
+-- what was rejected at stage 1 and why
 SELECT rejection_reason, count(*) FROM ad_screenings
 WHERE status = 'rejected' GROUP BY 1 ORDER BY 2 DESC;
 
--- co się wywaliło
+-- what failed
 SELECT ad_id, attempts, left(error_message, 120) FROM ad_evaluations
 WHERE status = 'failed' ORDER BY attempts DESC LIMIT 20;
 
--- wyczyszczenie błędów do ponowienia
+-- clear failures so they are retried
 DELETE FROM ad_screenings WHERE status = 'failed';
 DELETE FROM ad_evaluations WHERE status = 'failed';
 
--- rozkład ocen, czyli czy rubryka jest dobrze skalibrowana
+-- score distribution, i.e. whether the rubric is well calibrated
 SELECT overall_score, count(*) FROM ad_evaluations
 WHERE status = 'ok' GROUP BY 1 ORDER BY 1;
 ```
 
-Jeśli w ostatnim zapytaniu prawie wszystko siedzi na 7-8, rubryka w `evaluation_system.md` wymaga zaostrzenia - taka wyszukiwarka niczego nie odsieje.
+If in the last query almost everything sits at 7-8, the rubric in `evaluation_system.md` needs tightening - a search like that won't filter anything out.
 
-## Testy
+## Tests
 
 ```bash
 uv run python -m unittest discover -s tests -t .
 ```
 
-Nie wymagają bazy ani klucza API.
+They require neither a database nor an API key.
